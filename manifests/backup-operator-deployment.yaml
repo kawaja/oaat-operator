@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backup-operator-sa
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: backup-operator-clusterrole
+rules:
+
+  # Framework: knowing which other operators are running (i.e. peering).
+  - apiGroups: [kawaja.net]
+    resources: [clusterkopfpeerings]
+    verbs: [list, watch, patch, get]
+  - apiGroups: [apiextensions.k8s.io]
+    resources: [customresourcedefinitions]
+    verbs: [list, get]
+
+  # Application: read-only access for watching cluster-wide.
+  - apiGroups: [kawaja.net]
+    resources: ['*']
+    verbs: [list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  namespace: default
+  name: backup-operator-role-default
+rules:
+
+  # Framework: knowing which other operators are running (i.e. peering).
+  - apiGroups: [kawaja.net]
+    resources: [kopfpeerings]
+    verbs: [list, watch, patch, get]
+
+  # Framework: posting the events about the handlers progress/errors.
+  - apiGroups: [events.k8s.io]
+    resources: [events]
+    verbs: [create]
+  - apiGroups: [""]
+    resources: [events]
+    verbs: [create]
+
+  # Application: watching & handling for the custom resource we declare.
+  - apiGroups: [kawaja.net]
+    resources: ['*']
+    verbs: [list, watch, patch]
+
+  # Application: other resources it produces and manipulates.
+  # Here, we create Jobs+Pods, but we do not patch/update/delete them ever.
+  - apiGroups: [batch, extensions]
+    resources: [jobs]
+    verbs: [create]
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [create]
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: backup-operator-clusterrole-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: backup-operator-clusterrole
+subjects:
+  - kind: ServiceAccount
+    name: backup-operator-sa
+    namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  namespace: default
+  name: backup-operator-role-binding-default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: backup-operator-role-default
+subjects:
+  - kind: ServiceAccount
+    name: backup-operator-sa
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backup-operator
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      application: backup-operator
+  template:
+    metadata:
+      labels:
+        application: backup-operator
+    spec:
+      serviceAccountName: backup-operator-sa
+      containers:
+      - name: backup-operator
+        image: docker-registry.kawaja.net/backup-operator
+      imagePullSecrets:
+      - name: docker-registry-config
+# vim: sw=2 et ts=2

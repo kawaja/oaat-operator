@@ -1,0 +1,85 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: backuptypes.kawaja.net
+spec:
+  scope: Namespaced
+  group: kawaja.net
+  names:
+    kind: BackupType
+    plural: backuptypes
+    singular: backuptype
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+      additionalPrinterColumns:
+        - name: Type
+          type: string
+          priority: 0
+          jsonPath: .spec.type
+          description: Execution type for this backup type.
+        - name: Message
+          type: string
+          priority: 0
+          jsonPath: .status.create.message
+          description: As returned from the handler (sometimes).
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: backups.kawaja.net
+spec:
+  scope: Namespaced
+  group: kawaja.net
+  names:
+    kind: Backup
+    plural: backups
+    singular: backup
+    shortNames:
+      - bu
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+      additionalPrinterColumns:
+        - name: LastRun
+          type: date
+          priority: 0
+          jsonPath: .status.last_run
+          description: Time of most recent backup attempt.
+        - name: LastStatus
+          type: string
+          priority: 0
+          jsonPath: .status.last_status
+          description: Status of most recent backup attempt.
+        - name: Children
+          type: string
+          priority: 0
+          jsonPath: .status.create.children
+          description: The children pods created.
+        - name: Message
+          type: string
+          priority: 0
+          jsonPath: .status.create.message
+          description: As returned from the handler (sometimes).
