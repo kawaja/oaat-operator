@@ -66,20 +66,29 @@ spec:
         - name: LastRun
           type: date
           priority: 0
-          jsonPath: .status.last_run
+          jsonPath: .status.backup.last_run
           description: Time of most recent backup attempt.
-        - name: LastStatus
+        - name: Loops
+          type: integer
+          jsonPath: .status.backup.loops
+          description: Number of loops the daemon has processed.
+        - name: State
           type: string
           priority: 0
-          jsonPath: .status.last_status
-          description: Status of most recent backup attempt.
-        - name: Children
+          jsonPath: .status.state
+          description: State of backup operator.
+        - name: CurrentlyRunning
           type: string
           priority: 0
-          jsonPath: .status.create.children
-          description: The children pods created.
+          jsonPath: .status.currently_running
+          description: Name of backup which is currently running.
+        - name: BackupPod
+          type: string
+          priority: 0
+          jsonPath: .status.backup_pod
+          description: Name of pod for the backup which is currently running.
         - name: Message
           type: string
           priority: 0
-          jsonPath: .status.create.message
+          jsonPath: .status.backup.message
           description: As returned from the handler (sometimes).

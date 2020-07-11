@@ -2,3 +2,4 @@ pods
 jobs
 cronjobs
 _Jenkins_changed
+*.swp

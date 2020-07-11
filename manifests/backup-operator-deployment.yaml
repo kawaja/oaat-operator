@@ -21,6 +21,9 @@ rules:
   - apiGroups: [kawaja.net]
     resources: ['*']
     verbs: [list, watch]
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [list, get, watch, patch, update]
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: Role
@@ -45,16 +48,12 @@ rules:
   # Application: watching & handling for the custom resource we declare.
   - apiGroups: [kawaja.net]
     resources: ['*']
-    verbs: [list, watch, patch]
+    verbs: [get, list, watch, patch]
 
   # Application: other resources it produces and manipulates.
-  # Here, we create Jobs+Pods, but we do not patch/update/delete them ever.
-  - apiGroups: [batch, extensions]
-    resources: [jobs]
-    verbs: [create]
   - apiGroups: [""]
-    resources: [pods]
-    verbs: [create]
+    resources: [pods,pods/status]
+    verbs: [create, get, patch, update, delete]
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
