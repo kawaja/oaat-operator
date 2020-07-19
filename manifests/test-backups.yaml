@@ -1,0 +1,9 @@
+apiVersion: kawaja.net/v1
+kind: Backup
+metadata:
+  name: test-backups
+spec:
+  frequency: 5m
+  backupGroup: test
+  backupType: backuptest
+# vim: sw=2 et ts=2

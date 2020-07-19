@@ -66,11 +66,11 @@ spec:
         - name: LastRun
           type: date
           priority: 0
-          jsonPath: .status.backup.last_run
+          jsonPath: .status.backup_timer.last_run
           description: Time of most recent backup attempt.
         - name: Loops
           type: integer
-          jsonPath: .status.backup.loops
+          jsonPath: .status.backup_timer.loops
           description: Number of loops the daemon has processed.
         - name: State
           type: string
@@ -90,5 +90,5 @@ spec:
         - name: Message
           type: string
           priority: 0
-          jsonPath: .status.backup.message
+          jsonPath: .status.backup_timer.message
           description: As returned from the handler (sometimes).
