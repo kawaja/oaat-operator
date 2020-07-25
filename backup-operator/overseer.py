@@ -7,6 +7,7 @@ import time
 import pykube
 from common import ProcessingComplete
 
+
 class Overseer:
     """
     Overseer
@@ -109,4 +110,3 @@ class Overseer:
         if 'message' in exc.ret:
             return {'message': exc.ret['message']}
         return None
-

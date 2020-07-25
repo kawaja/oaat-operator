@@ -10,6 +10,7 @@ from common import ProcessingComplete, Backup
 import overseer
 import backup
 
+
 class PodOverseer(overseer.Overseer):
     """
     PodOverseer
@@ -133,13 +134,11 @@ class PodOverseer(overseer.Overseer):
                 self.kwargs['meta']['labels'].get('parent-name')))
         except pykube.exceptions.ObjectDoesNotExist:
             raise ProcessingComplete(
-                message=
-                f'ignoring pod {self.name} as associated Backup '
+                message=f'ignoring pod {self.name} as associated Backup '
                 f'object no longer exists'
             )
         if parent:
             return parent
         raise ProcessingComplete(
-            message=
-            f'ignoring pod {self.name} as we cannot find the '
+            message=f'ignoring pod {self.name} as we cannot find the '
             f'associated Backup object')

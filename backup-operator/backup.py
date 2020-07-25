@@ -75,8 +75,8 @@ class BackupOverseer(overseer.Overseer):
                 message=f'missing backupType in '
                         f'"{self.name}" Backup definition')
         try:
-            btobj = BackupType.objects(
-                self.api, namespace=self.namespace).get_by_name(backup_type).obj
+            btobj = (BackupType.objects(self.api, namespace=self.namespace)
+                     .get_by_name(backup_type).obj)
         except pykube.exceptions.ObjectDoesNotExist as exc:
             raise ProcessingComplete(
                 error=(
@@ -86,8 +86,8 @@ class BackupOverseer(overseer.Overseer):
         podspec = btobj.get('spec', {}).get('podspec')
         if podspec is None:
             raise ProcessingComplete(
-                message=
-                f'missing podspec in "{backup_type}" BackupType definition')
+                message=f'missing podspec in "{backup_type}" '
+                'BackupType definition')
         return podspec
 
     # TODO: if the oldest backup keeps failing, consider running
@@ -96,7 +96,8 @@ class BackupOverseer(overseer.Overseer):
         """
         find_job_to_run
 
-        Find the best backup job to run based on last success and failure times.
+        Find the best backup job to run based on last success and
+        failure times.
         """
         now = utility.now()
         backup_items = [
@@ -108,25 +109,25 @@ class BackupOverseer(overseer.Overseer):
             for item in self.kwargs['spec'].get('backupItems', [])
         ]
 
-        self.debug(f'backup_items:\n' +
+        self.debug('backup_items:\n' +
                    '\n'.join([str(i) for i in backup_items]))
 
         if not backup_items:
             raise ProcessingComplete(
-                message=f'no backups found. please set "backupItems"')
+                message='no backups found. please set "backupItems"')
 
         # Filter out items which have been recently successful
         valid_based_on_success = [
             item for item in backup_items if now > item['success'] + self.freq
         ]
 
-        self.debug(f'valid_based_on_success:\n' +
+        self.debug('valid_based_on_success:\n' +
                    '\n'.join([str(i) for i in valid_based_on_success]))
 
         if not valid_based_on_success:
             self.set_status('state', 'idle')
             raise ProcessingComplete(
-                message=f'not time to run next backup')
+                message='not time to run next backup')
 
         if len(valid_based_on_success) == 1:
             return valid_based_on_success[0]['name']
@@ -141,13 +142,14 @@ class BackupOverseer(overseer.Overseer):
             if item['success'] == oldest_success_time
         ]
 
-        self.debug(f'oldest_items:\n' +
+        self.debug('oldest_items:\n' +
                    '\n'.join([str(i) for i in oldest_items]))
 
         if len(oldest_items) == 1:
             return oldest_items[0]['name']
 
-        # More than one item "equally old" success. Choose based on last failure
+        # More than one item "equally old" success. Choose based on
+        # last failure
         oldest_failure_time = min([t['failure'] for t in oldest_items])
         self.debug(f'oldest_failure_time: {oldest_failure_time}')
         oldest_failure_items = [
@@ -156,21 +158,22 @@ class BackupOverseer(overseer.Overseer):
             if item['failure'] == oldest_failure_time
         ]
 
-        self.debug(f'oldest_failure_items:\n' +
+        self.debug('oldest_failure_items:\n' +
                    '\n'.join([str(i) for i in oldest_failure_items]))
 
         if len(oldest_failure_items) == 1:
             return oldest_failure_items[0]['name']
 
         # more than one "equally old" failure.  Choose at random
-        return oldest_failure_items[randrange(len(oldest_failure_items))] # nosec
+        return oldest_failure_items[
+            randrange(len(oldest_failure_items))]  # nosec
 
     def run_backup(self, item_name):
         """
         run_backup
 
-        Execute a backup Pod with the spec details from the appropriate BackupType
-        object.
+        Execute a backup Pod with the spec details from the appropriate
+        BackupType object.
         """
         podspec = self.get_podspec()
         podspec.setdefault('env', []).append({
@@ -270,8 +273,8 @@ class BackupOverseer(overseer.Overseer):
         validate_running_pod
 
         Check whether the Pod we previously started is still running. If not,
-        assume the job was killed without being processed by the backup operator
-        (or was never started) and clean up. Mark as failed.
+        assume the job was killed without being processed by the backup
+        operator (or was never started) and clean up. Mark as failed.
 
         If Pod is still running, update the status details.
         """
@@ -283,14 +286,15 @@ class BackupOverseer(overseer.Overseer):
                     self.api,
                     namespace=self.namespace).get_by_name(curbackuppod).obj
             except pykube.exceptions.ObjectDoesNotExist:
-                self.info(f'backup {curbackuppod} missing/deleted, cleaning up')
+                self.info(
+                    f'backup {curbackuppod} missing/deleted, cleaning up')
                 self.set_status('currently_running')
                 self.set_status('backup_pod')
                 self.set_status('state', 'missing')
                 self.set_item_status(curbackup, 'last_failure', now_iso())
                 self.set_item_status(curbackup, 'pod_detail')
                 raise ProcessingComplete(
-                    message=f'Cleaned up missing/deleted backup')
+                    message='Cleaned up missing/deleted backup')
 
             podphase = pod.get('status', {}).get('phase', 'unknown')
             self.info(f'validated that pod {curbackuppod} is '
@@ -310,8 +314,9 @@ class BackupOverseer(overseer.Overseer):
             if recorded_phase == 'Succeeded':
                 self.info(f'backup {curbackup} podphase={recorded_phase} but '
                           f'not yet acknowledged: {curbackuppod}')
-                raise ProcessingComplete(message=f'backup {curbackup} succeeded, '
-                                         f'awaiting acknowledgement')
+                raise ProcessingComplete(
+                    message=f'backup {curbackup} succeeded, '
+                    'awaiting acknowledgement')
 
             self.debug(f'backup {curbackup} status: {recorded_phase}')
             self.debug(

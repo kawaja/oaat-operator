@@ -1,6 +1,7 @@
 """Common definitions which are specific to the Backup handler."""
 import pykube
 
+
 class ProcessingComplete(BaseException):
     """Signal from a subfunction to a handler that processing is complete."""
     def __init__(self, **kwargs):

@@ -1,8 +1,5 @@
-import datetime
 import logging
 import kopf
-import pykube
-from pykube import Pod
 from utility import now_iso, my_name
 from common import ProcessingComplete
 import backup
@@ -37,6 +34,7 @@ def is_succeeded(status, **_):
 def configure(settings: kopf.OperatorSettings, **_):
     """Set kopf configuration."""
     settings.posting.level = logging.INFO
+
 
 @kopf.timer('kawaja.net', 'v1', 'backups',
             initial_delay=30, interval=30,
