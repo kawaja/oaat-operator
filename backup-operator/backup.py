@@ -7,7 +7,8 @@ from random import randrange
 import kopf
 import pykube
 from pykube import Pod
-from utility import parse_frequency, date_from_isostr, now, now_iso
+from utility import parse_frequency, date_from_isostr, now_iso
+import utility
 from common import ProcessingComplete, BackupType, Backup
 import overseer
 
@@ -95,80 +96,74 @@ class BackupOverseer(overseer.Overseer):
         """
         find_job_to_run
 
-        Find the time and name of the backup job which has been least recently
-        successful.
+        Find the best backup job to run based on last success and failure times.
         """
-        backup_items = self.kwargs['spec'].get('backupItems')
-        if backup_items is None:
-            return {
-                'message':
-                f'no backups found. please set "backupItems"'
+        now = utility.now()
+        backup_items = [
+            {
+                'name': item,
+                'success': self.item_status_date(item, 'last_success'),
+                'failure': self.item_status_date(item, 'last_failure')
             }
+            for item in self.kwargs['spec'].get('backupItems', [])
+        ]
 
-        # find entry with the least recent last_success and least recent
-        # last_failure
-        # dates are always UTC
-        # need to take care that dates are all 'aware' of timezone so
-        # date arithmetic works
-        oldest_success_time = 0
-        oldest_success_item = None
-        oldest_failure_time = 0
-        oldest_failure_item = None
-        for backup_item in backup_items:
-            last_success = self.item_status_date(backup_item, 'last_success')
-            last_failure = self.item_status_date(backup_item, 'last_failure')
-            self.debug(
-                f'backup_item: {backup_item}, '
-                f'oldest_success_time: {oldest_success_time}, '
-                f'oldest_failure: {oldest_failure_time}, '
-                f'last_success: {last_success}'
-                f'last_failure: {last_failure}')
-            if not oldest_success_time or last_success < oldest_success_time:
-                oldest_success_time = last_success
-                oldest_success_item = backup_item
-            if not oldest_failure_time or last_failure < oldest_failure_time:
-                oldest_failure_time = last_failure
-                oldest_failure_item = backup_item
-            self.info(
-                f'Checking backup {backup_item}, '
-                f'last_success={last_success}, '
-                f'oldest_success_item={oldest_success_item}, '
-                f'oldest_success_time={oldest_success_time}, '
-                f'last_failure={last_failure}, '
-                f'oldest_failure_item={oldest_failure_item}, '
-                f'oldest_failure_time={oldest_failure_time}')
+        self.debug(f'backup_items:\n' +
+                   '\n'.join([str(i) for i in backup_items]))
 
-        # if none have been successful, choose randomly
-        if oldest_success_item:
-            self.debug(f'Found oldest_success_item: {oldest_success_item}')
-            try:
-                if oldest_success_time + self.freq > now():
-                    self.set_status('state', 'idle')
-                    self.info(
-                        f'Not yet time to run another backup '
-                        f'(oldest: {oldest_success_item}='
-                        f'{oldest_success_time.isoformat()}, '
-                        f'freq: {self.freq} / {self.freq.total_seconds()}, '
-                        f'now: {now_iso()} /'
-                        f'{now().timestamp()}, '
-                        f'next: {(oldest_success_time+self.freq).isoformat()} / '
-                        f'{(oldest_success_time+self.freq).timestamp()})')
-                    raise ProcessingComplete(
-                        message=
-                        f'next backup "{oldest_success_item}" '
-                        f'{(oldest_success_time+self.freq).isoformat()}')
-            except (TypeError, ValueError) as exc:
-                self.error(f'Error calculating times: {exc}')
-                self.info(
-                    f'Continuing with backup for {oldest_success_item} after error')
-                return oldest_success_item
+        if not backup_items:
+            raise ProcessingComplete(
+                message=f'no backups found. please set "backupItems"')
 
-        if oldest_failure_item:
-            self.debug(f'Found oldest_failure_item: {oldest_failure_item}')
-            return oldest_failure_item
+        # Filter out items which have been recently successful
+        valid_based_on_success = [
+            item for item in backup_items if now > item['success'] + self.freq
+        ]
 
-        self.debug(f'Didn\'t find any backup executions, choosing at random')
-        return backup_items[randrange(len(backup_items))]  # nosec
+        self.debug(f'valid_based_on_success:\n' +
+                   '\n'.join([str(i) for i in valid_based_on_success]))
+
+        if not valid_based_on_success:
+            self.set_status('state', 'idle')
+            raise ProcessingComplete(
+                message=f'not time to run next backup')
+
+        if len(valid_based_on_success) == 1:
+            return valid_based_on_success[0]['name']
+
+        # Get all items which are "oldest"
+        oldest_success_time = min(
+            [t['success'] for t in valid_based_on_success])
+        self.debug(f'oldest_success_time: {oldest_success_time}')
+        oldest_items = [
+            item
+            for item in valid_based_on_success
+            if item['success'] == oldest_success_time
+        ]
+
+        self.debug(f'oldest_items:\n' +
+                   '\n'.join([str(i) for i in oldest_items]))
+
+        if len(oldest_items) == 1:
+            return oldest_items[0]['name']
+
+        # More than one item "equally old" success. Choose based on last failure
+        oldest_failure_time = min([t['failure'] for t in oldest_items])
+        self.debug(f'oldest_failure_time: {oldest_failure_time}')
+        oldest_failure_items = [
+            item
+            for item in oldest_items
+            if item['failure'] == oldest_failure_time
+        ]
+
+        self.debug(f'oldest_failure_items:\n' +
+                   '\n'.join([str(i) for i in oldest_failure_items]))
+
+        if len(oldest_failure_items) == 1:
+            return oldest_failure_items[0]['name']
+
+        # more than one "equally old" failure.  Choose at random
+        return oldest_failure_items[randrange(len(oldest_failure_items))] # nosec
 
     def run_backup(self, item_name):
         """
