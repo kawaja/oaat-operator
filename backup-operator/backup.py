@@ -299,11 +299,13 @@ class BackupOverseer(overseer.Overseer):
             recorded_phase = self.item_status(curbackup, 'podphase', 'unknown')
 
             # valid phases are Pending, Running, Succeeded, Failed, Unknown
-            if recorded_phase in ('Pending', 'Running', 'Failed'):
+            # 'started' is the phase the pods start with when created by
+            # backup operator.
+            if recorded_phase in ('started', 'Pending', 'Running', 'Failed'):
                 self.info(f'backup {curbackup} status for '
                           f'{curbackuppod}: {recorded_phase}')
                 raise ProcessingComplete(message=f'backup {curbackup} %s' %
-                                         curbackup.lower())
+                                         recorded_phase.lower())
 
             if recorded_phase == 'Succeeded':
                 self.info(f'backup {curbackup} podphase={recorded_phase} but '
