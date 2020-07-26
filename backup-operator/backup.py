@@ -13,7 +13,7 @@ from common import ProcessingComplete, BackupType, Backup
 import overseer
 
 
-# TODO: should this be moved to a separate BackupItem class?
+# TODO: should these be moved to a separate BackupItem class?
 def get_status(obj, backup, key, default=None):
     """
     get_status
@@ -27,6 +27,15 @@ def get_status(obj, backup, key, default=None):
             .get('backups', {})
             .get(backup, {})
             .get(key, default))
+
+def mark_failed(obj, item_name):
+    failure_count = obj.item_status_date(item_name, 'failure_count')
+    obj.set_item_status(item_name, 'failure_count', failure_count + 1)
+    obj.set_item_status(item_name, 'last_failure', now_iso())
+
+def mark_success(obj, item_name):
+    obj.set_item_status(item_name, 'failure_count', 0)
+    obj.set_item_status(item_name, 'efailureast_success', now_iso())
 
 
 class BackupOverseer(overseer.Overseer):
@@ -43,6 +52,7 @@ class BackupOverseer(overseer.Overseer):
         self.freq = parse_frequency(freqstr)
         self.my_pykube_objtype = Backup
         self.backuptype = None
+        self.body = kwargs['body']
 
     def item_status(self, item, key, default=None):
         """Get the status of a specific backup item."""
@@ -137,7 +147,8 @@ class BackupOverseer(overseer.Overseer):
             {
                 'name': item,
                 'success': self.item_status_date(item, 'last_success'),
-                'failure': self.item_status_date(item, 'last_failure')
+                'failure': self.item_status_date(item, 'last_failure'),
+                'numfails': self.item_status_date(item, 'failure_count')
             }
             for item in self.kwargs['spec'].get('backupItems', [])
         ]
@@ -243,6 +254,7 @@ class BackupOverseer(overseer.Overseer):
         try:
             pod.create()
         except pykube.KubernetesError as exc:
+            mark_failed(self.body, item_name)
             raise ProcessingComplete(
                 error=f'could not create pod {doc}: {exc}',
                 message=f'error creating pod for {item_name}')
@@ -329,7 +341,7 @@ class BackupOverseer(overseer.Overseer):
                 self.set_status('currently_running')
                 self.set_status('backup_pod')
                 self.set_status('state', 'missing')
-                self.set_item_status(curbackup, 'last_failure', now_iso())
+                mark_failed(self.body, curbackup)
                 self.set_item_status(curbackup, 'pod_detail')
                 raise ProcessingComplete(
                     info='Cleaned up missing/deleted backup')
