@@ -42,6 +42,7 @@ class BackupOverseer(overseer.Overseer):
         freqstr = kwargs['spec'].get('frequency', '1h')
         self.freq = parse_frequency(freqstr)
         self.my_pykube_objtype = Backup
+        self.backuptype = None
 
     def item_status(self, item, key, default=None):
         """Get the status of a specific backup item."""
@@ -67,28 +68,60 @@ class BackupOverseer(overseer.Overseer):
                  .setdefault(item, {}))
         patch['podphase'] = value
 
+    def get_backuptype(self):
+        """Retrieve the BackupType object relevant to this Backup."""
+        if not self.backuptype:
+            backup_type = self.kwargs['spec'].get('backupType')
+            if backup_type is None:
+                raise ProcessingComplete(
+                    message=f'error in Backup definition',
+                    error=f'missing backupType in '
+                          f'"{self.name}" Backup definition')
+            try:
+                self.backuptype = (
+                    BackupType
+                    .objects(self.api, namespace=self.namespace)
+                    .get_by_name(backup_type)
+                    .obj)
+            except pykube.exceptions.ObjectDoesNotExist as exc:
+                raise ProcessingComplete(
+                    error=(
+                        f'cannot find BackupType {self.namespace}/{backup_type} '
+                        f'to retrieve podspec: {exc}'),
+                    message=f'error retrieving "{backup_type}" BackupType object')
+        return self.backuptype
+
     def get_podspec(self):
         """Retrieve Pod specification from relevant BackupType object."""
-        backup_type = self.kwargs['spec'].get('backupType')
-        if backup_type is None:
+        msg = 'error in BackupType definition'
+        btobj = self.get_backuptype()
+        spec = btobj.get('spec')
+        if spec is None:
             raise ProcessingComplete(
-                message=f'missing backupType in '
-                        f'"{self.name}" Backup definition')
-        try:
-            btobj = (BackupType.objects(self.api, namespace=self.namespace)
-                     .get_by_name(backup_type).obj)
-        except pykube.exceptions.ObjectDoesNotExist as exc:
+                message=msg,
+                error='missing spec in BackupType definition')
+        if spec.get('type') not in 'pod':
+            raise ProcessingComplete(message=msg,
+                                     error='spec.type must be "pod"')
+        podspec = spec.get('podspec')
+        if not podspec:
+            raise ProcessingComplete(message=msg,
+                                     error='spec.podspec is missing')
+        if not podspec.get('container'):
             raise ProcessingComplete(
-                error=(
-                    f'cannot find BackupType {self.namespace}/{backup_type} '
-                    f'to retrieve podspec: {exc}'),
-                message=f'cannot retrieve "{backup_type}" BackupType object')
-        podspec = btobj.get('spec', {}).get('podspec')
-        if podspec is None:
+                message=msg,
+                error='spec.podspec.container is missing')
+        if podspec.get('containers'):
             raise ProcessingComplete(
-                message=f'missing podspec in "{backup_type}" '
-                'BackupType definition')
-        return podspec
+                message=msg,
+                error='currently only support a single container, '
+                'please do not use "spec.podspec.containers"')
+        if podspec.get('restartPolicy'):
+            raise ProcessingComplete(
+                message=msg,
+                error='for spec.type="pod", you cannot specify '
+                'a restartPolicy')
+        return spec.get('podspec')
 
     # TODO: if the oldest backup keeps failing, consider running
     # other backups which are ready to run
@@ -114,7 +147,8 @@ class BackupOverseer(overseer.Overseer):
 
         if not backup_items:
             raise ProcessingComplete(
-                message='no backups found. please set "backupItems"')
+                message='error in Backup definition',
+                error='no backups found. please set "backupItems"')
 
         # Filter out items which have been recently successful
         valid_based_on_success = [
@@ -166,7 +200,7 @@ class BackupOverseer(overseer.Overseer):
 
         # more than one "equally old" failure.  Choose at random
         return oldest_failure_items[
-            randrange(len(oldest_failure_items))]  # nosec
+            randrange(len(oldest_failure_items))]['name']  # nosec
 
     def run_backup(self, item_name):
         """
@@ -175,8 +209,10 @@ class BackupOverseer(overseer.Overseer):
         Execute a backup Pod with the spec details from the appropriate
         BackupType object.
         """
-        podspec = self.get_podspec()
-        podspec.setdefault('env', []).append({
+        spec = self.get_podspec()
+        contspec = spec['container']
+        del spec['container']
+        contspec.setdefault('env', []).append({
             'name': 'BACKUP_ITEM',
             'value': item_name
         })
@@ -195,7 +231,8 @@ class BackupOverseer(overseer.Overseer):
                 }
             },
             'spec': {
-                'containers': [podspec],
+                'containers': [contspec],
+                **spec,
                 'restartPolicy': 'Never'
             },
         }
@@ -207,8 +244,7 @@ class BackupOverseer(overseer.Overseer):
             pod.create()
         except pykube.KubernetesError as exc:
             raise ProcessingComplete(
-                info=f'failed creating pod: {podspec}',
-                error=f'could not create pod: {exc}',
+                error=f'could not create pod {doc}: {exc}',
                 message=f'error creating pod for {item_name}')
         return pod
 
@@ -224,6 +260,7 @@ class BackupOverseer(overseer.Overseer):
                 self.set_annotation(status_annotation, 'missingBackupItems')
             raise ProcessingComplete(
                 state='nothing to do',
+                error=f'error in Backup definition',
                 message=f'no backups found. '
                         f'Please set "backupItems" in {self.name}'
             )
@@ -262,7 +299,8 @@ class BackupOverseer(overseer.Overseer):
 
         raise ProcessingComplete(
             state='inconsistent state',
-            message=(
+            message='internal error',
+            error=(
                 f'inconsistent state detected. '
                 f'backup_pod ({curbackuppod}) is inconsistent '
                 f'with currently_running ({curbackup})')
@@ -294,7 +332,7 @@ class BackupOverseer(overseer.Overseer):
                 self.set_item_status(curbackup, 'last_failure', now_iso())
                 self.set_item_status(curbackup, 'pod_detail')
                 raise ProcessingComplete(
-                    message='Cleaned up missing/deleted backup')
+                    info='Cleaned up missing/deleted backup')
 
             podphase = pod.get('status', {}).get('phase', 'unknown')
             self.info(f'validated that pod {curbackuppod} is '
@@ -318,10 +356,10 @@ class BackupOverseer(overseer.Overseer):
                     message=f'backup {curbackup} succeeded, '
                     'awaiting acknowledgement')
 
-            self.debug(f'backup {curbackup} status: {recorded_phase}')
-            self.debug(
-                f'backup {curbackup} status: {str(self.kwargs["status"])}')
             raise ProcessingComplete(
+                error=f'backup {curbackup} unexpected state: '
+                      f'recorded_phase={recorded_phase}, '
+                      f'status={str(self.kwargs["status"])}',
                 message=f'backup {curbackup} unexpected state')
 
     def check_backup_type(self):
@@ -335,7 +373,8 @@ class BackupOverseer(overseer.Overseer):
         if backup_type not in [x.name for x in backuptypes]:
             self.set_annotation('operator-status', 'missingBackupType')
             raise ProcessingComplete(
-                message=f'unknown backup type {backup_type}')
+                message='error in Backup definition',
+                error=f'unknown backup type {backup_type}')
         kopf.info(self.kwargs['spec'],
                   reason='Validation',
                   message='found valid backup type')

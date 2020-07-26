@@ -1,0 +1,12 @@
+apiVersion: kawaja.net/v1
+kind: Backup
+metadata:
+  name: testsimple-backups
+spec:
+  frequency: 5m
+  backupGroup: test
+  backupType: backuptest
+  backupItems:
+    - item1
+    - item2
+# vim: sw=2 et ts=2

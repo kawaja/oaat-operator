@@ -5,16 +5,16 @@ metadata:
 spec:
   type: pod
   podspec:
-    name: test
-    image: busybox
-    command: ["sh", "-x", "-c"]
-    args:
-      - |
-        echo "BACKUP_ITEM=$BACKUP_ITEM"
-        sleep $(shuf -i 10-180 -n 1)
-        exit $(shuf -i 0-1 -n 1)
-    resources:
-      requests:
-        memory: 200Mi
-        cpu: 50m
-    restartPolicy: OnFailure
+    container:
+      name: test
+      image: busybox
+      command: ["sh", "-x", "-c"]
+      args:
+        - |
+          echo "BACKUP_ITEM=$BACKUP_ITEM"
+          sleep $(shuf -i 10-180 -n 1)
+          exit $(shuf -i 0-1 -n 1)
+      resources:
+        requests:
+          memory: 200Mi
+          cpu: 50m

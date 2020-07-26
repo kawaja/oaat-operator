@@ -75,9 +75,10 @@ class PodOverseer(overseer.Overseer):
                 }
             })
             raise ProcessingComplete(
+                error=f'backup failed with exit code: {self.exitcode}',
                 message=f'backup failed with exit code: {self.exitcode}')
         raise ProcessingComplete(
-            message=f'ignoring old failed job {self.name}')
+            info=f'ignoring old failed job {self.name}')
 
     def update_success_status(self):
         """
@@ -113,7 +114,7 @@ class PodOverseer(overseer.Overseer):
             })
             raise ProcessingComplete(message=f'backup {backup_name} completed')
         raise ProcessingComplete(
-            message=f'ignoring old successful job {self.name}')
+            info=f'ignoring old successful job {self.name}')
 
     def update_phase(self):
         parent = self.get_parent()
@@ -134,11 +135,11 @@ class PodOverseer(overseer.Overseer):
                 self.kwargs['meta']['labels'].get('parent-name')))
         except pykube.exceptions.ObjectDoesNotExist:
             raise ProcessingComplete(
-                message=f'ignoring pod {self.name} as associated Backup '
+                info=f'ignoring pod {self.name} as associated Backup '
                 f'object no longer exists'
             )
         if parent:
             return parent
         raise ProcessingComplete(
-            message=f'ignoring pod {self.name} as we cannot find the '
+            info=f'ignoring pod {self.name} as we cannot find the '
             f'associated Backup object')

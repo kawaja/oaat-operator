@@ -59,10 +59,10 @@ class Overseer:
                     .objects(self.api, namespace=namespace)
                     .get_by_name(self.name))
         except pykube.exceptions.ObjectDoesNotExist as exc:
-            self.error(f'cannot find Object {self.name} ' +
-                       f'to {reason}' if reason else '' +
-                       f': {exc}')
             raise ProcessingComplete(
+                error=f'cannot find Object {self.name} ' +
+                      f'to {reason}' if reason else '' +
+                      f': {exc}',
                 message=f'cannot retrieve "{self.name}" object')
 
     def set_annotation(self, annotation, value=None):
@@ -93,11 +93,10 @@ class Overseer:
         try:
             myobj.delete(propagation_policy='Background')
         except pykube.exceptions.KubernetesError as exc:
-            self.error(f'cannot delete Object {self.name}: {exc}')
             raise ProcessingComplete(
+                error=f'cannot delete Object {self.name}: {exc}',
                 message=f'cannot delete "{self.name}" object')
 
-    # TODO: handle multiple warnings, errors, etc.?
     def handle_processing_complete(self, exc):
         if 'state' in exc.ret:
             self.set_status('state', exc.ret['state'])
