@@ -3,7 +3,7 @@ kind: ServiceAccount
 metadata:
   name: backup-operator-sa
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: backup-operator-clusterrole
@@ -25,7 +25,7 @@ rules:
     resources: [pods]
     verbs: [list, get, watch, patch, update]
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   namespace: default
@@ -55,7 +55,7 @@ rules:
     resources: [pods,pods/status]
     verbs: [create, get, patch, update, delete]
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: backup-operator-clusterrole-binding
@@ -68,7 +68,7 @@ subjects:
     name: backup-operator-sa
     namespace: default
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   namespace: default
