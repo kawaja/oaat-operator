@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: backup-operator-sa
+  name: oaat-operator-sa
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: backup-operator-clusterrole
+  name: oaat-operator-clusterrole
 rules:
 
   # Framework: knowing which other operators are running (i.e. peering).
@@ -29,7 +29,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   namespace: default
-  name: backup-operator-role-default
+  name: oaat-operator-role-default
 rules:
 
   # Framework: knowing which other operators are running (i.e. peering).
@@ -58,49 +58,49 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: backup-operator-clusterrole-binding
+  name: oaat-operator-clusterrole-binding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: backup-operator-clusterrole
+  name: oaat-operator-clusterrole
 subjects:
   - kind: ServiceAccount
-    name: backup-operator-sa
+    name: oaat-operator-sa
     namespace: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   namespace: default
-  name: backup-operator-role-binding-default
+  name: oaat-operator-role-binding-default
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: backup-operator-role-default
+  name: oaat-operator-role-default
 subjects:
   - kind: ServiceAccount
-    name: backup-operator-sa
+    name: oaat-operator-sa
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backup-operator
+  name: oaat-operator
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      application: backup-operator
+      application: oaat-operator
   template:
     metadata:
       labels:
-        application: backup-operator
+        application: oaat-operator
     spec:
-      serviceAccountName: backup-operator-sa
+      serviceAccountName: oaat-operator-sa
       containers:
-      - name: backup-operator
-        image: docker-registry.kawaja.net/backup-operator
+      - name: oaat-operator
+        image: docker-registry.kawaja.net/oaat-operator
       imagePullSecrets:
       - name: docker-registry-config
 # vim: sw=2 et ts=2

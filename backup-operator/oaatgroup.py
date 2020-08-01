@@ -1,7 +1,7 @@
 """
-backup.py
+oaatgroup.py
 
-Overseer object for managing Backup objects.
+Overseer object for managing OaatGroup objects.
 """
 from random import randrange
 import kopf
@@ -9,107 +9,109 @@ import pykube
 from pykube import Pod
 from utility import parse_frequency, date_from_isostr, now_iso
 import utility
-from common import ProcessingComplete, BackupType, Backup
+from common import ProcessingComplete, OaatType, OaatGroup
 import overseer
 
 
-# TODO: should these be moved to a separate BackupItem class?
-def get_status(obj, backup, key, default=None):
+# TODO: should these his be moved to a separate OaatItem class?
+def get_status(obj, oaat_item, key, default=None):
     """
     get_status
 
-    Get the status of a backup item.
+    Get the status of an item.
 
-    Intended to be called from handlers other than those for Backup objects.
+    Intended to be called from handlers other than those for OaatGroup objects.
     """
     return (obj
             .get('status', {})
-            .get('backups', {})
-            .get(backup, {})
+            .get('items', {})
+            .get(oaat_item, {})
             .get(key, default))
+
 
 def mark_failed(obj, item_name):
     failure_count = obj.item_status_date(item_name, 'failure_count')
     obj.set_item_status(item_name, 'failure_count', failure_count + 1)
     obj.set_item_status(item_name, 'last_failure', now_iso())
 
+
 def mark_success(obj, item_name):
     obj.set_item_status(item_name, 'failure_count', 0)
-    obj.set_item_status(item_name, 'efailureast_success', now_iso())
+    obj.set_item_status(item_name, 'last_success', now_iso())
 
 
-class BackupOverseer(overseer.Overseer):
+class OaatGroupOverseer(overseer.Overseer):
     """
-    BackupOverseer
+    OaatGroupOverseer
 
-    Manager for Backup objects.
+    Manager for OaatGroup objects.
 
-    Initialise with the kwargs for a Backup kopf handler.
+    Initialise with the kwargs for a OaatGroup kopf handler.
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         freqstr = kwargs['spec'].get('frequency', '1h')
         self.freq = parse_frequency(freqstr)
-        self.my_pykube_objtype = Backup
-        self.backuptype = None
+        self.my_pykube_objtype = OaatGroup
+        self.oaattype = None
         self.body = kwargs['body']
 
     def item_status(self, item, key, default=None):
-        """Get the status of a specific backup item."""
-        return (self.get_status('backups', {})
+        """Get the status of a specific item."""
+        return (self.get_status('items', {})
                 .get(item, {})
                 .get(key, default))
 
     def item_status_date(self, item, key, default=None):
-        """Get the status of a specific backup item, returned as a datetime."""
+        """Get the status of a specific item, returned as a datetime."""
         return date_from_isostr(self.item_status(item, key, default))
 
     def set_item_status(self, item, key, value=None):
-        """Set the status of a specific backup item."""
+        """Set the status of a specific item."""
         patch = (self.kwargs['patch']['status']
-                 .setdefault('backups', {})
+                 .setdefault('items', {})
                  .setdefault(item, {}))
         patch[item][key] = value
 
     def set_item_phase(self, item, value):
-        """Set the phase of a specific backup item."""
+        """Set the phase of a specific item."""
         patch = (self.kwargs['patch']['status']
-                 .setdefault('backups', {})
+                 .setdefault('items', {})
                  .setdefault(item, {}))
         patch['podphase'] = value
 
-    def get_backuptype(self):
-        """Retrieve the BackupType object relevant to this Backup."""
-        if not self.backuptype:
-            backup_type = self.kwargs['spec'].get('backupType')
-            if backup_type is None:
+    def get_oaattype(self):
+        """Retrieve the OaatType object relevant to this OaatGroup."""
+        if not self.oaattype:
+            oaat_type = self.kwargs['spec'].get('oaatType')
+            if oaat_type is None:
                 raise ProcessingComplete(
-                    message=f'error in Backup definition',
-                    error=f'missing backupType in '
-                          f'"{self.name}" Backup definition')
+                    message='error in OaatGroup definition',
+                    error=f'missing oaatType in '
+                          f'"{self.name}" OaatGroup definition')
             try:
-                self.backuptype = (
-                    BackupType
+                self.oaattype = (
+                    OaatType
                     .objects(self.api, namespace=self.namespace)
-                    .get_by_name(backup_type)
+                    .get_by_name(oaat_type)
                     .obj)
             except pykube.exceptions.ObjectDoesNotExist as exc:
                 raise ProcessingComplete(
                     error=(
-                        f'cannot find BackupType {self.namespace}/{backup_type} '
+                        f'cannot find OaatType {self.namespace}/{oaat_type} '
                         f'to retrieve podspec: {exc}'),
-                    message=f'error retrieving "{backup_type}" BackupType object')
-        return self.backuptype
+                    message=f'error retrieving "{oaat_type}" OaatType object')
+        return self.oaattype
 
     def get_podspec(self):
-        """Retrieve Pod specification from relevant BackupType object."""
-        msg = 'error in BackupType definition'
-        btobj = self.get_backuptype()
+        """Retrieve Pod specification from relevant OaatType object."""
+        msg = 'error in OaatType definition'
+        btobj = self.get_oaattype()
         spec = btobj.get('spec')
         if spec is None:
             raise ProcessingComplete(
                 message=msg,
-                error='missing spec in BackupType definition')
+                error='missing spec in OaatType definition')
         if spec.get('type') not in 'pod':
             raise ProcessingComplete(message=msg,
                                      error='spec.type must be "pod"')
@@ -133,37 +135,37 @@ class BackupOverseer(overseer.Overseer):
                 'a restartPolicy')
         return spec.get('podspec')
 
-    # TODO: if the oldest backup keeps failing, consider running
-    # other backups which are ready to run
+    # TODO: if the oldest item keeps failing, consider running
+    # other items which are ready to run
     def find_job_to_run(self):
         """
         find_job_to_run
 
-        Find the best backup job to run based on last success and
+        Find the best item job to run based on last success and
         failure times.
         """
         now = utility.now()
-        backup_items = [
+        oaat_items = [
             {
                 'name': item,
                 'success': self.item_status_date(item, 'last_success'),
                 'failure': self.item_status_date(item, 'last_failure'),
                 'numfails': self.item_status_date(item, 'failure_count')
             }
-            for item in self.kwargs['spec'].get('backupItems', [])
+            for item in self.kwargs['spec'].get('oaatItems', [])
         ]
 
-        self.debug('backup_items:\n' +
-                   '\n'.join([str(i) for i in backup_items]))
+        self.debug('oaat_items:\n' +
+                   '\n'.join([str(i) for i in oaat_items]))
 
-        if not backup_items:
+        if not oaat_items:
             raise ProcessingComplete(
-                message='error in Backup definition',
-                error='no backups found. please set "backupItems"')
+                message='error in OaatGroup definition',
+                error='no items found. please set "oaatItems"')
 
         # Filter out items which have been recently successful
         valid_based_on_success = [
-            item for item in backup_items if now > item['success'] + self.freq
+            item for item in oaat_items if now > item['success'] + self.freq
         ]
 
         self.debug('valid_based_on_success:\n' +
@@ -172,7 +174,7 @@ class BackupOverseer(overseer.Overseer):
         if not valid_based_on_success:
             self.set_status('state', 'idle')
             raise ProcessingComplete(
-                message='not time to run next backup')
+                message='not time to run next item')
 
         if len(valid_based_on_success) == 1:
             return valid_based_on_success[0]['name']
@@ -213,18 +215,18 @@ class BackupOverseer(overseer.Overseer):
         return oldest_failure_items[
             randrange(len(oldest_failure_items))]['name']  # nosec
 
-    def run_backup(self, item_name):
+    def run_item(self, item_name):
         """
-        run_backup
+        run_item
 
-        Execute a backup Pod with the spec details from the appropriate
-        BackupType object.
+        Execute an item job Pod with the spec details from the appropriate
+        OaatType object.
         """
         spec = self.get_podspec()
         contspec = spec['container']
         del spec['container']
         contspec.setdefault('env', []).append({
-            'name': 'BACKUP_ITEM',
+            'name': 'OAAT_ITEM',
             'value': item_name
         })
 
@@ -237,8 +239,8 @@ class BackupOverseer(overseer.Overseer):
                 'generateName': self.name + '-' + item_name + '-',
                 'labels': {
                     'parent-name': self.name,
-                    'backup-name': item_name,
-                    'app': 'backup-operator'
+                    'oaat-name': item_name,
+                    'app': 'oaat-operator'
                 }
             },
             'spec': {
@@ -264,58 +266,57 @@ class BackupOverseer(overseer.Overseer):
         """
         validate_items
 
-        Ensure there are backupItems to process.
+        Ensure there are oaatItems to process.
         """
-        backup_items = self.kwargs['spec'].get('backupItems')
-        if not backup_items:
+        oaat_items = self.kwargs['spec'].get('oaatItems')
+        if not oaat_items:
             if status_annotation:
-                self.set_annotation(status_annotation, 'missingBackupItems')
+                self.set_annotation(status_annotation, 'missingItems')
             raise ProcessingComplete(
                 state='nothing to do',
-                error=f'error in Backup definition',
-                message=f'no backups found. '
-                        f'Please set "backupItems" in {self.name}'
+                error='error in OaatGroup definition',
+                message=f'no items found. '
+                        f'Please set "oaatItems" in {self.name}'
             )
 
-        # we have backupItems, so mark the backup object as "active" (via
-        # annotation)
+        # we have oaatItems, so mark the object as "active" (via annotation)
         if status_annotation:
             self.set_annotation(status_annotation, 'active')
         if count_annotation:
-            self.set_annotation(count_annotation, value=len(backup_items))
+            self.set_annotation(count_annotation, value=len(oaat_items))
 
-        return backup_items
+        return oaat_items
 
     def validate_state(self):
         """
         validate_state
 
-        backup_pod and currently running should both be None or both be
+        "pod" and "currently_running" should both be None or both be
         set. If they are out of sync, then our state is inconsistent.
         This should only happen in unusual situations such as the
-        backup-operator being killed while starting a backup pod.
+        oaat-operator being killed while starting a pod.
 
         TODO: currently just resets both to None, effectively ignoring
         the result of a running pod. Ideally, we should validate the
         status of the pod and clean up.
         """
-        curbackuppod = self.get_status('backup_pod')
-        curbackup = self.get_status('currently_running')
-        if curbackuppod is None and curbackup is None:
+        curpod = self.get_status('pod')
+        curitem = self.get_status('currently_running')
+        if curpod is None and curitem is None:
             return None
-        if curbackuppod is not None and curbackup is not None:
+        if curpod is not None and curitem is not None:
             return None
 
         self.set_status('currently_running')
-        self.set_status('backup_pod')
+        self.set_status('pod')
 
         raise ProcessingComplete(
             state='inconsistent state',
             message='internal error',
             error=(
                 f'inconsistent state detected. '
-                f'backup_pod ({curbackuppod}) is inconsistent '
-                f'with currently_running ({curbackup})')
+                f'pod ({curpod}) is inconsistent '
+                f'with currently_running ({curitem})')
         )
 
     def validate_running_pod(self):
@@ -323,70 +324,70 @@ class BackupOverseer(overseer.Overseer):
         validate_running_pod
 
         Check whether the Pod we previously started is still running. If not,
-        assume the job was killed without being processed by the backup
+        assume the job was killed without being processed by the
         operator (or was never started) and clean up. Mark as failed.
 
         If Pod is still running, update the status details.
         """
-        curbackuppod = self.get_status('backup_pod')
-        curbackup = self.get_status('currently_running')
-        if curbackuppod:
+        curpod = self.get_status('pod')
+        curitem = self.get_status('currently_running')
+        if curpod:
             try:
                 pod = Pod.objects(
                     self.api,
-                    namespace=self.namespace).get_by_name(curbackuppod).obj
+                    namespace=self.namespace).get_by_name(curpod).obj
             except pykube.exceptions.ObjectDoesNotExist:
                 self.info(
-                    f'backup {curbackuppod} missing/deleted, cleaning up')
+                    f'pod {curpod} missing/deleted, cleaning up')
                 self.set_status('currently_running')
-                self.set_status('backup_pod')
+                self.set_status('pod')
                 self.set_status('state', 'missing')
-                mark_failed(self.body, curbackup)
-                self.set_item_status(curbackup, 'pod_detail')
+                mark_failed(self.body, curitem)
+                self.set_item_status(curitem, 'pod_detail')
                 raise ProcessingComplete(
-                    info='Cleaned up missing/deleted backup')
+                    info='Cleaned up missing/deleted item')
 
             podphase = pod.get('status', {}).get('phase', 'unknown')
-            self.info(f'validated that pod {curbackuppod} is '
+            self.info(f'validated that pod {curpod} is '
                       f'still running (phase={podphase})')
 
-            recorded_phase = self.item_status(curbackup, 'podphase', 'unknown')
+            recorded_phase = self.item_status(curitem, 'podphase', 'unknown')
 
             # valid phases are Pending, Running, Succeeded, Failed, Unknown
             # 'started' is the phase the pods start with when created by
-            # backup operator.
+            # operator.
             if recorded_phase in ('started', 'Pending', 'Running', 'Failed'):
-                self.info(f'backup {curbackup} status for '
-                          f'{curbackuppod}: {recorded_phase}')
-                raise ProcessingComplete(message=f'backup {curbackup} %s' %
+                self.info(f'item {curitem} status for '
+                          f'{curpod}: {recorded_phase}')
+                raise ProcessingComplete(message=f'item {curitem} %s' %
                                          recorded_phase.lower())
 
             if recorded_phase == 'Succeeded':
-                self.info(f'backup {curbackup} podphase={recorded_phase} but '
-                          f'not yet acknowledged: {curbackuppod}')
+                self.info(f'item {curitem} podphase={recorded_phase} but '
+                          f'not yet acknowledged: {curpod}')
                 raise ProcessingComplete(
-                    message=f'backup {curbackup} succeeded, '
+                    message=f'item {curitem} succeeded, '
                     'awaiting acknowledgement')
 
             raise ProcessingComplete(
-                error=f'backup {curbackup} unexpected state: '
+                error=f'item {curitem} unexpected state: '
                       f'recorded_phase={recorded_phase}, '
                       f'status={str(self.kwargs["status"])}',
-                message=f'backup {curbackup} unexpected state')
+                message=f'item {curitem} unexpected state')
 
-    def check_backup_type(self):
+    def check_oaat_type(self):
         """
-        check_backup_type
+        check_oaat_type
 
-        Ensure the backup refers to an appropriate BackupType object.
+        Ensure the group refers to an appropriate OaatType object.
         """
-        backuptypes = BackupType.objects(self.api)
-        backup_type = self.kwargs['spec'].get('backupType')
-        if backup_type not in [x.name for x in backuptypes]:
-            self.set_annotation('operator-status', 'missingBackupType')
+        oaattypes = OaatType.objects(self.api)
+        oaat_type = self.kwargs['spec'].get('oaatType')
+        if oaat_type not in [x.name for x in oaattypes]:
+            self.set_annotation('operator-status', 'missingOaatType')
             raise ProcessingComplete(
-                message='error in Backup definition',
-                error=f'unknown backup type {backup_type}')
+                message='error in OaatGroup definition',
+                error=f'unknown oaat type {oaat_type}')
         kopf.info(self.kwargs['spec'],
                   reason='Validation',
-                  message='found valid backup type')
+                  message='found valid oaat type')

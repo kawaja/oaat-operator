@@ -1,5 +1,5 @@
 apiVersion: kawaja.net/v1
-kind: BackupType
+kind: OaatType
 metadata:
   name: backuptest
 spec:
@@ -11,7 +11,7 @@ spec:
       command: ["sh", "-x", "-c"]
       args:
         - |
-          echo "BACKUP_ITEM=$BACKUP_ITEM"
+          echo "OAAT_ITEM=$OAAT_ITEM"
           sleep $(shuf -i 10-180 -n 1)
           exit $(shuf -i 0-1 -n 1)
       resources:

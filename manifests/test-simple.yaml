@@ -1,12 +1,11 @@
 apiVersion: kawaja.net/v1
-kind: Backup
+kind: OaatGroup
 metadata:
   name: testsimple-backups
 spec:
   frequency: 5m
-  backupGroup: test
-  backupType: backuptest
-  backupItems:
+  oaatType: backuptest
+  oaatItems:
     - item1
     - item2
 # vim: sw=2 et ts=2

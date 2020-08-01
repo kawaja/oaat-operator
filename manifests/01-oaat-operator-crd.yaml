@@ -1,14 +1,14 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: backuptypes.kawaja.net
+  name: oaattypes.kawaja.net
 spec:
   scope: Namespaced
   group: kawaja.net
   names:
-    kind: BackupType
-    plural: backuptypes
-    singular: backuptype
+    kind: OaatType
+    plural: oaattypes
+    singular: oaattype
   versions:
     - name: v1
       served: true
@@ -28,7 +28,7 @@ spec:
           type: string
           priority: 0
           jsonPath: .spec.type
-          description: Execution type for this backup type.
+          description: Execution type for this oaat type.
         - name: Message
           type: string
           priority: 0
@@ -38,16 +38,16 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: backups.kawaja.net
+  name: oaatgroups.kawaja.net
 spec:
   scope: Namespaced
   group: kawaja.net
   names:
-    kind: Backup
-    plural: backups
-    singular: backup
+    kind: OaatGroup
+    plural: oaatgroups
+    singular: oaatgroup
     shortNames:
-      - bu
+      - og
   versions:
     - name: v1
       served: true
@@ -66,29 +66,29 @@ spec:
         - name: LastRun
           type: date
           priority: 0
-          jsonPath: .status.backup_timer.last_run
-          description: Time of most recent backup attempt.
+          jsonPath: .status.oaat_timer.last_run
+          description: Time of most recent attempt.
         - name: Loops
           type: integer
-          jsonPath: .status.backup_timer.loops
+          jsonPath: .status.oaat_timer.loops
           description: Number of loops the daemon has processed.
         - name: State
           type: string
           priority: 0
           jsonPath: .status.state
-          description: State of backup operator.
+          description: State of oaat operator.
         - name: CurrentlyRunning
           type: string
           priority: 0
           jsonPath: .status.currently_running
-          description: Name of backup which is currently running.
-        - name: BackupPod
+          description: Name of item which is currently running.
+        - name: Pod
           type: string
           priority: 0
-          jsonPath: .status.backup_pod
-          description: Name of pod for the backup which is currently running.
+          jsonPath: .status.pod
+          description: Name of pod for the item which is currently running.
         - name: Message
           type: string
           priority: 0
-          jsonPath: .status.backup_timer.message
+          jsonPath: .status.oaat_timer.message
           description: As returned from the handler (sometimes).

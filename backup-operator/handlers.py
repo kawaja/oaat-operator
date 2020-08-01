@@ -2,17 +2,16 @@ import logging
 import kopf
 from utility import now_iso, my_name
 from common import ProcessingComplete
-import backup
+import oaatgroup
 import pod
 
-# TODO: Generalise from backup to "OneAtATime" ?
 # TODO: investigate whether pykube will re-connect to k8s if the session drops
 # for some reason
-# TODO: implement blackout windows for backup start
-# TODO: cool-off for failed backups (don't restart a specfic backup unless
+# TODO: implement blackout windows for item job start
+# TODO: cool-off for failed items (don't restart a specfic item unless
 # the cool-off period has completed)
-# TODO: add 'EachOnce' feature which ensures each backup runs once
-# successfully, then the Backup object self-destructs
+# TODO: add 'EachOnce' feature which ensures each item runs once
+# successfully, then the OaatGroup object self-destructs
 
 
 def is_running(status, **_):
@@ -36,16 +35,16 @@ def configure(settings: kopf.OperatorSettings, **_):
     settings.posting.level = logging.INFO
 
 
-@kopf.timer('kawaja.net', 'v1', 'backups',
+@kopf.timer('kawaja.net', 'v1', 'oaatgroup',
             initial_delay=30, interval=30,
             annotations={'kawaja.net/operator-status': 'active'})
-def backup_timer(**kwargs):
+def oaat_timer(**kwargs):
     """
-    backup_timer (backup)
+    oaat_timer (oaatgroup)
 
-    Main loop to handle backup object.
+    Main loop to handle oaatgroup object.
     """
-    overseer = backup.BackupOverseer(**kwargs)
+    overseer = oaatgroup.OaatGroupOverseer(**kwargs)
     curloop = overseer.get_status('loops', 0)
 
     try:
@@ -55,20 +54,20 @@ def backup_timer(**kwargs):
         # Check the currently-running job
         overseer.validate_running_pod()
 
-        # No backup running, so check to see if we're ready to start another
+        # No item running, so check to see if we're ready to start another
         item_name = overseer.find_job_to_run()
 
-        # Found a backup job to run, now run it
-        overseer.info(f'running backup {item_name}')
+        # Found an oaatgroup job to run, now run it
+        overseer.info(f'running item {item_name}')
         overseer.set_status('state', 'running')
         overseer.set_item_phase(item_name, 'started')
         overseer.set_status('currently_running', item_name)
-        podobj = overseer.run_backup(item_name)
-        overseer.set_status('backup_pod', podobj.metadata['name'])
+        podobj = overseer.run_item(item_name)
+        overseer.set_status('pod', podobj.metadata['name'])
 
         overseer.set_status('last_run', now_iso())
         overseer.set_status('children', [podobj.metadata['uid']])
-        raise ProcessingComplete(message=f'started backup {item_name}')
+        raise ProcessingComplete(message=f'started item {item_name}')
 
     except ProcessingComplete as exc:
         overseer.set_status('loops', curloop + 1)
@@ -78,16 +77,16 @@ def backup_timer(**kwargs):
 
 
 @kopf.on.resume('', 'v1', 'pods',
-                labels={'parent-name': kopf.PRESENT, 'app': 'backup-operator'},
+                labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
                 when=is_running)
 @kopf.on.field('', 'v1', 'pods',
                field='status.phase',
-               labels={'parent-name': kopf.PRESENT, 'app': 'backup-operator'})
+               labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'})
 def pod_phasechange(**kwargs):
     """
     pod_phasechange (pod)
 
-    Update parent (Backup) phase information for this backup.
+    Update parent (OaatGroup) phase information for this item.
     """
     overseer = pod.PodOverseer(**kwargs)
     overseer.info(f'[{my_name()}] {overseer.name}')
@@ -100,11 +99,11 @@ def pod_phasechange(**kwargs):
 
 
 @kopf.on.resume('', 'v1', 'pods',
-                labels={'parent-name': kopf.PRESENT, 'app': 'backup-operator'},
+                labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
                 when=is_succeeded)
 @kopf.on.field('', 'v1', 'pods',
                field='status.phase',
-               labels={'parent-name': kopf.PRESENT, 'app': 'backup-operator'},
+               labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
                when=is_succeeded)
 def pod_succeeded(**kwargs):
     """
@@ -122,11 +121,11 @@ def pod_succeeded(**kwargs):
 
 
 @kopf.on.resume('', 'v1', 'pods',
-                labels={'parent-name': kopf.PRESENT, 'app': 'backup-operator'},
+                labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
                 when=is_failed)
 @kopf.on.field('', 'v1', 'pods',
                field='status.phase',
-               labels={'parent-name': kopf.PRESENT, 'app': 'backup-operator'},
+               labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
                when=is_failed)
 def pod_failed(**kwargs):
     """
@@ -146,7 +145,7 @@ def pod_failed(**kwargs):
 
 @kopf.timer('', 'v1', 'pods',
             idle=3600,
-            labels={'parent-name': kopf.PRESENT, 'app': 'backup-operator'},
+            labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
             when=kopf.any_([is_succeeded, is_failed]))
 def cleanup_pod(**kwargs):
     """
@@ -166,26 +165,26 @@ def cleanup_pod(**kwargs):
     return {'message': f'[{my_name()}] should never happen'}
 
 
-@kopf.on.resume('kawaja.net', 'v1', 'backups')
-@kopf.on.update('kawaja.net', 'v1', 'backups')
-@kopf.on.create('kawaja.net', 'v1', 'backups')
-def backups_action(**kwargs):
+@kopf.on.resume('kawaja.net', 'v1', 'oaatgroup')
+@kopf.on.update('kawaja.net', 'v1', 'oaatgroup')
+@kopf.on.create('kawaja.net', 'v1', 'oaatgroup')
+def oaat_action(**kwargs):
     """
-    backups_action (backups)
+    oaat_action (oaatgroup)
 
-    Handle create/update/resume events for Backup object:
-        * validate backupType
-        * ensure backupItems exist
+    Handle create/update/resume events for OaatGroup object:
+        * validate oaatType
+        * ensure "items" exist
         * annotate self with "operator-status=active" to enable timer
     """
-    overseer = backup.BackupOverseer(**kwargs)
+    overseer = oaatgroup.OaatGroupOverseer(**kwargs)
     overseer.info(f'[{my_name()}] {overseer.name}')
 
     try:
-        overseer.check_backup_type()
+        overseer.check_oaat_type()
         overseer.validate_items(
             status_annotation='operator-status',
-            count_annotation='backup-items')
+            count_annotation='oaatgroup-items')
         raise ProcessingComplete(message='validated')
     except ProcessingComplete as exc:
         return overseer.handle_processing_complete(exc)

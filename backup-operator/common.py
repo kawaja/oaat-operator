@@ -1,4 +1,4 @@
-"""Common definitions which are specific to the Backup handler."""
+"""Common definitions which are specific to the Oaat handler."""
 import pykube
 
 
@@ -10,13 +10,13 @@ class ProcessingComplete(BaseException):
             self.ret[arg] = kwargs[arg]
 
 
-class Backup(pykube.objects.NamespacedAPIObject):
+class OaatGroup(pykube.objects.NamespacedAPIObject):
     version = 'kawaja.net/v1'
-    endpoint = 'backups'
-    kind = 'Backup'
+    endpoint = 'oaatgroups'
+    kind = 'OaatGroup'
 
 
-class BackupType(pykube.objects.NamespacedAPIObject):
+class OaatType(pykube.objects.NamespacedAPIObject):
     version = 'kawaja.net/v1'
-    endpoint = 'backuptypes'
-    kind = 'BackupType'
+    endpoint = 'oaattypes'
+    kind = 'OaatType'
