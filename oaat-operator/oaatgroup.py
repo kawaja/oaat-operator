@@ -30,7 +30,7 @@ def get_status(obj, oaat_item, key, default=None):
 
 
 def mark_failed(obj, item_name):
-    failure_count = obj.item_status_date(item_name, 'failure_count')
+    failure_count = obj.item_status(item_name, 'failure_count', 0)
     obj.set_item_status(item_name, 'failure_count', failure_count + 1)
     obj.set_item_status(item_name, 'last_failure', now_iso())
 
@@ -229,6 +229,15 @@ class OaatGroupOverseer(overseer.Overseer):
             'name': 'OAAT_ITEM',
             'value': item_name
         })
+        for idx in len(contspec.get('command', [])):
+            contspec['command'][idx] = (
+                contspec['command'][idx].replace('%%oaat_item%%', item_name))
+        for idx in len(contspec.get('args', [])):
+            contspec['command'][idx] = (
+                contspec['command'][idx].replace('%%oaat_item%%', item_name))
+        for env in contspec['env']:
+            env['value'] = (
+                env.get('value', '').replace('%%oaat_item%%', item_name))
 
         # TODO: currently only supports a single container. Do we want
         # multi-container?
