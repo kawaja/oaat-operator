@@ -150,7 +150,7 @@ class OaatGroupOverseer(overseer.Overseer):
                 'name': item,
                 'success': self.item_status_date(item, 'last_success'),
                 'failure': self.item_status_date(item, 'last_failure'),
-                'numfails': self.item_status_date(item, 'failure_count')
+                'numfails': self.item_status(item, 'failure_count')
             }
             for item in self.kwargs['spec'].get('oaatItems', [])
         ]
@@ -229,10 +229,10 @@ class OaatGroupOverseer(overseer.Overseer):
             'name': 'OAAT_ITEM',
             'value': item_name
         })
-        for idx in len(contspec.get('command', [])):
+        for idx in range(len(contspec.get('command', []))):
             contspec['command'][idx] = (
                 contspec['command'][idx].replace('%%oaat_item%%', item_name))
-        for idx in len(contspec.get('args', [])):
+        for idx in range(len(contspec.get('args', []))):
             contspec['command'][idx] = (
                 contspec['command'][idx].replace('%%oaat_item%%', item_name))
         for env in contspec['env']:
