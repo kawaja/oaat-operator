@@ -60,7 +60,7 @@ class PodOverseer(overseer.Overseer):
             current_last_failure = self.finished_at
 
             failure_count = oaatgroup.get_status(
-                parent.obj, item_name, 'failure_count')
+                parent.obj, item_name, 'failure_count', 0)
 
             parent.patch({
                 'status': {

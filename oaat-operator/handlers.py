@@ -35,7 +35,7 @@ def configure(settings: kopf.OperatorSettings, **_):
     settings.posting.level = logging.INFO
 
 
-@kopf.timer('kawaja.net', 'v1', 'oaatgroup',
+@kopf.timer('kawaja.net', 'v1', 'oaatgroups',
             initial_delay=30, interval=30,
             annotations={'kawaja.net/operator-status': 'active'})
 def oaat_timer(**kwargs):
@@ -165,9 +165,9 @@ def cleanup_pod(**kwargs):
     return {'message': f'[{my_name()}] should never happen'}
 
 
-@kopf.on.resume('kawaja.net', 'v1', 'oaatgroup')
-@kopf.on.update('kawaja.net', 'v1', 'oaatgroup')
-@kopf.on.create('kawaja.net', 'v1', 'oaatgroup')
+@kopf.on.resume('kawaja.net', 'v1', 'oaatgroups')
+@kopf.on.update('kawaja.net', 'v1', 'oaatgroups')
+@kopf.on.create('kawaja.net', 'v1', 'oaatgroups')
 def oaat_action(**kwargs):
     """
     oaat_action (oaatgroup)
