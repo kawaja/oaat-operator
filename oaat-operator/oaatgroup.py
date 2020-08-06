@@ -71,7 +71,7 @@ class OaatGroupOverseer(overseer.Overseer):
         patch = (self.kwargs['patch']['status']
                  .setdefault('items', {})
                  .setdefault(item, {}))
-        patch[item][key] = value
+        patch[key] = value
 
     def set_item_phase(self, item, value):
         """Set the phase of a specific item."""
