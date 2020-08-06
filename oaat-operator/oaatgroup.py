@@ -103,6 +103,7 @@ class OaatGroupOverseer(overseer.Overseer):
                     message=f'error retrieving "{oaat_type}" OaatType object')
         return self.oaattype
 
+    # TODO: do a schema validation on the pod spec?
     def get_podspec(self):
         """Retrieve Pod specification from relevant OaatType object."""
         msg = 'error in OaatType definition'
@@ -265,7 +266,7 @@ class OaatGroupOverseer(overseer.Overseer):
         try:
             pod.create()
         except pykube.KubernetesError as exc:
-            mark_failed(self.body, item_name)
+            mark_failed(self, item_name)
             raise ProcessingComplete(
                 error=f'could not create pod {doc}: {exc}',
                 message=f'error creating pod for {item_name}')
@@ -351,7 +352,7 @@ class OaatGroupOverseer(overseer.Overseer):
                 self.set_status('currently_running')
                 self.set_status('pod')
                 self.set_status('state', 'missing')
-                mark_failed(self.body, curitem)
+                mark_failed(self, curitem)
                 self.set_item_status(curitem, 'pod_detail')
                 raise ProcessingComplete(
                     info='Cleaned up missing/deleted item')
