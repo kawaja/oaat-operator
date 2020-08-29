@@ -108,6 +108,7 @@ class OaatItems:
     #       - output of a container
     #       - contents of a configmap
     #       - result of an API call ??
+    #       - concatenate all items gathered from above methods
     # agnostic of object structure
     def list(self) -> list:
         """Return the names of all items in a list."""
