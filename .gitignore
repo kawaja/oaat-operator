@@ -4,3 +4,5 @@ cronjobs
 _Jenkins_changed
 *.swp
 __pycache__
+.coverage
+cov.xml
