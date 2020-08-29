@@ -7,37 +7,12 @@ from random import randrange
 import kopf
 import pykube
 from pykube import Pod
-from utility import parse_frequency, date_from_isostr, now_iso
+from utility import parse_duration
 import utility
-from common import ProcessingComplete, OaatType, OaatGroup
+from common import ProcessingComplete, KubeOaatGroup
+from oaattype import OaatType
+from oaatitem import OaatItems
 import overseer
-
-
-# TODO: should these his be moved to a separate OaatItem class?
-def get_status(obj, oaat_item, key, default=None):
-    """
-    get_status
-
-    Get the status of an item.
-
-    Intended to be called from handlers other than those for OaatGroup objects.
-    """
-    return (obj
-            .get('status', {})
-            .get('items', {})
-            .get(oaat_item, {})
-            .get(key, default))
-
-
-def mark_failed(obj, item_name):
-    failure_count = obj.item_status(item_name, 'failure_count', 0)
-    obj.set_item_status(item_name, 'failure_count', failure_count + 1)
-    obj.set_item_status(item_name, 'last_failure', now_iso())
-
-
-def mark_success(obj, item_name):
-    obj.set_item_status(item_name, 'failure_count', 0)
-    obj.set_item_status(item_name, 'last_success', now_iso())
 
 
 class OaatGroupOverseer(overseer.Overseer):
@@ -48,145 +23,95 @@ class OaatGroupOverseer(overseer.Overseer):
 
     Initialise with the kwargs for a OaatGroup kopf handler.
     """
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        freqstr = kwargs['spec'].get('frequency', '1h')
-        self.freq = parse_frequency(freqstr)
-        self.my_pykube_objtype = OaatGroup
-        self.oaattype = None
+        self.freq = parse_duration(kwargs['spec'].get('frequency', '1h'))
+        self.my_pykube_objtype = KubeOaatGroup
+        self.oaattypename = kwargs.get('spec', {}).get('oaatType')
+        self.oaattype = OaatType(name=self.oaattypename)
         self.body = kwargs['body']
-
-    def item_status(self, item, key, default=None):
-        """Get the status of a specific item."""
-        return (self.get_status('items', {})
-                .get(item, {})
-                .get(key, default))
-
-    def item_status_date(self, item, key, default=None):
-        """Get the status of a specific item, returned as a datetime."""
-        return date_from_isostr(self.item_status(item, key, default))
-
-    def set_item_status(self, item, key, value=None):
-        """Set the status of a specific item."""
-        patch = (self.kwargs['patch']['status']
-                 .setdefault('items', {})
-                 .setdefault(item, {}))
-        patch[key] = value
-
-    def set_item_phase(self, item, value):
-        """Set the phase of a specific item."""
-        patch = (self.kwargs['patch']['status']
-                 .setdefault('items', {})
-                 .setdefault(item, {}))
-        patch['podphase'] = value
-
-    def get_oaattype(self):
-        """Retrieve the OaatType object relevant to this OaatGroup."""
-        if not self.oaattype:
-            oaat_type = self.kwargs['spec'].get('oaatType')
-            if oaat_type is None:
-                raise ProcessingComplete(
-                    message='error in OaatGroup definition',
-                    error=f'missing oaatType in '
-                          f'"{self.name}" OaatGroup definition')
-            try:
-                self.oaattype = (
-                    OaatType
-                    .objects(self.api, namespace=self.namespace)
-                    .get_by_name(oaat_type)
-                    .obj)
-            except pykube.exceptions.ObjectDoesNotExist as exc:
-                raise ProcessingComplete(
-                    error=(
-                        f'cannot find OaatType {self.namespace}/{oaat_type} '
-                        f'to retrieve podspec: {exc}'),
-                    message=f'error retrieving "{oaat_type}" OaatType object')
-        return self.oaattype
-
-    # TODO: do a schema validation on the pod spec?
-    def get_podspec(self):
-        """Retrieve Pod specification from relevant OaatType object."""
-        msg = 'error in OaatType definition'
-        btobj = self.get_oaattype()
-        spec = btobj.get('spec')
-        if spec is None:
-            raise ProcessingComplete(
-                message=msg,
-                error='missing spec in OaatType definition')
-        if spec.get('type') not in 'pod':
-            raise ProcessingComplete(message=msg,
-                                     error='spec.type must be "pod"')
-        podspec = spec.get('podspec')
-        if not podspec:
-            raise ProcessingComplete(message=msg,
-                                     error='spec.podspec is missing')
-        if not podspec.get('container'):
-            raise ProcessingComplete(
-                message=msg,
-                error='spec.podspec.container is missing')
-        if podspec.get('containers'):
-            raise ProcessingComplete(
-                message=msg,
-                error='currently only support a single container, '
-                'please do not use "spec.podspec.containers"')
-        if podspec.get('restartPolicy'):
-            raise ProcessingComplete(
-                message=msg,
-                error='for spec.type="pod", you cannot specify '
-                'a restartPolicy')
-        return spec.get('podspec')
+        self.cool_off = parse_duration(
+            kwargs
+            .get('spec', {})
+            .get('failureCoolOff')
+        )
+        self.items = OaatItems(oaatgroupobject=self)
 
     # TODO: if the oldest item keeps failing, consider running
     # other items which are ready to run
-    def find_job_to_run(self):
+    def find_job_to_run(self) -> str:
         """
         find_job_to_run
 
         Find the best item job to run based on last success and
         failure times.
+
+        Basic algorithm:
+        - phase one: choose valid item candidates:
+            - start with a list of all possible items to run
+            - remove from the list items which have been successful within the
+              period in the 'frequency' setting
+            - remove from the list items which have failed within the period
+              in the 'failureCoolOff' setting
+        - phase two: choose the item to run from the valid item candidates:
+            - if there is just one item, choose it
+            - find the item with the oldest success (or has never succeeded)
+            - if there is just one item that is 'oldest', choose it
+            - of the items with the oldest success, find the item with the
+              oldest failure
+            - if there is just one item that has both the oldest success and
+              the oldest failure, choose it
+            - choose at random (this is likely to occur if no items have
+              been run - i.e. first iteration)
         """
         now = utility.now()
-        oaat_items = [
-            {
-                'name': item,
-                'success': self.item_status_date(item, 'last_success'),
-                'failure': self.item_status_date(item, 'last_failure'),
-                'numfails': self.item_status(item, 'failure_count')
-            }
-            for item in self.kwargs['spec'].get('oaatItems', [])
-        ]
 
-        self.debug('oaat_items:\n' +
-                   '\n'.join([str(i) for i in oaat_items]))
-
+        # Phase One: Choose valid item candidates
+        oaat_items = self.items.list()
         if not oaat_items:
             raise ProcessingComplete(
                 message='error in OaatGroup definition',
                 error='no items found. please set "oaatItems"')
 
+        self.debug('oaat_items:\n' +
+                   '\n'.join([str(i) for i in oaat_items]))
+
         # Filter out items which have been recently successful
-        valid_based_on_success = [
-            item for item in oaat_items if now > item['success'] + self.freq
+        candidates = [
+            item for item in oaat_items
+            if now > item['success'] + self.freq
         ]
 
-        self.debug('valid_based_on_success:\n' +
-                   '\n'.join([str(i) for i in valid_based_on_success]))
+        self.debug('Valid, based on success:\n' +
+                   '\n'.join([str(i) for i in candidates]))
 
-        if not valid_based_on_success:
+        # Filter out items which have failed within the cool off period
+        if self.cool_off:
+            candidates = [
+                item for item in candidates
+                if now > item['failure'] + self.cool_off
+            ]
+
+            self.debug('Valid, based on success and failure cool off:\n' +
+                    '\n'.join([str(i) for i in candidates]))
+
+        if not candidates:
             self.set_status('state', 'idle')
             raise ProcessingComplete(
                 message='not time to run next item')
 
-        if len(valid_based_on_success) == 1:
-            return valid_based_on_success[0]['name']
+        # return single candidate if there is only one left
+        if len(candidates) == 1:
+            return candidates[0]['name']
 
+        # Phase 2: Choose the item to run from the valid item candidates
         # Get all items which are "oldest"
         oldest_success_time = min(
-            [t['success'] for t in valid_based_on_success])
+            [t['success'] for t in candidates])
         self.debug(f'oldest_success_time: {oldest_success_time}')
         oldest_items = [
             item
-            for item in valid_based_on_success
+            for item in candidates
             if item['success'] == oldest_success_time
         ]
 
@@ -216,14 +141,15 @@ class OaatGroupOverseer(overseer.Overseer):
         return oldest_failure_items[
             randrange(len(oldest_failure_items))]['name']  # nosec
 
-    def run_item(self, item_name):
+    def run_item(self, item_name) -> dict:
         """
         run_item
 
         Execute an item job Pod with the spec details from the appropriate
         OaatType object.
         """
-        spec = self.get_podspec()
+        # TODO: check oaatType
+        spec = self.oaattype.podspec()
         contspec = spec['container']
         del spec['container']
         contspec.setdefault('env', []).append({
@@ -266,20 +192,20 @@ class OaatGroupOverseer(overseer.Overseer):
         try:
             pod.create()
         except pykube.KubernetesError as exc:
-            mark_failed(self, item_name)
+            self.items.mark_failed(item_name)
             raise ProcessingComplete(
                 error=f'could not create pod {doc}: {exc}',
                 message=f'error creating pod for {item_name}')
         return pod
 
-    def validate_items(self, status_annotation=None, count_annotation=None):
+    def validate_items(
+            self, status_annotation=None, count_annotation=None) -> None:
         """
         validate_items
 
         Ensure there are oaatItems to process.
         """
-        oaat_items = self.kwargs['spec'].get('oaatItems')
-        if not oaat_items:
+        if not self.items.count():
             if status_annotation:
                 self.set_annotation(status_annotation, 'missingItems')
             raise ProcessingComplete(
@@ -293,11 +219,9 @@ class OaatGroupOverseer(overseer.Overseer):
         if status_annotation:
             self.set_annotation(status_annotation, 'active')
         if count_annotation:
-            self.set_annotation(count_annotation, value=len(oaat_items))
+            self.set_annotation(count_annotation, value=self.items.count())
 
-        return oaat_items
-
-    def validate_state(self):
+    def validate_state(self) -> None:
         """
         validate_state
 
@@ -329,7 +253,7 @@ class OaatGroupOverseer(overseer.Overseer):
                 f'with currently_running ({curitem})')
         )
 
-    def validate_running_pod(self):
+    def validate_running_pod(self) -> None:
         """
         validate_running_pod
 
@@ -352,8 +276,8 @@ class OaatGroupOverseer(overseer.Overseer):
                 self.set_status('currently_running')
                 self.set_status('pod')
                 self.set_status('state', 'missing')
-                mark_failed(self, curitem)
-                self.set_item_status(curitem, 'pod_detail')
+                self.items.mark_failed(curitem)
+                self.items.set_status(curitem, 'pod_detail')
                 raise ProcessingComplete(
                     info='Cleaned up missing/deleted item')
 
@@ -361,7 +285,7 @@ class OaatGroupOverseer(overseer.Overseer):
             self.info(f'validated that pod {curpod} is '
                       f'still running (phase={podphase})')
 
-            recorded_phase = self.item_status(curitem, 'podphase', 'unknown')
+            recorded_phase = self.items.status(curitem, 'podphase', 'unknown')
 
             # valid phases are Pending, Running, Succeeded, Failed, Unknown
             # 'started' is the phase the pods start with when created by
@@ -385,19 +309,16 @@ class OaatGroupOverseer(overseer.Overseer):
                       f'status={str(self.kwargs["status"])}',
                 message=f'item {curitem} unexpected state')
 
-    def check_oaat_type(self):
+    def validate_oaat_type(self) -> None:
         """
-        check_oaat_type
+        validate_oaat_type
 
         Ensure the group refers to an appropriate OaatType object.
         """
-        oaattypes = OaatType.objects(self.api)
-        oaat_type = self.kwargs['spec'].get('oaatType')
-        if oaat_type not in [x.name for x in oaattypes]:
-            self.set_annotation('operator-status', 'missingOaatType')
-            raise ProcessingComplete(
-                message='error in OaatGroup definition',
-                error=f'unknown oaat type {oaat_type}')
-        kopf.info(self.kwargs['spec'],
-                  reason='Validation',
-                  message='found valid oaat type')
+        if self.oaattype.valid:
+            self.info('found valid oaat type')
+            return None
+        self.set_annotation('operator-status', 'missingOaatType')
+        raise ProcessingComplete(
+            message='error in OaatGroup definition',
+            error=f'unknown oaat type {self.oaattypename}')

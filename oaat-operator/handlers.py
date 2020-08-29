@@ -8,8 +8,6 @@ import pod
 # TODO: investigate whether pykube will re-connect to k8s if the session drops
 # for some reason
 # TODO: implement blackout windows for item job start
-# TODO: cool-off for failed items (don't restart a specfic item unless
-# the cool-off period has completed)
 # TODO: add 'EachOnce' feature which ensures each item runs once
 # successfully, then the OaatGroup object self-destructs
 
@@ -144,15 +142,15 @@ def pod_failed(**kwargs):
 
 
 @kopf.timer('', 'v1', 'pods',
-            idle=3600,
+            idle=12*3600,
             labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
             when=kopf.any_([is_succeeded, is_failed]))
 def cleanup_pod(**kwargs):
     """
     cleanup_pod (pod)
 
-    After pod has been in 'Failed' or 'Succeeded' phase for more than an
-    hour, delete it.
+    After pod has been in 'Failed' or 'Succeeded' phase for more than twelve 
+    hours, delete it.
     """
     overseer = pod.PodOverseer(**kwargs)
     overseer.info(f'[{my_name()}] {overseer.name}')
@@ -181,7 +179,7 @@ def oaat_action(**kwargs):
     overseer.info(f'[{my_name()}] {overseer.name}')
 
     try:
-        overseer.check_oaat_type()
+        overseer.validate_oaat_type()
         overseer.validate_items(
             status_annotation='operator-status',
             count_annotation='oaatgroup-items')

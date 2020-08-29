@@ -7,6 +7,7 @@ import pykube
 from pykube import Pod
 from utility import date_from_isostr
 from common import ProcessingComplete, OaatGroup
+from oaatitem import OaatItems
 import overseer
 import oaatgroup
 
@@ -50,24 +51,17 @@ class PodOverseer(overseer.Overseer):
         """
         parent = self.get_parent()
         item_name = self.get_label('oaat-name', 'unknown')
+        items = OaatItems(kubeobject=parent)
 
-        current_last_failure = date_from_isostr(
-            oaatgroup.get_status(parent.obj, item_name, 'last_failure'))
+        current_last_failure = items.status_date(item_name, 'last_failure')
 
         self._retrieve_terminated()
 
         if self.finished_at > current_last_failure:
-            current_last_failure = self.finished_at
-
-            failure_count = oaatgroup.get_status(
-                parent.obj, item_name, 'failure_count', 0)
+            items.mark_failed(item_name, when=self.finished_at.isoformat())
 
             parent.patch({
                 'status': {
-                    'items': {item_name: {
-                        'last_failure': self.finished_at.isoformat(),
-                        'failure_count': failure_count + 1
-                    }},
                     'currently_running': None,
                     'pod': None,
                     'oaat_timer': {
@@ -93,22 +87,18 @@ class PodOverseer(overseer.Overseer):
         """
         parent = self.get_parent()
         item_name = self.get_label('oaat-name', 'unknown')
+        items = OaatItems(kubeobject=parent)
 
-        current_last_success = date_from_isostr(
-            oaatgroup.get_status(parent.obj, item_name, 'last_success'))
+        current_last_success = items.status_date(item_name, 'last_success')
 
         self._retrieve_terminated()
 
         if self.finished_at > current_last_success:
-            current_last_success = self.finished_at
+            items.mark_success(item_name, when=self.finished_at.isoformat())
             self.debug(f'successful termination of pod {self.name}')
 
             parent.patch({
                 'status': {
-                    'items': {item_name: {
-                        'last_success': self.finished_at.isoformat(),
-                        'failure_count': 0
-                    }},
                     'currently_running': None,
                     'pod': None,
                     'oaat_timer': {
@@ -122,14 +112,11 @@ class PodOverseer(overseer.Overseer):
             info=f'ignoring old successful job {self.name}')
 
     def update_phase(self):
-        parent = self.get_parent()
         item_name = self.get_label('oaat-name', 'unknown')
+        items = OaatItems(kubeobject=self.get_parent())
 
+        items.set_phase(item_name, self.phase)
         self.debug(f'pod {self.name}, podphase: {self.phase}')
-        parent.patch(
-            {'status': {
-                'items': {item_name: {'podphase': self.phase}}
-            }})
 
     def get_parent(self):
         """Retrieve the Pod's parent from the parent-name label."""

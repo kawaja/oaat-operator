@@ -10,13 +10,13 @@ class ProcessingComplete(BaseException):
             self.ret[arg] = kwargs[arg]
 
 
-class OaatGroup(pykube.objects.NamespacedAPIObject):
+class KubeOaatGroup(pykube.objects.NamespacedAPIObject):
     version = 'kawaja.net/v1'
     endpoint = 'oaatgroups'
     kind = 'OaatGroup'
 
 
-class OaatType(pykube.objects.NamespacedAPIObject):
+class KubeOaatType(pykube.objects.NamespacedAPIObject):
     version = 'kawaja.net/v1'
     endpoint = 'oaattypes'
     kind = 'OaatType'
