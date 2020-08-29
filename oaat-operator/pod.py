@@ -6,7 +6,7 @@ Overseer object for managing Pod objects.
 import pykube
 from pykube import Pod
 from utility import date_from_isostr
-from common import ProcessingComplete, OaatGroup
+from common import ProcessingComplete, KubeOaatGroup
 from oaatitem import OaatItems
 import overseer
 import oaatgroup
@@ -121,7 +121,7 @@ class PodOverseer(overseer.Overseer):
     def get_parent(self):
         """Retrieve the Pod's parent from the parent-name label."""
         namespace = self.namespace if self.namespace else pykube.all
-        query = OaatGroup.objects(self.api, namespace=namespace)
+        query = KubeOaatGroup.objects(self.api, namespace=namespace)
         try:
             parent = (query.get_by_name(
                 self.kwargs['meta']['labels'].get('parent-name')))
