@@ -58,7 +58,7 @@ def oaat_timer(**kwargs):
         # Found an oaatgroup job to run, now run it
         overseer.info(f'running item {item_name}')
         overseer.set_status('state', 'running')
-        overseer.set_item_phase(item_name, 'started')
+        overseer.items.set_phase(item_name, 'started')
         overseer.set_status('currently_running', item_name)
         podobj = overseer.run_item(item_name)
         overseer.set_status('pod', podobj.metadata['name'])
