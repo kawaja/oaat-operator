@@ -1,12 +1,12 @@
 import unittest
 from datetime import timedelta as td
 from datetime import datetime as dt
-from datetime import time
 import datetime
 import utility
 
 
 UTC = datetime.timezone.utc
+
 
 class TestDateFromIsoStr(unittest.TestCase):
     def test_with_tz(self):
@@ -32,7 +32,10 @@ class TestDateFromIsoStr(unittest.TestCase):
 
 class ParseTimeTests(unittest.TestCase):
     def test_badtz(self):
-        self.assertEqual(utility.parse_time({'time': '0:00', 'tz': 'Y'}), td(0))
+        self.assertEqual(utility.parse_time({
+            'time': '0:00',
+            'tz': 'Y'
+        }), td(0))
 
     def test_bad_time(self):
         self.assertEqual(utility.parse_time({'time': 'none'}), td(0))
@@ -78,7 +81,8 @@ class ParseTimeTests(unittest.TestCase):
         self.assertEqual(
             utility.parse_time({'time': '02:00', 'tz': '+1:00'}), td(hours=1))
         self.assertEqual(
-            utility.parse_time({'time': '00:01', 'tz': '+1:00'}), td(hours=23, minutes=1))
+            utility.parse_time({'time': '00:01', 'tz': '+1:00'}),
+            td(hours=23, minutes=1))
 
     def test_tz__times(self):
         self.assertEqual(
@@ -94,7 +98,8 @@ class ParseTimeTests(unittest.TestCase):
         self.assertEqual(
             utility.parse_time({'time': '02:00', 'tz': '+1:00'}), td(hours=1))
         self.assertEqual(
-            utility.parse_time({'time': '00:01', 'tz': '+1:00'}), td(hours=23, minutes=1))
+            utility.parse_time({'time': '00:01', 'tz': '+1:00'}),
+            td(hours=23, minutes=1))
 
 
 class TimeWindowTests(unittest.TestCase):
@@ -141,6 +146,7 @@ class TimeWindowTests(unittest.TestCase):
             (23, True)
         ]
         self.run_in_tests(tw, clean, testvals)
+
 
 class ParseDurationTests(unittest.TestCase):
     def test_seconds_only(self):
@@ -263,7 +269,8 @@ class ParseDurationTests(unittest.TestCase):
         self.assertEqual(utility.parse_duration('1min 0sec'), td(minutes=1))
         self.assertEqual(utility.parse_duration('11min 0sec'), td(minutes=11))
         self.assertEqual(utility.parse_duration('0 sec 1 min'), td(minutes=1))
-        self.assertEqual(utility.parse_duration('0 sec 11 min'), td(minutes=11))
+        self.assertEqual(utility.parse_duration('0 sec 11 min'),
+                         td(minutes=11))
         self.assertEqual(utility.parse_duration('1 m 0 sec'), td(minutes=1))
         self.assertEqual(utility.parse_duration('11 m 0 sec'), td(minutes=11))
 
@@ -335,6 +342,7 @@ class MiscTests(unittest.TestCase):
 
     def test_myname(self):
         self.assertEqual(utility.my_name(), 'test_myname')
+
 
 if __name__ == '__main__':
     unittest.main()

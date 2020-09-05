@@ -9,7 +9,6 @@ from utility import date_from_isostr
 from common import ProcessingComplete, KubeOaatGroup
 from oaatitem import OaatItems
 import overseer
-import oaatgroup
 
 
 class PodOverseer(overseer.Overseer):

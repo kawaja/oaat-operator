@@ -149,7 +149,7 @@ def cleanup_pod(**kwargs):
     """
     cleanup_pod (pod)
 
-    After pod has been in 'Failed' or 'Succeeded' phase for more than twelve 
+    After pod has been in 'Failed' or 'Succeeded' phase for more than twelve
     hours, delete it.
     """
     overseer = pod.PodOverseer(**kwargs)

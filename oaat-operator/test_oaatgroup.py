@@ -2,12 +2,12 @@ import unittest
 from copy import deepcopy
 import datetime
 
-from mocks_pykube import object_setUp, ensure_kubeobj_deleted
+from mocks_pykube import object_setUp
 from oaatgroup import OaatGroupOverseer
 from oaattype import OaatType
 from common import KubeOaatGroup, KubeOaatType, ProcessingComplete
 import pykube
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 import logging
 
 # TODO: This expects a kubernetes cluster (like minikube). It would be better
@@ -30,7 +30,8 @@ class BasicTests(unittest.TestCase):
                     'command': ['sh', '-x', '-c'],
                     'args': [
                         'echo "OAAT_ITEM={{oaat_item}}"\n'
-                        'sleep $(shuf -i 10-180 -n 1)\nexit $(shuf -i 0-1 -n 1)\n'
+                        'sleep $(shuf -i 10-180 -n 1)\n'
+                        'exit $(shuf -i 0-1 -n 1)\n'
                     ],
                 }
             }
@@ -180,4 +181,3 @@ class BasicTests(unittest.TestCase):
 #   - running with phase update
 #   - succeeded, but not yet acknowledged
 #   - unexpected state
- 

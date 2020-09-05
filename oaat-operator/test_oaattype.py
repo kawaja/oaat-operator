@@ -1,8 +1,5 @@
 import unittest
 from copy import deepcopy
-from time import sleep
-# import pytest
-# from mocks_pykube import login_mocks
 
 from mocks_pykube import object_setUp, ensure_kubeobj_deleted
 from oaattype import OaatType

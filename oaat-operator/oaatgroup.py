@@ -93,7 +93,7 @@ class OaatGroupOverseer(overseer.Overseer):
             ]
 
             self.debug('Valid, based on success and failure cool off:\n' +
-                    '\n'.join([str(i) for i in candidates]))
+                       '\n'.join([str(i) for i in candidates]))
 
         if not candidates:
             self.set_status('state', 'idle')
