@@ -92,20 +92,20 @@ kubectl get oaatgroup -w
 
 ## Roadmap
 * Documentation
-* Blackout windows (#2) - time windows during which no items will be
+* Blackout windows ([#2](https://github.com/kawaja/oaat-operator#2))- time windows during which no items will be
   started. Potentially also provide an option where running items
   could be stopped during the blackout window.
-* EachOnce - ensure each item runs once successfully and then stop.
-* Exponential backoff - rather than just provide a fixed cool-off period
+* EachOnce ([#3](https://github.com/kawaja/oaat-operator#3)) - ensure each item runs once successfully and then stop.
+* Exponential backoff ([#4](https://github.com/kawaja/oaat-operator#4)) - rather than just provide a fixed cool-off period
   exponentially increase the wait.
 * Dynamic item list - use other mechanisms to create the list of items:
-  * output of a container
-  * contents of a configmap
-  * result of an API call?
-* Schema validation - currently uses some spot checks of certain critical
+  * output of a container ([#5](https://github.com/kawaja/oaat-operator#5))
+  * contents of a configmap ([#6](https://github.com/kawaja/oaat-operator#6))
+  * result of an API call? ([#7](https://github.com/kawaja/oaat-operator#7))
+* Schema validation ([#8](https://github.com/kawaja/oaat-operator#8)) - currently uses some spot checks of certain critical
   fields; instead, use json-schema to validate the CRD objects against
-* Complete unit test suite
   a schema.
+* Complete unit test suite ([#9](https://github.com/kawaja/oaat-operator#9))
 
 ## History
 This started as a "spare time" COVID-19 lockdown project to improve
