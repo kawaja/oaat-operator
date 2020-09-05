@@ -1,5 +1,5 @@
 # oaat-operator
-oaat-operator is a Kubernetes operator intended to manage a
+`oaat-operator` is a Kubernetes operator intended to manage a
 group of tasks of which only one should be running at any time.
 I make it available in case someone else is interested in using
 such an operator.
@@ -22,13 +22,36 @@ such an operator.
   period has expired).
 
 ## Approach
-oaat-operator is based on the [kopf](https://github.com/zalando-incubator/kopf)
+`oaat-operator` is based on the [kopf](https://github.com/zalando-incubator/kopf)
 framework and uses two Kubernetes
 [Custom Resource Definitions](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/):
 * OaatType - defines a type of item to be run and the definition of what
-  'run' means. Currently oaat-operator only supports a 'pod' as mechanism to run an item.
+  'run' means. Currently `oaat-operator` only supports a `Pod` as mechanism to run an item.
 * OaatGroup - defines a group of items which are to be run 'one at a time', including
   the frequency that each item should be run, cool-off timers for item failures, etc.
+
+The operator keeps track of item failures and endeavours to retry failures
+without blocking un-run items. The intention is to run each item approximately in line
+with the `frequency` setting for the OaatGroup.
+
+The operator sets up a timer on the OaatGroup and determines selects an item to run,
+using the following algorithm:
+- phase one: choose valid item candidates:
+    - start with a list of all possible items to run
+    - remove from the list items which have been successful within the
+      period in the `frequency` setting in the OaatGroup
+    - remove from the list items which have failed within the period
+      in the `failureCoolOff` setting in the OaatGroup
+- phase two: choose the item to run from the valid item candidates:
+    - if there is just one item, choose it
+    - find the item with the oldest success (or has never succeeded)
+    - if there is just one item that is "oldest", choose it
+    - of the items with the oldest success, find the item with the
+      oldest failure
+    - if there is just one item that has both the oldest success and
+      the oldest failure, choose it
+    - choose at random (this is likely to occur if no items have
+      been run - i.e. first iteration)
 
 ## Quick Start
 ### Create the CRDs
