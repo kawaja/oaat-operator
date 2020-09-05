@@ -1,7 +1,7 @@
 apiVersion: kawaja.net/v1
 kind: OaatType
 metadata:
-  name: backuptest
+  name: oaattest
 spec:
   type: pod
   podspec:

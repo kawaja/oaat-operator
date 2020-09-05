@@ -1,10 +1,10 @@
 apiVersion: kawaja.net/v1
 kind: OaatGroup
 metadata:
-  name: testsimple-backups
+  name: testsimple-oaat
 spec:
   frequency: 5m
-  oaatType: backuptest
+  oaatType: oaattest
   oaatItems:
     - item1
     - item2

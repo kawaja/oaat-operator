@@ -1,8 +1,8 @@
 apiVersion: kawaja.net/v1
 kind: OaatGroup
 metadata:
-  name: test-backups
+  name: test-oaat
 spec:
   frequency: 5m
-  oaatType: backuptest
+  oaatType: oaattest
 # vim: sw=2 et ts=2

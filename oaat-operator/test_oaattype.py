@@ -180,5 +180,5 @@ class MiniKubeTests(unittest.TestCase):
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         kot = KubeOaatType.objects(api)
         self.assertIsInstance(kot, Query)
-        obj = kot.get_by_name('backuptest')
+        obj = kot.get_by_name('oaattest')
         self.assertIsInstance(obj, KubeOaatType)
