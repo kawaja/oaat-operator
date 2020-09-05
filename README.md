@@ -92,7 +92,7 @@ kubectl get oaatgroup -w
 
 ## Roadmap
 * Documentation
-* Blackout windows - time windows during which no items will be
+* Blackout windows (#2) - time windows during which no items will be
   started. Potentially also provide an option where running items
   could be stopped during the blackout window.
 * EachOnce - ensure each item runs once successfully and then stop.
