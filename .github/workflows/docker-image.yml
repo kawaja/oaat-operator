@@ -20,7 +20,7 @@ jobs:
       run: |
         echo "::set-output name=shortsha::$(echo ${GITHUB_SHA::7})"
         DATE=$(date +$Y%m%d%H%M%S)
-        GD=$(git describe --tags)
+        GD=$(git describe --tags || (git rev-parse HEAD | cut -c1-7))
         GDS=${GD%%-*}
         TAGS="${GD} ${GD}-${DATE}"
         if [ "${GD}" = "${GDS}" ]; then
