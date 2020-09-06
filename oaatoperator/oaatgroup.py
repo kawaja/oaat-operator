@@ -7,15 +7,15 @@ from random import randrange
 import kopf
 import pykube
 from pykube import Pod
-from utility import parse_duration
-import utility
-from common import ProcessingComplete, KubeOaatGroup
-from oaattype import OaatType
-from oaatitem import OaatItems
-import overseer
+from oaatoperator.utility import parse_duration
+import oaatoperator.utility
+from oaatoperator.common import ProcessingComplete, KubeOaatGroup
+from oaatoperator.oaattype import OaatType
+from oaatoperator.oaatitem import OaatItems
+from oaatoperator.overseer import Overseer
 
 
-class OaatGroupOverseer(overseer.Overseer):
+class OaatGroupOverseer(Overseer):
     """
     OaatGroupOverseer
 
@@ -64,7 +64,7 @@ class OaatGroupOverseer(overseer.Overseer):
             - choose at random (this is likely to occur if no items have
               been run - i.e. first iteration)
         """
-        now = utility.now()
+        now = oaatoperator.utility.now()
 
         # Phase One: Choose valid item candidates
         oaat_items = self.items.list()

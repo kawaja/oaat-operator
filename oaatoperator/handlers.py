@@ -1,9 +1,9 @@
 import logging
 import kopf
-from utility import now_iso, my_name
-from common import ProcessingComplete
-import oaatgroup
-import pod
+from oaatoperator.utility import now_iso, my_name
+from oaatoperator.common import ProcessingComplete
+from oaatoperator.oaatgroup import OaatGroupOverseer
+from oaatoperator.pod import PodOverseer
 
 # TODO: investigate whether pykube will re-connect to k8s if the session drops
 # for some reason
@@ -42,7 +42,7 @@ def oaat_timer(**kwargs):
 
     Main loop to handle oaatgroup object.
     """
-    overseer = oaatgroup.OaatGroupOverseer(**kwargs)
+    overseer = OaatGroupOverseer(**kwargs)
     curloop = overseer.get_status('loops', 0)
 
     try:
@@ -86,7 +86,7 @@ def pod_phasechange(**kwargs):
 
     Update parent (OaatGroup) phase information for this item.
     """
-    overseer = pod.PodOverseer(**kwargs)
+    overseer = PodOverseer(**kwargs)
     overseer.info(f'[{my_name()}] {overseer.name}')
     try:
         overseer.update_phase()
@@ -109,7 +109,7 @@ def pod_succeeded(**kwargs):
 
     Record last_success for failed pod.
     """
-    overseer = pod.PodOverseer(**kwargs)
+    overseer = PodOverseer(**kwargs)
     try:
         overseer.update_success_status()
     except ProcessingComplete as exc:
@@ -131,7 +131,7 @@ def pod_failed(**kwargs):
 
     Record last_failure for failed pod.
     """
-    overseer = pod.PodOverseer(**kwargs)
+    overseer = PodOverseer(**kwargs)
     overseer.info(f'[{my_name()}] {overseer.name}')
     try:
         overseer.update_failure_status()
@@ -152,7 +152,7 @@ def cleanup_pod(**kwargs):
     After pod has been in 'Failed' or 'Succeeded' phase for more than twelve
     hours, delete it.
     """
-    overseer = pod.PodOverseer(**kwargs)
+    overseer = PodOverseer(**kwargs)
     overseer.info(f'[{my_name()}] {overseer.name}')
     try:
         overseer.delete()
@@ -175,7 +175,7 @@ def oaat_action(**kwargs):
         * ensure "items" exist
         * annotate self with "operator-status=active" to enable timer
     """
-    overseer = oaatgroup.OaatGroupOverseer(**kwargs)
+    overseer = OaatGroupOverseer(**kwargs)
     overseer.info(f'[{my_name()}] {overseer.name}')
 
     try:

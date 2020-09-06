@@ -5,18 +5,19 @@ Manage OaatItems within an OaatGroup.
 """
 
 import datetime
-from utility import now_iso, date_from_isostr
-import oaatgroup
-import common
+from oaatoperator.utility import now_iso, date_from_isostr
+import oaatoperator.oaatgroup
+from oaatoperator.common import KubeOaatGroup
 
 
 # WARNING: this code assumes the pykube object (.obj) and the kopf object
 # both have the same structure
 
 class OaatItems:
-    def __init__(self,
-                 oaatgroupobject: 'oaatgroup.OaatGroupOverseer' = None,
-                 kubeobject: 'common.KubeOaatGroup' = None) -> None:
+    def __init__(
+            self,
+            oaatgroupobject: 'oaatoperator.oaatgroup.OaatGroupOverseer' = None,
+            kubeobject: 'KubeOaatGroup' = None) -> None:
         self.oaatgroup = None
         self.kubeobject = None
         self.obj = None

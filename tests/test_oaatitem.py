@@ -2,16 +2,16 @@ from unittest.mock import MagicMock, patch, call
 import unittest
 import datetime
 
-import oaatgroup
-import common
-from oaatitem import OaatItems
+from oaatoperator.oaatgroup import OaatGroupOverseer
+from oaatoperator.common import KubeOaatGroup
+from oaatoperator.oaatitem import OaatItems
 
 
 class OaatGroupTests(unittest.TestCase):
     def setUp(self):
         self.dt = datetime.datetime.now(tz=datetime.timezone.utc)
         self.og_populated = MagicMock(
-            spec=oaatgroup.OaatGroupOverseer,
+            spec=OaatGroupOverseer,
             kwargs={
                 'patch': {'status': {}},
                 'status': {
@@ -25,7 +25,7 @@ class OaatGroupTests(unittest.TestCase):
             }
         )
         self.og_empty = MagicMock(
-            spec=oaatgroup.OaatGroupOverseer,
+            spec=OaatGroupOverseer,
             kwargs={
                 'patch': {'status': {}},
                 'status': {}
@@ -36,7 +36,7 @@ class OaatGroupTests(unittest.TestCase):
         og = self.og_empty
         items = OaatItems(oaatgroupobject=og)
         self.assertIsInstance(items, OaatItems)
-        self.assertIsInstance(items.oaatgroup, oaatgroup.OaatGroupOverseer)
+        self.assertIsInstance(items.oaatgroup, OaatGroupOverseer)
         self.assertIsInstance(items.obj, dict)
         self.assertIsNone(items.kubeobject)
 
@@ -71,11 +71,11 @@ class KubeTests(unittest.TestCase):
     def setUp(self):
         self.dt = datetime.datetime.now(tz=datetime.timezone.utc)
         self.k_empty = MagicMock(
-            spec=common.KubeOaatGroup,
+            spec=KubeOaatGroup,
             obj={}
         )
         self.k_populated = MagicMock(
-            spec=common.KubeOaatGroup,
+            spec=KubeOaatGroup,
             obj={
                 'spec': {
                     'frequency': '1d',
@@ -114,7 +114,7 @@ class KubeTests(unittest.TestCase):
         k = self.k_empty
         items = OaatItems(kubeobject=k)
         self.assertIsInstance(items, OaatItems)
-        self.assertIsInstance(items.kubeobject, common.KubeOaatGroup)
+        self.assertIsInstance(items.kubeobject, KubeOaatGroup)
         self.assertIsInstance(items.obj, dict)
         self.assertIsNone(items.oaatgroup)
 
@@ -163,7 +163,7 @@ class KubeTests(unittest.TestCase):
                 'last_failure': self.dt.isoformat()
             }}}}))
 
-    @patch('utility.datetime', autospec=True)
+    @patch('oaatoperator.utility.datetime', autospec=True)
     def test_mark_failed_kube_without_when(self, mock_dt):
         k = self.k_empty
         mock_dt.datetime.now.return_value = self.dt
@@ -202,7 +202,7 @@ class KubeTests(unittest.TestCase):
                 'last_success': self.dt.isoformat()
             }}}}))
 
-    @patch('utility.datetime', autospec=True)
+    @patch('oaatoperator.utility.datetime', autospec=True)
     def test_mark_success_kube_without_when(self, mock_dt):
         k = self.k_empty
         mock_dt.datetime.now.return_value = self.dt

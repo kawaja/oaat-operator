@@ -1,9 +1,9 @@
 import unittest
 from copy import deepcopy
 
-from mocks_pykube import object_setUp, ensure_kubeobj_deleted
-from oaattype import OaatType
-from common import KubeOaatType, ProcessingComplete
+from tests.mocks_pykube import object_setUp, ensure_kubeobj_deleted
+from oaatoperator.oaattype import OaatType
+from oaatoperator.common import KubeOaatType, ProcessingComplete
 import pykube
 from pykube.query import Query
 

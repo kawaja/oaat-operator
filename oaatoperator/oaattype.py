@@ -4,7 +4,7 @@ oaattype.py
 Class for managing OaatType kubernetes objects.
 """
 import pykube
-from common import ProcessingComplete, KubeOaatType
+from oaatoperator.common import ProcessingComplete, KubeOaatType
 
 
 class OaatType:

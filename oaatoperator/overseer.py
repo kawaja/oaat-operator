@@ -6,7 +6,7 @@ Overseer base class for Kopf object processing.
 import time
 import pykube
 from typing import Any
-from common import ProcessingComplete
+from oaatoperator.common import ProcessingComplete
 
 
 class Overseer:

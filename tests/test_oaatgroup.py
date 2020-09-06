@@ -2,10 +2,10 @@ import unittest
 from copy import deepcopy
 import datetime
 
-from mocks_pykube import object_setUp
-from oaatgroup import OaatGroupOverseer
-from oaattype import OaatType
-from common import KubeOaatGroup, KubeOaatType, ProcessingComplete
+from tests.mocks_pykube import object_setUp
+from oaatoperator.oaatgroup import OaatGroupOverseer
+from oaatoperator.oaattype import OaatType
+from oaatoperator.common import KubeOaatGroup, KubeOaatType, ProcessingComplete
 import pykube
 from unittest.mock import MagicMock
 import logging

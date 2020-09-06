@@ -5,13 +5,13 @@ Overseer object for managing Pod objects.
 """
 import pykube
 from pykube import Pod
-from utility import date_from_isostr
-from common import ProcessingComplete, KubeOaatGroup
-from oaatitem import OaatItems
-import overseer
+from oaatoperator.utility import date_from_isostr
+from oaatoperator.common import ProcessingComplete, KubeOaatGroup
+from oaatoperator.oaatitem import OaatItems
+from oaatoperator.overseer import Overseer
 
 
-class PodOverseer(overseer.Overseer):
+class PodOverseer(Overseer):
     """
     PodOverseer
 
