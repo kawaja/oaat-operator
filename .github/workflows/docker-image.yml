@@ -13,6 +13,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - name: Check out code
+      uses: actions/checkout@v2
+    - name: Generate Tag
+      id: tag
+      run: |
+        echo "::set-output name=shortsha::$(echo ${GITHUB_SHA::7})"
+        echo "::set-output name=imagetag::$(git describe)"
     - name: Build the Docker image
-      run: docker build oaatoperator --file build/Dockerfile --tag my-image-name:$(date +%Y%m%d%H%M%S)
+      run: docker build oaatoperator --file build/Dockerfile --tag ${{github.repository}}:$$(date +%Y%m%d%H%M%S)
