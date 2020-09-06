@@ -7,18 +7,16 @@ on:
     branches: [ master ]
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - name: Check out code
       uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
-    - name: Build the Docker image
+    - name: Build the Docker image (with :<sha> and :dev tags)
       run: |
-        docker build oaatoperator --file build/Dockerfile --tag ghcr.io/${{github.repository}}:${GITHUB_SHA::7}
+        CR=ghcr.io/${{github.repository}}
+        docker build oaatoperator --file build/Dockerfile --tag ${CR}:${GITHUB_SHA::7}
         echo ${{ secrets.CR_PAT }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
-        docker push ghcr.io/${{github.repository}}:${GITHUB_SHA::7}
+        docker tag ${CR}:${GITHUB_SHA::7} ${CR}:dev
+        docker push ${CR}:${GITHUB_SHA::7}
+        docker push ${CR}:dev
