@@ -29,8 +29,11 @@ jobs:
         echo "::set-output name=imagetags::${TAGS}"
     - name: Build the Docker image
       run: |
-        docker build oaatoperator --file build/Dockerfile --tag ${{github.repository}}
+        docker build oaatoperator --file build/Dockerfile --tag ${GITHUB_SHA}
+        echo ${{ secrets.CR_PAT }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
         for tag in ${{steps.tag.outputs.imagetags}}; do
           echo "tagging with $tag"
-          docker tag ${{github.repository}} ${{github.repository}}:$tag
+          docker tag ${GITHUB_SHA} ghcr.io/${{github.repository}}:$tag
+          docker push ghcr.io/${{github.repository}}:$tag
         done
+        
