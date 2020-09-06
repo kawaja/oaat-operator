@@ -16,7 +16,7 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v2
       with:
-        fetch_depth: 0
+        fetch-depth: 0
     - name: Generate Tag
       id: tag
       run: |
