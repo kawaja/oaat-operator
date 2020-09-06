@@ -31,5 +31,6 @@ jobs:
       run: |
         docker build oaatoperator --file build/Dockerfile --tag ${{github.repository}}
         for tag in ${{steps.tag.outputs.imagetags}}; do
+          echo "tagging with $tag"
           docker tag ${{github.repository}} ${{github.repository}}:$tag
         done
