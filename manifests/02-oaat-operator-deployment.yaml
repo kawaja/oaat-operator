@@ -100,7 +100,5 @@ spec:
       serviceAccountName: oaat-operator-sa
       containers:
       - name: oaat-operator
-        image: docker-registry.kawaja.net/oaat-operator
-      imagePullSecrets:
-      - name: docker-registry-config
+        image: ghcr.io/kawaja/oaat-operator:latest
 # vim: sw=2 et ts=2
