@@ -26,8 +26,9 @@ jobs:
         GDS=${GD%%-*}
         TAGS="${GD} ${GD}-${DATE}"
         if [ "${GD}" = "${GDS}" ]; then
-          TAGS="${TAGS} ${GD%.*} ${GD%.*}-${DATE}"  # add vx.y tag if the current commit is directly tagged
+          TAGS="${TAGS} latest ${GD%.*} ${GD%.*}-${DATE}"  # add vx.y and latest tags if the current commit is directly tagged
         fi
+        echo "TAGS: ${TAGS}
         echo "::set-output name=imagetags::${TAGS}"
     - name: Build the Docker image
       run: |
@@ -38,4 +39,3 @@ jobs:
           docker tag ${GITHUB_SHA} ghcr.io/${{github.repository}}:$tag
           docker push ghcr.io/${{github.repository}}:$tag
         done
-        
