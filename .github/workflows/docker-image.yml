@@ -30,6 +30,6 @@ jobs:
     - name: Build the Docker image
       run: |
         docker build oaatoperator --file build/Dockerfile --tag ${{github.repository}}
-        for tag in ${steps.tag.outputs.imagetags}; do
+        for tag in ${{steps.tag.outputs.imagetags}}; do
           docker tag ${{github.repository}} ${{github.repository}}:$tag
         done
