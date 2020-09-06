@@ -2,7 +2,6 @@ name: Release Docker Containers
 
 on:
   push:
-    branches: [ master ]
     tags: [ 'v*' ]
 
 jobs:
