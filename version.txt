@@ -1,1 +1,1 @@
-oaat-operator=0.5.3
+oaat-operator=0.5.4

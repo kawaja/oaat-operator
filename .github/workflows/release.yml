@@ -1,41 +1,38 @@
-name: Docker Image CI
+name: Release Docker Containers
 
 on:
   push:
     branches: [ master ]
-  pull_request:
-    branches: [ master ]
+    tags: [ 'v*' ]
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - name: Check out code
       uses: actions/checkout@v2
       with:
         fetch-depth: 0
-    - name: Generate Tag
+    - name: Generate Tags
       id: tag
       run: |
         echo "::set-output name=shortsha::$(echo ${GITHUB_SHA::7})"
-        DATE=$(date +$Y%m%d%H%M%S)
-        GD=$(git describe --tags || (git rev-parse HEAD | cut -c1-7))
+        GD=$(git describe --tags)
         GDS=${GD%%-*}
-        TAGS="${GD} ${GD}-${DATE}"
         if [ "${GD}" = "${GDS}" ]; then
-          TAGS="${TAGS} latest ${GD%.*} ${GD%.*}-${DATE}"  # add vx.y and latest tags if the current commit is directly tagged
+          TAGS="${GD} latest ${GD%.*}"  # include vx.y.z, vx.y and latest
+        else
+          echo "git describe returned '${GD}' instead of a simple vx.y.z" >&2
+          exit 1
         fi
         echo "TAGS: ${TAGS}"
         echo "::set-output name=imagetags::${TAGS}"
-    - name: Build the Docker image
+    - name: Tag the Docker image
       run: |
-        docker build oaatoperator --file build/Dockerfile --tag ${GITHUB_SHA}
         echo ${{ secrets.CR_PAT }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+        docker pull ${GITHUB_SHA::7}
         for tag in ${{steps.tag.outputs.imagetags}}; do
           echo "tagging with $tag"
-          docker tag ${GITHUB_SHA} ghcr.io/${{github.repository}}:$tag
+          docker tag ${GITHUB_SHA::7} ghcr.io/${{github.repository}}:$tag
           docker push ghcr.io/${{github.repository}}:$tag
         done
