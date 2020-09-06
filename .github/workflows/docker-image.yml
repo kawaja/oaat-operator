@@ -19,6 +19,17 @@ jobs:
       id: tag
       run: |
         echo "::set-output name=shortsha::$(echo ${GITHUB_SHA::7})"
-        echo "::set-output name=imagetag::$(git describe)"
+        DATE=$(date +$Y%m%d%H%M%S)
+        GD=$(git describe --tags)
+        GDS=${GD%%-*}
+        TAGS="${GD} ${GD}-${DATE}"
+        if [ "${GD}" = "${GDS}" ]; then
+          TAGS="${TAGS} ${GD%.*} ${GD%.*}-${DATE}"  # add vx.y tag if the current commit is directly tagged
+        fi
+        echo "::set-output name=imagetags::${TAGS}"
     - name: Build the Docker image
-      run: docker build oaatoperator --file build/Dockerfile --tag ${{github.repository}}:$$(date +%Y%m%d%H%M%S)
+      run: |
+        docker build oaatoperator --file build/Dockerfile --tag ${{github.repository}}
+        for tag in ${steps.tag.outputs.imagetags}; do
+          docker tag ${{github.repository}} ${{github.repository}}:$tag
+        done
