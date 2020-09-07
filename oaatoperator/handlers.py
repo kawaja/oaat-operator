@@ -1,5 +1,6 @@
 import logging
 import kopf
+import oaatoperator
 from oaatoperator.utility import now_iso, my_name
 from oaatoperator.common import ProcessingComplete
 from oaatoperator.oaatgroup import OaatGroupOverseer
@@ -31,7 +32,7 @@ def is_succeeded(status, **_):
 def configure(settings: kopf.OperatorSettings, **_):
     """Set kopf configuration."""
     settings.posting.level = logging.INFO
-
+    kopf.info(f'Oaat Operator Version: {oaatoperator.__version__}')
 
 @kopf.timer('kawaja.net', 'v1', 'oaatgroups',
             initial_delay=30, interval=30,
