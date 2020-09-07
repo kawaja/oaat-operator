@@ -16,9 +16,9 @@ jobs:
       run: |
         CR=ghcr.io/${{github.repository}}
         VER=$(grep oaat-operator version.txt | sed -e 's/.*=//' -e 's/\s//g')
-        echo "__version__ = ${VER}" >> oaatoperator/__init__.py
-        echo "__gitsha__ = ${GITHUB_SHA::7}" >> oaatoperator/__init__.py
-        echo "__build_date__ = $(date +%Y%m%d%H%M%S)" >> oaatoperator/__init__.py
+        echo "__version__ = '${VER}''" >> oaatoperator/__init__.py
+        echo "__gitsha__ = '${GITHUB_SHA::7}''" >> oaatoperator/__init__.py
+        echo "__build_date__ = '$(date +%Y%m%d%H%M%S)''" >> oaatoperator/__init__.py
         docker build oaatoperator --file build/Dockerfile --tag ${CR}:${GITHUB_SHA::7}
         echo ${{ secrets.CR_PAT }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
         docker tag ${CR}:${GITHUB_SHA::7} ${CR}:dev
