@@ -32,9 +32,12 @@ def is_succeeded(status, **_):
 def configure(settings: kopf.OperatorSettings, **_):
     """Set kopf configuration."""
     settings.posting.level = logging.INFO
-    kopf.info(f'Oaat Operator Version: {oaatoperator.__version__}')
-    kopf.info(f'Oaat Operator Build Date: {oaatoperator.__build_date__}')
-    kopf.info(f'Oaat Operator Git SHA: {oaatoperator.__gitsha__}')
+    kopf.info(f'Oaat Operator Version: {oaatoperator.__version__}',
+              reason='Startup')
+    kopf.info(f'Oaat Operator Build Date: {oaatoperator.__build_date__}',
+              reason='Startup')
+    kopf.info(f'Oaat Operator Git SHA: {oaatoperator.__gitsha__}',
+              reason='Startup')
 
 
 @kopf.timer('kawaja.net', 'v1', 'oaatgroups',
