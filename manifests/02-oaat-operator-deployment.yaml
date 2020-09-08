@@ -100,5 +100,6 @@ spec:
       serviceAccountName: oaat-operator-sa
       containers:
       - name: oaat-operator
-        image: ghcr.io/kawaja/oaat-operator:latest
+        image: ghcr.io/kawaja/oaat-operator:v0.5.6
+        imagePullPolicy: Always
 # vim: sw=2 et ts=2
