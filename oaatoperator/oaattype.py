@@ -25,11 +25,6 @@ class OaatType:
         if self.name is None:
             return None
 
-#        if oaat_type is None:
-#            raise ProcessingComplete(
-#                message='error in OaatGroup definition',
-#                error=f'missing oaatType in '
-#                        f'"{self.name}" OaatGroup definition')
         try:
             return (
                 KubeOaatType

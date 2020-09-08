@@ -33,11 +33,15 @@ def is_succeeded(status, **_):
 def configure(settings: kopf.OperatorSettings, **_):
     """Set kopf configuration."""
     settings.posting.level = logging.INFO
-    print(f'Oaat Operator Version: {oaatoperator.__version__}',
+    print('Oaat Operator Version: ' +
+          getattr(oaatoperator, '__version__', '<not set>'),
           file=sys.stderr)
-    print(f'Oaat Operator Build Date: {oaatoperator.__build_date__}',
+    print(f'Oaat Operator Build Date: ' +
+          getattr(oaatoperator, '__build_date__', '<not set>'),
           file=sys.stderr)
-    print(f'Oaat Operator Git SHA: {oaatoperator.__gitsha__}', file=sys.stderr)
+    print(f'Oaat Operator Git SHA: ' +
+          getattr(oaatoperator, '__gitsha__', '<not set>'),
+          file=sys.stderr)
 
 
 @kopf.timer('kawaja.net', 'v1', 'oaatgroups',
@@ -49,7 +53,10 @@ def oaat_timer(**kwargs):
 
     Main loop to handle oaatgroup object.
     """
-    overseer = OaatGroupOverseer(**kwargs)
+    try:
+        overseer = OaatGroupOverseer(**kwargs)
+    except ProcessingComplete as exc:
+        return {'message': f'Error: {exc.ret.get("error")}'}
     curloop = overseer.get_status('loops', 0)
 
     try:
@@ -93,8 +100,12 @@ def pod_phasechange(**kwargs):
 
     Update parent (OaatGroup) phase information for this item.
     """
-    overseer = PodOverseer(**kwargs)
+    try:
+        overseer = PodOverseer(**kwargs)
+    except ProcessingComplete as exc:
+        return {'message': f'Error: {exc.ret.get("error")}'}
     overseer.info(f'[{my_name()}] {overseer.name}')
+
     try:
         overseer.update_phase()
     except ProcessingComplete as exc:
@@ -116,7 +127,11 @@ def pod_succeeded(**kwargs):
 
     Record last_success for failed pod.
     """
-    overseer = PodOverseer(**kwargs)
+    try:
+        overseer = PodOverseer(**kwargs)
+    except ProcessingComplete as exc:
+        return {'message': f'Error: {exc.ret.get("error")}'}
+
     try:
         overseer.update_success_status()
     except ProcessingComplete as exc:
@@ -138,8 +153,12 @@ def pod_failed(**kwargs):
 
     Record last_failure for failed pod.
     """
-    overseer = PodOverseer(**kwargs)
+    try:
+        overseer = PodOverseer(**kwargs)
+    except ProcessingComplete as exc:
+        return {'message': f'Error: {exc.ret.get("error")}'}
     overseer.info(f'[{my_name()}] {overseer.name}')
+
     try:
         overseer.update_failure_status()
     except ProcessingComplete as exc:
@@ -159,8 +178,12 @@ def cleanup_pod(**kwargs):
     After pod has been in 'Failed' or 'Succeeded' phase for more than twelve
     hours, delete it.
     """
-    overseer = PodOverseer(**kwargs)
+    try:
+        overseer = PodOverseer(**kwargs)
+    except ProcessingComplete as exc:
+        return {'message': f'Error: {exc.ret.get("error")}'}
     overseer.info(f'[{my_name()}] {overseer.name}')
+
     try:
         overseer.delete()
         raise ProcessingComplete(message=f'[{my_name()}] deleted')
@@ -173,6 +196,9 @@ def cleanup_pod(**kwargs):
 @kopf.on.resume('kawaja.net', 'v1', 'oaatgroups')
 @kopf.on.update('kawaja.net', 'v1', 'oaatgroups')
 @kopf.on.create('kawaja.net', 'v1', 'oaatgroups')
+@kopf.timer('kawaja.net', 'v1', 'oaatgroups',
+            initial_delay=30, interval=30,
+            annotations={'kawaja.net/operator-status': kopf.ABSENT})
 def oaat_action(**kwargs):
     """
     oaat_action (oaatgroup)
@@ -182,7 +208,11 @@ def oaat_action(**kwargs):
         * ensure "items" exist
         * annotate self with "operator-status=active" to enable timer
     """
-    overseer = OaatGroupOverseer(**kwargs)
+    try:
+        overseer = OaatGroupOverseer(**kwargs)
+    except ProcessingComplete as exc:
+        return {'message': f'Error: {exc.ret.get("error")}'}
+
     overseer.info(f'[{my_name()}] {overseer.name}')
 
     try:
@@ -200,4 +230,4 @@ def oaat_action(**kwargs):
 @kopf.on.login()
 def login(**kwargs):
     """Kopf login."""
-    return kopf.login_via_client(**kwargs)
+    return kopf.login_via_pykube(**kwargs)
