@@ -15,7 +15,7 @@ jobs:
     - name: Validate Version
       run: |
         VER=$(grep oaat-operator version.txt | sed -e 's/.*=//' -e 's/\s//g')
-        grep "ghcr.io/kawaja/oaat-operator:${VER}" manifests/02-oaat-operator-deployment.yaml >/dev/null
+        grep "ghcr.io/kawaja/oaat-operator:v${VER}" manifests/02-oaat-operator-deployment.yaml >/dev/null
   build:
     runs-on: ubuntu-latest
     steps:
