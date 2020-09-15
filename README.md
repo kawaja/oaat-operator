@@ -34,8 +34,11 @@ The operator keeps track of item failures and endeavours to retry failures
 without blocking un-run items. The intention is to run each item approximately in line
 with the `frequency` setting for the OaatGroup.
 
-The operator sets up a timer on the OaatGroup and determines selects an item to run,
-using the following algorithm:
+The operator sets up a timer on the OaatGroup and each time the timer triggers, it will then:
+- if an item is currently running, quit the cycle to wait for the timer to expire again.
+- if an item is not running, determine whether an item is ready to run and, if so, run it. 
+
+The operator selects an item to run using the following algorithm:
 - phase one: choose valid item candidates:
     - start with a list of all possible items to run
     - remove from the list items which have been successful within the
