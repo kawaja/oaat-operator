@@ -7,6 +7,14 @@ on:
     branches: [ master ]
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+    - name: Test
+      run: |
+        python3 -m pytest tests/test_oaatgroup.py
   validate:
     runs-on: ubuntu-latest
     steps:

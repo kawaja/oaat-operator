@@ -5,7 +5,7 @@ I make it available in case someone else is interested in using
 such an operator.
 
 ## Features
-* Define a list of items to run in a group - only one item
+* Define a list of items to run in a group – only one item
   in that group will run at a time.
 * Each item is run in a Kubernetes pod.
 * Pass the item name in an environment variable (OAAT_ITEM)
@@ -25,9 +25,9 @@ such an operator.
 `oaat-operator` is based on the [kopf](https://github.com/zalando-incubator/kopf)
 framework and uses two Kubernetes
 [Custom Resource Definitions](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/):
-* OaatType - defines a type of item to be run and the definition of what
+* OaatType – defines a type of item to be run and the definition of what
   'run' means. Currently `oaat-operator` only supports a `Pod` as mechanism to run an item.
-* OaatGroup - defines a group of items which are to be run 'one at a time', including
+* OaatGroup – defines a group of items which are to be run 'one at a time', including
   the frequency that each item should be run, cool-off timers for item failures, etc.
 
 The operator keeps track of item failures and endeavours to retry failures
@@ -54,7 +54,7 @@ The operator selects an item to run using the following algorithm:
     - if there is just one item that has both the oldest success and
       the oldest failure, choose it
     - choose at random (this is likely to occur if no items have
-      been run - i.e. first iteration)
+      been run – i.e. first iteration)
 
 ## Quick Start
 ### Create the CRDs
@@ -99,15 +99,15 @@ spec:
 This creates two items, which will be run every 5 minutes.
 ### Start the operator
 ```sh
-kubectl apply -f manifests/03-oaat-operator-deployment.yaml
+kubectl apply -f manifests/02-oaat-operator-deployment.yaml
 ```
 ### Watch item progress
 ```sh
 kubectl get oaatgroup -w
 ```
 ## Limitations
-* oaat-operator is not intended for precise timing of item start
-  times - checking whether an item is ready to run occurs every
+* `oaat-operator` is not intended for precise timing of item start
+  times – checking whether an item is ready to run occurs every
   30 seconds.
 * Each item in the group will use the same pod specification
   (other than the string substitutions in the `command`, `args`
@@ -118,17 +118,17 @@ kubectl get oaatgroup -w
 
 ## Roadmap
 * Documentation
-* Blackout windows ([#2](https://github.com/kawaja/oaat-operator#2))- time windows during which no items will be
+* Blackout windows ([#2](https://github.com/kawaja/oaat-operator#2)) – time windows during which no items will be
   started. Potentially also provide an option where running items
   could be stopped during the blackout window.
-* EachOnce ([#3](https://github.com/kawaja/oaat-operator#3)) - ensure each item runs once successfully and then stop.
-* Exponential backoff ([#4](https://github.com/kawaja/oaat-operator#4)) - rather than just provide a fixed cool-off period
+* EachOnce ([#3](https://github.com/kawaja/oaat-operator#3)) – ensure each item runs once successfully and then stop.
+* Exponential backoff ([#4](https://github.com/kawaja/oaat-operator#4)) – rather than just provide a fixed cool-off period
   exponentially increase the wait.
-* Dynamic item list - use other mechanisms to create the list of items:
+* Dynamic item list – use other mechanisms to create the list of items:
   * output of a container ([#5](https://github.com/kawaja/oaat-operator#5))
   * contents of a configmap ([#6](https://github.com/kawaja/oaat-operator#6))
   * result of an API call? ([#7](https://github.com/kawaja/oaat-operator#7))
-* Schema validation ([#8](https://github.com/kawaja/oaat-operator#8)) - currently uses some spot checks of certain critical
+* Schema validation ([#8](https://github.com/kawaja/oaat-operator#8)) – currently uses some spot checks of certain critical
   fields; instead, use json-schema to validate the CRD objects against
   a schema.
 * Complete unit test suite ([#9](https://github.com/kawaja/oaat-operator#9))
