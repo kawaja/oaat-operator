@@ -1,3 +1,5 @@
+![master build](https://github.com/kawaja/oaat-operator/workflows/.github/workflows/push.yml/badge.svg)
+![release](https://github.com/kawaja/oaat-operator/workflows/.github/workflows/release.yml/badge.svg)
 # oaat-operator
 `oaat-operator` is a Kubernetes operator intended to manage a
 group of tasks of which only one should be running at any time.
