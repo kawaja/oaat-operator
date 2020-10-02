@@ -1,4 +1,5 @@
 ![master build](https://img.shields.io/github/workflow/status/kawaja/oaat-operator/Docker%20Image%20CI?label=master%20build)
+![coverage](https://img.shields.io/badge/coverage-45%25-orange)
 # oaat-operator
 `oaat-operator` is a Kubernetes operator intended to manage a
 group of tasks of which only one should be running at any time.
