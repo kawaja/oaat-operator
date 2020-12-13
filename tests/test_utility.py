@@ -336,6 +336,19 @@ class ParseDurationTests(unittest.TestCase):
         self.assertEqual(parse_duration('5 hour 6 m 7 sec'),
                          td(seconds=7, minutes=6, hours=5))
 
+    def test_extra_hours_mins_secs(self):
+        self.assertFalse(parse_duration('0s0m0h'))
+        self.assertEqual(parse_duration('0s1h65m'),
+                         td(minutes=5, hours=2))
+        self.assertEqual(parse_duration('65m1h0s'),
+                         td(minutes=5, hours=2))
+        self.assertEqual(parse_duration('0s 65m 1h'),
+                         td(minutes=5, hours=2))
+        self.assertEqual(parse_duration('0sec1hr65min'),
+                         td(minutes=5, hours=2))
+        self.assertEqual(parse_duration('5 hour 6 m 100 sec'),
+                         td(seconds=40, minutes=7, hours=5))
+
 
 class MiscTests(unittest.TestCase):
     def test_now(self):

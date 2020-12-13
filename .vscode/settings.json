@@ -6,7 +6,7 @@
     "python.testing.unittestEnabled": false,
     "python.testing.pytestArgs": [
         ".",
-        "--cov=oaat-operator",
+        "--cov=oaatoperator",
         "--cov-append",
         "--cov-report=term",
         "--cov-report=xml:cov.xml"
