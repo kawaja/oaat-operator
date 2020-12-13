@@ -513,7 +513,7 @@ class ValidateTests(unittest.TestCase):
 #   - %%oaat_item%% substitution
 # - validate_items()
 #   X no items
-#   - set annotations
+#   X set annotations
 # - validate_state()
 #   - invalid state (failed pod creation)
 #   - valid state

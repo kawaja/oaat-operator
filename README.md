@@ -1,6 +1,6 @@
 ![master build](https://img.shields.io/github/workflow/status/kawaja/oaat-operator/Docker%20Image%20CI?label=master%20build)
 ![coverage](https://img.shields.io/badge/coverage-57%25-orange)
-![code quality](https://lgtm.com/projects/g/kawaja/oaat-operator/context:python)
+[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/kawaja/oaat-operator.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/kawaja/oaat-operator/context:python)
 
 # oaat-operator
 

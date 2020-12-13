@@ -85,8 +85,6 @@ def oaat_timer(**kwargs):
         overseer.set_status('loops', curloop + 1)
         return overseer.handle_processing_complete(exc)
 
-    return {'message': f'[{my_name()}] should never happen'}
-
 
 @kopf.on.resume('', 'v1', 'pods',
                 labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
@@ -190,8 +188,6 @@ def cleanup_pod(**kwargs):
     except ProcessingComplete as exc:
         return overseer.handle_processing_complete(exc)
 
-    return {'message': f'[{my_name()}] should never happen'}
-
 
 @kopf.on.resume('kawaja.net', 'v1', 'oaatgroups')
 @kopf.on.update('kawaja.net', 'v1', 'oaatgroups')
@@ -223,8 +219,6 @@ def oaat_action(**kwargs):
         raise ProcessingComplete(message='validated')
     except ProcessingComplete as exc:
         return overseer.handle_processing_complete(exc)
-
-    return {'message': f'[{my_name()}] should never happen'}
 
 
 @kopf.on.login()
