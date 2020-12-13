@@ -1,5 +1,6 @@
 ![master build](https://img.shields.io/github/workflow/status/kawaja/oaat-operator/Docker%20Image%20CI?label=master%20build)
-![coverage](https://img.shields.io/badge/coverage-45%25-orange)
+![coverage](https://img.shields.io/badge/coverage-57%25-orange)
+![code quality](https://lgtm.com/projects/g/kawaja/oaat-operator/context:python)
 
 # oaat-operator
 
@@ -130,6 +131,14 @@ kubectl apply -f manifests/02-oaat-operator-deployment.yaml
 ```sh
 kubectl get oaatgroup -w
 ```
+
+## Testing
+
+As an interim testing approach, `minikube` is used on the developer's
+workstation. See the ![minikube documentation](https://minikube.sigs.k8s.io/docs/)
+for details on how to install and set up `minikube`.
+
+Without `minikube` many of the tests will not succeed.
 
 ## Limitations
 

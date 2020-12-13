@@ -176,6 +176,9 @@ class MiniKubeTests(unittest.TestCase):
         self.assertIsInstance(kot, Query)
 
 #    @pytest.mark.usefixtures('login_mocks')
+    # if this test fails, it could be because there is no 'oaattest'
+    # OaatType loaded. try:
+    #   kubectl apply -f manifests/sample-oaat-type.yaml
     def test_oaattype_query(self):
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         kot = KubeOaatType.objects(api)

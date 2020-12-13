@@ -9,6 +9,9 @@ class ProcessingComplete(BaseException):
         for arg in kwargs:
             self.ret[arg] = kwargs[arg]
 
+    def __str__(self):
+        return self.ret.get('message', '')
+
 
 class KubeOaatGroup(pykube.objects.NamespacedAPIObject):
     version = 'kawaja.net/v1'

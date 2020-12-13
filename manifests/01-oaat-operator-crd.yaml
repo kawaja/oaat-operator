@@ -58,7 +58,35 @@ spec:
           properties:
             spec:
               type: object
-              x-kubernetes-preserve-unknown-fields: true
+              properties:
+                frequency:
+                  type: string
+                failureCooloff:
+                  type: string
+                windows:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      noStartItem:
+                        type: object
+                        properties:
+                          start:
+                            type: object
+                            properties:
+                              time:
+                                type: string
+                          end:
+                            type: object
+                            properties:
+                              time:
+                                type: string
+                oaatType:
+                  type: string
+                oaatItems:
+                  type: array
+                  items:
+                    type: string
             status:
               type: object
               x-kubernetes-preserve-unknown-fields: true

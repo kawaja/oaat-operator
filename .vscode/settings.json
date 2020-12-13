@@ -11,5 +11,8 @@
         "--cov-report=term",
         "--cov-report=xml:cov.xml"
     ],
-    "python.formatting.provider": "yapf"
+    "python.formatting.provider": "yapf",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/**"
+    ]
 }

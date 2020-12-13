@@ -77,6 +77,9 @@ class OaatGroupOverseer(Overseer):
                    '\n'.join([str(i) for i in oaat_items]))
 
         # Filter out items which have been recently successful
+        self.debug(f'frequency: {self.freq}s')
+        self.debug(f'now: {now}')
+
         candidates = [
             item for item in oaat_items
             if now > item['success'] + self.freq
@@ -109,37 +112,49 @@ class OaatGroupOverseer(Overseer):
         oldest_success_time = min(
             [t['success'] for t in candidates])
         self.debug(f'oldest_success_time: {oldest_success_time}')
-        oldest_items = [
+        oldest_success_items = [
             item
             for item in candidates
             if item['success'] == oldest_success_time
         ]
 
         self.debug('oldest_items:\n' +
-                   '\n'.join([str(i) for i in oldest_items]))
+                   '\n'.join([str(i) for i in oldest_success_items]))
 
-        if len(oldest_items) == 1:
-            return oldest_items[0]['name']
+        if len(oldest_success_items) == 1:
+            return oldest_success_items[0]['name']
 
         # More than one item "equally old" success. Choose based on
-        # last failure
-        oldest_failure_time = min([t['failure'] for t in oldest_items])
-        self.debug(f'oldest_failure_time: {oldest_failure_time}')
-        oldest_failure_items = [
+        # last failure (but only if there has been a failure for the item)
+        failure_items = [
             item
-            for item in oldest_items
-            if item['failure'] == oldest_failure_time
-        ]
+            for item in oldest_success_items
+            if item['numfails'] > 0]
 
-        self.debug('oldest_failure_items:\n' +
-                   '\n'.join([str(i) for i in oldest_failure_items]))
+        if len(failure_items) == 0:
+            # nothing has failed
+            remaining_items = oldest_success_items
+        else:
+            oldest_failure_time = min(
+                [item['failure'] for item in failure_items])
+            self.debug(f'oldest_failure_time: {oldest_failure_time}')
+            oldest_failure_items = [
+                item
+                for item in oldest_success_items
+                if item['failure'] == oldest_failure_time
+            ]
 
-        if len(oldest_failure_items) == 1:
-            return oldest_failure_items[0]['name']
+            self.debug('oldest_failure_items:\n' +
+                       '\n'.join([str(i) for i in oldest_failure_items]))
+
+            if len(oldest_failure_items) == 1:
+                return oldest_failure_items[0]['name']
+
+            remaining_items = oldest_failure_items
 
         # more than one "equally old" failure.  Choose at random
-        return oldest_failure_items[
-            randrange(len(oldest_failure_items))]['name']  # nosec
+        return remaining_items[
+            randrange(len(remaining_items))]['name']  # nosec
 
     def run_item(self, item_name) -> dict:
         """
