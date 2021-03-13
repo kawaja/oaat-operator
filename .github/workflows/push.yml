@@ -55,9 +55,13 @@ jobs:
         registry: ghcr.io
         username: $GITHUB_ACTOR
         password: ${{ secrets.CR_PAT }}
+    - name: Get short Git SHA
+      id: vars
+      shell: bash
+      run: |
+        echo "##[set-output name=sha_short::$(git rev-parse --short HEAD)"
     - name: Embed Data/Git SHA details
       run: |
-        CR=ghcr.io/${{github.repository}}
         VER=$(grep oaat-operator version.txt | sed -e 's/.*=//' -e 's/\s//g')
         echo "__version__ = '${VER}'" >> oaatoperator/__init__.py
         echo "__gitsha__ = '${GITHUB_SHA::7}'" >> oaatoperator/__init__.py
@@ -68,4 +72,4 @@ jobs:
         context: .
         file: build/Dockerfile
         push: true
-        tags: ${{github.repository}}:${GITHUB_SHA::7},${{github.repository}}:dev
+        tags: ${{github.repository}}:${{ steps.vars.outputs.sha_short }},${{github.repository}}:dev
