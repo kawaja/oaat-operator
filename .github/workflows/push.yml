@@ -47,15 +47,25 @@ jobs:
     steps:
     - name: Check out code
       uses: actions/checkout@v2
-    - name: Build the Docker image (with :<sha> and :dev tags)
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+    - name: Login to Repo
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: $GITHUB_ACTOR
+        password: ${{ secrets.CR_PAT }}
+    - name: Embed Data/Git SHA details
       run: |
         CR=ghcr.io/${{github.repository}}
         VER=$(grep oaat-operator version.txt | sed -e 's/.*=//' -e 's/\s//g')
         echo "__version__ = '${VER}'" >> oaatoperator/__init__.py
         echo "__gitsha__ = '${GITHUB_SHA::7}'" >> oaatoperator/__init__.py
         echo "__build_date__ = '$(date +%Y%m%d%H%M%S)'" >> oaatoperator/__init__.py
-        docker build oaatoperator --file build/Dockerfile --tag ${CR}:${GITHUB_SHA::7}
-        echo ${{ secrets.CR_PAT }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
-        docker tag ${CR}:${GITHUB_SHA::7} ${CR}:dev
-        docker push ${CR}:${GITHUB_SHA::7}
-        docker push ${CR}:dev
+    - name: Build the Docker image (with :<sha> and :dev tags)
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        file: build/Dockerfile
+        push: true
+        tags: ${{github.repository}}:${GITHUB_SHA::7},${{github.repository}}:dev
