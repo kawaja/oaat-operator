@@ -8,22 +8,58 @@ from oaatoperator.oaattype import OaatType
 from oaatoperator.common import KubeOaatGroup, KubeOaatType, ProcessingComplete
 import oaatoperator.utility
 import pykube
-from unittest.mock import MagicMock
+import unittest.mock
 import logging
 
 UTC = datetime.timezone.utc
 
-# TODO: This expects a kubernetes cluster (like minikube). It would be better
-# to use a mocking library to handle unit testing locally.
+
+def get_env(env_array, env_var):
+    for env in env_array:
+        if env.get('name') == env_var:
+            return env.get('value')
 
 
 class TestData:
+    @classmethod
+    def setup_kwargs(cls, kog):
+        body = {
+            'spec': kog['spec'],
+            'metadata': {
+                'namespace': 'default',
+                'name': kog.get('metadata', {}).get('name'),
+                'uid': 'uid',
+                'labels': {},
+                'annotations': {}
+            },
+            'status': {}
+        }
+
+        return {
+            'body': body,
+            'spec': body.get('spec'),
+            'meta': body.get('metadata'),
+            'status': body.get('status'),
+            'namespace': body.get('metadata', {}).get('namespace'),
+            'name': body.get('metadata', {}).get('name'),
+            'uid': body.get('metadata', {}).get('uid'),
+            'labels': body.get('metadata', {}).get('labels'),
+            'annotations': body.get('metadata', {}).get('annotations'),
+            'logger': unittest.mock.MagicMock(spec=logging.Logger),
+            'patch': {},
+            'memo': {},
+            'event': {},
+            'reason': '',
+            'old': {}, 'new': {}, 'diff': {}
+        }
+
     kot = {
         'apiVersion': 'kawaja.net/v1',
         'kind': 'OaatType',
         'metadata': {
             'name': 'test-kot'
         },
+        'status': {},
         'spec': {
             'type': 'pod',
             'podspec': {
@@ -32,7 +68,7 @@ class TestData:
                     'image': 'busybox',
                     'command': ['sh', '-x', '-c'],
                     'args': [
-                        'echo "OAAT_ITEM={{oaat_item}}"\n'
+                        'echo "OAAT_ITEM=%%oaat_item%%"\n'
                         'sleep $(shuf -i 10-180 -n 1)\n'
                         'exit $(shuf -i 0-1 -n 1)\n'
                     ],
@@ -70,49 +106,14 @@ class TestData:
 
 
 class BasicTests(unittest.TestCase):
-    @classmethod
-    def setup_kwargs(cls, kog):
-        body = {
-            'spec': kog['spec'],
-            'metadata': {
-                'namespace': 'default',
-                'name': kog.get('metadata', {}).get('name'),
-                'uid': 'uid',
-                'labels': {},
-                'annotations': {}
-            },
-            'status': {}
-        }
-
-        return {
-            'body': body,
-            'spec': body.get('spec'),
-            'meta': body.get('metadata'),
-            'status': body.get('status'),
-            'namespace': body.get('metadata', {}).get('namespace'),
-            'name': body.get('metadata', {}).get('name'),
-            'uid': body.get('metadata', {}).get('uid'),
-            'labels': body.get('metadata', {}).get('labels'),
-            'annotations': body.get('metadata', {}).get('annotations'),
-            'logger': MagicMock(spec=logging.Logger),
-            'patch': {},
-            'memo': {},
-            'event': {},
-            'reason': '',
-            'old': {}, 'new': {}, 'diff': {}
-        }
-
     def setUp(self):
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         return super().setUp()
 
-    def tearDown(self):
-        return super().tearDown()
-
 #    @pytest.mark.usefixtures('login_mocks')
     def test_create_none(self):
         kog = TestData.kog
-        kw = self.setup_kwargs(kog)
+        kw = TestData.setup_kwargs(kog)
         setup_kot = object_setUp(KubeOaatType, TestData.kot)
         setup = object_setUp(KubeOaatGroup, kog)
         next(setup_kot)
@@ -127,7 +128,7 @@ class BasicTests(unittest.TestCase):
 #    @pytest.mark.usefixtures('login_mocks')
     def test_validate_type(self):
         kog = TestData.kog
-        kw = self.setup_kwargs(kog)
+        kw = TestData.setup_kwargs(kog)
         setup_kot = object_setUp(KubeOaatType, TestData.kot)
         setup = object_setUp(KubeOaatGroup, kog)
         next(setup_kot)
@@ -150,7 +151,7 @@ class BasicTests(unittest.TestCase):
 
     def test_podspec_emptyspec(self):
         kog = TestData.kog_emptyspec
-        kw = self.setup_kwargs(kog)
+        kw = TestData.setup_kwargs(kog)
         setup_kot = object_setUp(KubeOaatType, TestData.kot)
         setup = object_setUp(KubeOaatGroup, kog)
         next(setup_kot)
@@ -165,39 +166,6 @@ class BasicTests(unittest.TestCase):
 
 
 class FindJobTests(unittest.TestCase):
-
-    @classmethod
-    def setup_kwargs(cls, kog):
-        body = {
-            'spec': kog['spec'],
-            'metadata': {
-                'namespace': 'default',
-                'name': kog.get('metadata', {}).get('name'),
-                'uid': 'uid',
-                'labels': {},
-                'annotations': {}
-            },
-            'status': {}
-        }
-
-        return {
-            'body': body,
-            'spec': body.get('spec'),
-            'meta': body.get('metadata'),
-            'status': body.get('status'),
-            'namespace': body.get('metadata', {}).get('namespace'),
-            'name': body.get('metadata', {}).get('name'),
-            'uid': body.get('metadata', {}).get('uid'),
-            'labels': body.get('metadata', {}).get('labels'),
-            'annotations': body.get('metadata', {}).get('annotations'),
-            'logger': MagicMock(spec=logging.Logger),
-            'patch': {},
-            'memo': {},
-            'event': {},
-            'reason': '',
-            'old': {}, 'new': {}, 'diff': {}
-        }
-
     def setUp(self):
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         return super().setUp()
@@ -210,7 +178,7 @@ class FindJobTests(unittest.TestCase):
         return super().tearDown()
 
     def extraSetUp(self, kot, kog):
-        kw = self.setup_kwargs(kog)
+        kw = TestData.setup_kwargs(kog)
         self.setup_kot = object_setUp(KubeOaatType, kot)
         self.setup = object_setUp(KubeOaatGroup, kog)
         next(self.setup_kot)
@@ -393,39 +361,8 @@ class FindJobTests(unittest.TestCase):
         job = ogo.find_job_to_run()
         self.assertIn(job, ('item4', 'item2'))
 
+
 class ValidateTests(unittest.TestCase):
-    @classmethod
-    def setup_kwargs(cls, kog):
-        body = {
-            'spec': kog['spec'],
-            'metadata': {
-                'namespace': 'default',
-                'name': kog.get('metadata', {}).get('name'),
-                'uid': 'uid',
-                'labels': {},
-                'annotations': {}
-            },
-            'status': {}
-        }
-
-        return {
-            'body': body,
-            'spec': body.get('spec'),
-            'meta': body.get('metadata'),
-            'status': body.get('status'),
-            'namespace': body.get('metadata', {}).get('namespace'),
-            'name': body.get('metadata', {}).get('name'),
-            'uid': body.get('metadata', {}).get('uid'),
-            'labels': body.get('metadata', {}).get('labels'),
-            'annotations': body.get('metadata', {}).get('annotations'),
-            'logger': MagicMock(spec=logging.Logger),
-            'patch': {},
-            'memo': {},
-            'event': {},
-            'reason': '',
-            'old': {}, 'new': {}, 'diff': {}
-        }
-
     def setUp(self):
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         return super().setUp()
@@ -434,7 +371,7 @@ class ValidateTests(unittest.TestCase):
         return super().tearDown()
 
     def extraSetUp(self, kot, kog):
-        self.kw = self.setup_kwargs(kog)
+        self.kw = TestData.setup_kwargs(kog)
         self.setup_kot = object_setUp(KubeOaatType, kot)
         self.setup = object_setUp(KubeOaatGroup, kog)
         next(self.setup_kot)
@@ -473,7 +410,7 @@ class ValidateTests(unittest.TestCase):
     def test_validate_state_pod_cr(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         self.kw.setdefault('status', {})['pod'] = 'podname'
-        self.kw.setdefault('status', {})['currently_running'] = 'podname'
+        self.kw.setdefault('status', {})['currently_running'] = 'itemname'
         self.assertIsNone(ogo.validate_state())
 
     def test_validate_state_nopod_nocr(self):
@@ -488,15 +425,105 @@ class ValidateTests(unittest.TestCase):
         self.kw.setdefault('status', {})['currently_running'] = None
         with self.assertRaisesRegex(ProcessingComplete, 'internal error'):
             ogo.validate_state()
-        
 
     def test_validate_state_nopod_cr(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         self.kw.setdefault('status', {})['pod'] = None
-        self.kw.setdefault('status', {})['currently_running'] = 'podname'
+        self.kw.setdefault('status', {})['currently_running'] = 'itemname'
         with self.assertRaisesRegex(ProcessingComplete, 'internal error'):
             ogo.validate_state()
-        
+
+    def test_validate_running_nothing_expected(self):
+        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        self.kw.setdefault('status', {})['pod'] = None
+        self.kw.setdefault('status', {})['currently_running'] = None
+        ogo.validate_running_pod()
+
+    def test_validate_running_expected_running_but_is_not(self):
+        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        self.kw.setdefault('status', {})['pod'] = 'podname'
+        self.kw.setdefault('status', {})['currently_running'] = 'itemname'
+        ogo.validate_running_pod()
+
+
+class RunItemTests(unittest.TestCase):
+    def setUp(self):
+        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+        return super().setUp()
+
+    def extraSetUp(self, kot, kog):
+        self.kw = TestData.setup_kwargs(kog)
+        self.setup_kot = object_setUp(KubeOaatType, kot)
+        self.setup = object_setUp(KubeOaatGroup, kog)
+        next(self.setup_kot)
+        next(self.setup)
+        ogo = OaatGroupOverseer(**self.kw)
+        self.assertIsInstance(ogo, OaatGroupOverseer)
+        self.assertIsInstance(ogo.oaattype, OaatType)
+        return ogo
+
+    @unittest.mock.patch('kopf.adopt')
+    @unittest.mock.patch('oaatoperator.oaatgroup.Pod')
+    def test_sunny(self, pod_mock, kopf_adopt_mock):
+        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        ogo.validate_oaat_type()
+        ogo.run_item('item1')
+        pod = pod_mock.call_args.args[1]
+        self.assertEqual(pod['metadata']['labels']['oaat-name'], 'item1')
+        self.assertEqual(
+            get_env(pod['spec']['containers'][0]['env'], 'OAAT_ITEM'), 'item1')
+
+    @unittest.mock.patch('kopf.adopt')
+    @unittest.mock.patch('oaatoperator.oaatgroup.Pod')
+    def test_podfail(self, pod_mock, kopf_adopt_mock):
+        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        ogo.validate_oaat_type()
+        pod_instance_mock = pod_mock.return_value
+        pod_instance_mock.create.side_effect = pykube.KubernetesError(
+            'test error')
+        with self.assertRaisesRegex(ProcessingComplete,
+                                    'error creating pod for item1'):
+            ogo.run_item('item1')
+        print(f'pod_mock: {pod_mock.call_args}')
+        pod = pod_mock.call_args.args[1]
+        self.assertEqual(pod['metadata']['labels']['oaat-name'], 'item1')
+        self.assertEqual(
+            get_env(pod['spec']['containers'][0]['env'], 'OAAT_ITEM'), 'item1')
+
+    @unittest.mock.patch('kopf.adopt')
+    @unittest.mock.patch('oaatoperator.oaatgroup.Pod')
+    def test_substitute(self, pod_mock, kopf_adopt_mock):
+        kot = TestData.kot
+        kot['spec']['podspec']['container']['command'] = [
+            'a', 'b', '%%oaat_item%%', 'c'
+        ]
+        kot['spec']['podspec']['container']['args'] = [
+            'a', 'b', '%%oaat_item%%', 'c'
+        ]
+        kot['spec']['podspec']['container']['env'] = [
+            { 'name': 'first', 'value': '%%oaat_item%%' },
+            { 'name': 'second', 'value': 'abc%%oaat_item%%def' },
+        ]
+        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        ogo.validate_oaat_type()
+        ogo.run_item('item1')
+        pod = pod_mock.call_args.args[1]
+        print(f'pod: {pod}')
+        self.assertEqual(pod['metadata']['labels']['oaat-name'], 'item1')
+        self.assertEqual(pod['spec']['containers'][0]['command'][0], 'a')
+        self.assertEqual(pod['spec']['containers'][0]['command'][1], 'b')
+        self.assertEqual(pod['spec']['containers'][0]['command'][2], 'item1')
+        self.assertEqual(pod['spec']['containers'][0]['command'][3], 'c')
+        self.assertEqual(pod['spec']['containers'][0]['args'][0], 'a')
+        self.assertEqual(pod['spec']['containers'][0]['args'][1], 'b')
+        self.assertEqual(pod['spec']['containers'][0]['args'][2], 'item1')
+        self.assertEqual(pod['spec']['containers'][0]['args'][3], 'c')
+        self.assertEqual(
+            get_env(pod['spec']['containers'][0]['env'], 'OAAT_ITEM'), 'item1')
+        self.assertEqual(
+            get_env(pod['spec']['containers'][0]['env'], 'first'), 'item1')
+        self.assertEqual(
+            get_env(pod['spec']['containers'][0]['env'], 'second'), 'abcitem1def')
 
 # TODO:
 # - find_job_to_run()
@@ -508,15 +535,15 @@ class ValidateTests(unittest.TestCase):
 #   X multiple oldest success single oldest failure
 #   X multiple oldest success multiple oldest failure (mock random)
 # - run_item()
-#   - valid spec
-#   - invalid spec
+#   X valid spec
+#   X invalid spec
 #   - %%oaat_item%% substitution
 # - validate_items()
 #   X no items
 #   X set annotations
 # - validate_state()
-#   - invalid state (failed pod creation)
-#   - valid state
+#   X invalid state (failed pod creation)
+#   X valid states
 # - validate_running_pod()
 #   - nothing expected to be running
 #   - expected to be running, but not

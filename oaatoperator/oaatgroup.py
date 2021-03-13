@@ -175,8 +175,8 @@ class OaatGroupOverseer(Overseer):
             contspec['command'][idx] = (
                 contspec['command'][idx].replace('%%oaat_item%%', item_name))
         for idx in range(len(contspec.get('args', []))):
-            contspec['command'][idx] = (
-                contspec['command'][idx].replace('%%oaat_item%%', item_name))
+            contspec['args'][idx] = (
+                contspec['args'][idx].replace('%%oaat_item%%', item_name))
         for env in contspec['env']:
             env['value'] = (
                 env.get('value', '').replace('%%oaat_item%%', item_name))
@@ -206,7 +206,7 @@ class OaatGroupOverseer(Overseer):
 
         try:
             pod.create()
-        except pykube.KubernetesError as exc:
+        except pykube.exceptions.KubernetesError as exc:
             self.items.mark_failed(item_name)
             raise ProcessingComplete(
                 error=f'could not create pod {doc}: {exc}',
@@ -278,6 +278,7 @@ class OaatGroupOverseer(Overseer):
 
         If Pod is still running, update the status details.
         """
+        # TODO: what if a pod is running, but the operator doesn't expect one?
         curpod = self.get_status('pod')
         curitem = self.get_status('currently_running')
         if curpod:

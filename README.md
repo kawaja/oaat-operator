@@ -135,7 +135,7 @@ kubectl get oaatgroup -w
 ## Testing
 
 As an interim testing approach, `minikube` is used on the developer's
-workstation. See the ![minikube documentation](https://minikube.sigs.k8s.io/docs/)
+workstation. See the [minikube documentation](https://minikube.sigs.k8s.io/docs/)
 for details on how to install and set up `minikube`.
 
 Without `minikube` many of the tests will not succeed.

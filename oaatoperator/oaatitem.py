@@ -58,7 +58,8 @@ class OaatItems:
 
     def _set_status_kopf(
             self, item: str, key: str, value: str = None) -> None:
-        patch = (self.oaatgroup.kwargs['patch']['status']
+        patch = (self.oaatgroup.kwargs['patch']
+                 .setdefault('status', {})
                  .setdefault('items', {})
                  .setdefault(item, {}))
         patch[key] = value
