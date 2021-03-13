@@ -7,6 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
+
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -33,6 +34,16 @@ jobs:
     - name: Test with pytest
       run: |
         python3 -m pytest tests/test_utility.py
+    - name: Setup Minikube
+      uses: manusa/actions-setup-minkube@v2.3.0
+      with:
+        kubernetes version: 'v1.19'
+    - name: Test Minikube
+      run: kubectl get nodes
+    - name: Run tests
+      run: |
+        python3 -m pytest --cov=oaatoperator --cov-append --cov-report=term --cov-report=xml:cov.xml .
+
   validate:
     runs-on: ubuntu-latest
     steps:
@@ -42,6 +53,7 @@ jobs:
       run: |
         VER=$(grep oaat-operator version.txt | sed -e 's/.*=//' -e 's/\s//g')
         grep "ghcr.io/kawaja/oaat-operator:v${VER}" manifests/02-oaat-operator-deployment.yaml >/dev/null
+
   build:
     runs-on: ubuntu-latest
     steps:

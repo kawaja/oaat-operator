@@ -36,10 +36,10 @@ def configure(settings: kopf.OperatorSettings, **_):
     print('Oaat Operator Version: ' +
           getattr(oaatoperator, '__version__', '<not set>'),
           file=sys.stderr)
-    print(f'Oaat Operator Build Date: ' +
+    print('Oaat Operator Build Date: ' +
           getattr(oaatoperator, '__build_date__', '<not set>'),
           file=sys.stderr)
-    print(f'Oaat Operator Git SHA: ' +
+    print('Oaat Operator Git SHA: ' +
           getattr(oaatoperator, '__gitsha__', '<not set>'),
           file=sys.stderr)
 

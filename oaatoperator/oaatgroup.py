@@ -277,6 +277,11 @@ class OaatGroupOverseer(Overseer):
         operator (or was never started) and clean up. Mark as failed.
 
         If Pod is still running, update the status details.
+
+        Returns:
+        - None if no pod is expected
+        - ProcessingComplete exception if pod is expected but not running
+        - ProcessingComplete exception if pod is expected and is running
         """
         # TODO: what if a pod is running, but the operator doesn't expect one?
         curpod = self.get_status('pod')
