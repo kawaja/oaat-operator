@@ -1,7 +1,8 @@
 FROM python:3.7
-RUN pip install kopf pykube-ng pyyaml
-ADD *.py /oaatoperator/
-RUN ls -l /oaatoperator
+COPY requirements.txt ./
+COPY requirements/* ./requirements/
+RUN pip install -r requirements.txt
+COPY oaatoperator/*.py /oaatoperator/
 RUN cd /oaatoperator && \
     python3 -m py_compile \
         utility.py common.py overseer.py pod.py oaatgroup.py handlers.py
