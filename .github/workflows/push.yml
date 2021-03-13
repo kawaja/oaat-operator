@@ -35,7 +35,7 @@ jobs:
       run: |
         python3 -m pytest tests/test_utility.py
     - name: Setup Minikube
-      uses: manusa/actions-setup-minkube@v2.3.0
+      uses: manusa/actions-setup-minikube@v2.3.0
       with:
         kubernetes version: 'v1.19'
     - name: Test Minikube
