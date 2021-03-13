@@ -25,13 +25,13 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         if [ -f requirements/dev.txt ]; then pip install -r requirements/dev.txt; fi
-    - name: Lint 
+    - name: Lint
       run: |
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
+    - name: Test standalone
       run: |
         python3 -m pytest tests/test_utility.py
     - name: Setup Minikube
@@ -42,13 +42,17 @@ jobs:
         start args: --wait=all
     - name: Test Minikube
       run: kubectl get nodes
-    - name: Setup Minikube
+    - name: Configure Minikube
       run: |
         kubectl apply -f manifests/01-oaat-operator-crd.yaml
         kubectl apply -f manifests/sample-oaat-type.yaml
     - name: Run tests
       run: |
         python3 -m pytest --cov=oaatoperator --cov-append --cov-report=term --cov-report=xml:cov.xml .
+    - name: Upload Coverage
+      uses: codecov/codecov-action@v1
+      with:
+        fail_ci_if_error: true
 
   validate:
     runs-on: ubuntu-latest
