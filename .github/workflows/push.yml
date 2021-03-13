@@ -42,12 +42,17 @@ jobs:
         start args: --wait=all
     - name: Test Minikube
       run: kubectl get nodes
+    - name: Setup Minikube
+      run: |
+        kubectl apply -f manifests/01-oaat-operator-crd.yaml
+        kubectl apply -f manifests/sample-oaat-type.yaml
     - name: Run tests
       run: |
         python3 -m pytest --cov=oaatoperator --cov-append --cov-report=term --cov-report=xml:cov.xml .
 
   validate:
     runs-on: ubuntu-latest
+    needs: test
     steps:
     - name: Check out code
       uses: actions/checkout@v2
@@ -58,6 +63,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    needs: validate
     steps:
     - name: Check out code
       uses: actions/checkout@v2
