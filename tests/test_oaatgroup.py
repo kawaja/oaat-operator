@@ -204,10 +204,13 @@ class FindJobTests(unittest.TestCase):
     def test_oneitem_success_within_freq(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         ogo.validate_oaat_type()
-        ogo.items.obj.setdefault('status', {}).setdefault('items', {})['item1'] = {
-            'last_success': oaatoperator.utility.now_iso(),
-            'failure_count': 0
-        }
+        ogo.items.obj.setdefault(
+            'status',
+            {}).setdefault('items', {})['item1'] = {
+                'last_success':
+                oaatoperator.utility.now_iso(),
+                'failure_count': 0
+            }
         with self.assertRaisesRegex(ProcessingComplete,
                                     'not time to run next item'):
             ogo.find_job_to_run()
@@ -216,22 +219,27 @@ class FindJobTests(unittest.TestCase):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         ogo.validate_oaat_type()
         ogo.debug = print
-        ogo.items.obj.setdefault('status', {}).setdefault('items', {})['item1'] = {
-            'last_success': (
-                (datetime.datetime.now(tz=UTC) - datetime.timedelta(minutes=5))
-                .isoformat()),
-            'failure_count': 0
-        }
+        ogo.items.obj.setdefault(
+            'status',
+            {}).setdefault('items', {})['item1'] = {
+                'last_success': (
+                    (datetime.datetime.now(tz=UTC) -
+                        datetime.timedelta(minutes=5))
+                    .isoformat()),
+                'failure_count': 0
+            }
         job = ogo.find_job_to_run()
         self.assertEqual(job, 'item1')
 
     def test_oneitem_failure_within_freq_no_cooloff(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         ogo.validate_oaat_type()
-        ogo.items.obj.setdefault('status', {}).setdefault('items', {})['item1'] = {
-            'last_failure': oaatoperator.utility.now_iso(),
-            'failure_count': 0
-        }
+        ogo.items.obj.setdefault(
+            'status',
+            {}).setdefault('items', {})['item1'] = {
+                'last_failure': oaatoperator.utility.now_iso(),
+                'failure_count': 0
+            }
         job = ogo.find_job_to_run()
         self.assertEqual(job, 'item1')
 
@@ -243,12 +251,15 @@ class FindJobTests(unittest.TestCase):
         ogo = self.extraSetUp(TestData.kot, kog)
         ogo.validate_oaat_type()
         ogo.debug = print
-        ogo.items.obj.setdefault('status', {}).setdefault('items', {})['item1'] = {
-            'last_failure': (
-                (datetime.datetime.now(tz=UTC) - datetime.timedelta(minutes=1))
-                .isoformat()),
-            'failure_count': 0
-        }
+        ogo.items.obj.setdefault(
+            'status',
+            {}).setdefault('items', {})['item1'] = {
+                'last_failure': (
+                    (datetime.datetime.now(tz=UTC) -
+                        datetime.timedelta(minutes=1))
+                    .isoformat()),
+                'failure_count': 0
+            }
         with self.assertRaisesRegex(ProcessingComplete,
                                     'not time to run next item'):
             ogo.find_job_to_run()
@@ -261,12 +272,15 @@ class FindJobTests(unittest.TestCase):
         ogo = self.extraSetUp(TestData.kot, kog)
         ogo.validate_oaat_type()
         ogo.debug = print
-        ogo.items.obj.setdefault('status', {}).setdefault('items', {})['item1'] = {
-            'last_failure': (
-                (datetime.datetime.now(tz=UTC) - datetime.timedelta(minutes=5))
-                .isoformat()),
-            'failure_count': 0
-        }
+        ogo.items.obj.setdefault(
+            'status',
+            {}).setdefault('items', {})['item1'] = {
+                'last_failure': (
+                    (datetime.datetime.now(tz=UTC) -
+                        datetime.timedelta(minutes=5))
+                    .isoformat()),
+                'failure_count': 0
+            }
         job = ogo.find_job_to_run()
         self.assertEqual(job, 'item1')
 
@@ -277,12 +291,15 @@ class FindJobTests(unittest.TestCase):
         kog['spec']['frequency'] = '1m'
         ogo = self.extraSetUp(TestData.kot, kog)
         ogo.validate_oaat_type()
-        ogo.items.obj.setdefault('status', {}).setdefault('items', {})['item1'] = {
-            'last_failure': (
-                (datetime.datetime.now(tz=UTC) - datetime.timedelta(minutes=5))
-                .isoformat()),
-            'failure_count': 0
-        }
+        ogo.items.obj.setdefault(
+            'status',
+            {}).setdefault('items', {})['item1'] = {
+                'last_failure': (
+                    (datetime.datetime.now(tz=UTC) -
+                        datetime.timedelta(minutes=5))
+                    .isoformat()),
+                'failure_count': 0
+            }
         with self.assertRaisesRegex(ProcessingComplete,
                                     'not time to run next item'):
             ogo.find_job_to_run()
@@ -294,12 +311,15 @@ class FindJobTests(unittest.TestCase):
         kog['spec']['frequency'] = '1m'
         ogo = self.extraSetUp(TestData.kot, kog)
         ogo.validate_oaat_type()
-        ogo.items.obj.setdefault('status', {}).setdefault('items', {})['item1'] = {
-            'last_failure': (
-                (datetime.datetime.now(tz=UTC) - datetime.timedelta(minutes=10))
-                .isoformat()),
-            'failure_count': 1
-        }
+        ogo.items.obj.setdefault(
+            'status',
+            {}).setdefault('items', {})['item1'] = {
+                'last_failure': (
+                    (datetime.datetime.now(tz=UTC) -
+                        datetime.timedelta(minutes=10))
+                    .isoformat()),
+                'failure_count': 1
+            }
         job = ogo.find_job_to_run()
         self.assertEqual(job, 'item1')
 
@@ -314,13 +334,17 @@ class FindJobTests(unittest.TestCase):
         kog = deepcopy(TestData.kog5)
         ogo = self.extraSetUp(TestData.kot, kog)
         ogo.validate_oaat_type()
-        success = (datetime.datetime.now(tz=UTC) - datetime.timedelta(minutes=5)).isoformat()
-        osuccess = (datetime.datetime.now(tz=UTC) - datetime.timedelta(minutes=7)).isoformat()
+        success = (datetime.datetime.now(tz=UTC) -
+                   datetime.timedelta(minutes=5)).isoformat()
+        osuccess = (datetime.datetime.now(tz=UTC) -
+                    datetime.timedelta(minutes=7)).isoformat()
         for i in kog['spec']['oaatItems']:
-            ogo.items.obj.setdefault('status', {}).setdefault('items', {})[i] = {
-                'last_success': success,
-                'failure_count': 0
-            }
+            ogo.items.obj.setdefault(
+                'status',
+                {}).setdefault('items', {})[i] = {
+                    'last_success': success,
+                    'failure_count': 0
+                }
         ogo.items.obj['status']['items']['item3']['last_success'] = osuccess
         job = ogo.find_job_to_run()
         self.assertEqual(job, 'item3')
@@ -330,13 +354,17 @@ class FindJobTests(unittest.TestCase):
         ogo = self.extraSetUp(TestData.kot, kog)
         ogo.validate_oaat_type()
         ogo.debug = print
-        success = (datetime.datetime.now(tz=UTC) - datetime.timedelta(minutes=5)).isoformat()
-        failure = (datetime.datetime.now(tz=UTC) - datetime.timedelta(minutes=7)).isoformat()
+        success = ((datetime.datetime.now(tz=UTC) -
+                    datetime.timedelta(minutes=5)).isoformat())
+        failure = (datetime.datetime.now(tz=UTC) -
+                   datetime.timedelta(minutes=7)).isoformat()
         for i in kog['spec']['oaatItems']:
-            ogo.items.obj.setdefault('status', {}).setdefault('items', {})[i] = {
-                'last_success': success,
-                'failure_count': 0
-            }
+            ogo.items.obj.setdefault(
+                'status',
+                {}).setdefault('items', {})[i] = {
+                    'last_success': success,
+                    'failure_count': 0
+                }
         ogo.items.obj['status']['items']['item4']['last_failure'] = failure
         ogo.items.obj['status']['items']['item4']['failure_count'] = 1
         job = ogo.find_job_to_run()
@@ -347,13 +375,17 @@ class FindJobTests(unittest.TestCase):
         ogo = self.extraSetUp(TestData.kot, kog)
         ogo.validate_oaat_type()
         ogo.debug = print
-        success = (datetime.datetime.now(tz=UTC) - datetime.timedelta(minutes=5)).isoformat()
-        failure = (datetime.datetime.now(tz=UTC) - datetime.timedelta(minutes=7)).isoformat()
+        success = (datetime.datetime.now(tz=UTC) -
+                   datetime.timedelta(minutes=5)).isoformat()
+        failure = (datetime.datetime.now(tz=UTC) -
+                   datetime.timedelta(minutes=7)).isoformat()
         for i in kog['spec']['oaatItems']:
-            ogo.items.obj.setdefault('status', {}).setdefault('items', {})[i] = {
-                'last_success': success,
-                'failure_count': 0
-            }
+            ogo.items.obj.setdefault(
+                'status',
+                {}).setdefault('items', {})[i] = {
+                    'last_success': success,
+                    'failure_count': 0
+                }
         ogo.items.obj['status']['items']['item4']['last_failure'] = failure
         ogo.items.obj['status']['items']['item4']['failure_count'] = 1
         ogo.items.obj['status']['items']['item2']['last_failure'] = failure
@@ -394,7 +426,8 @@ class ValidateTests(unittest.TestCase):
                 count_annotation='test-items')
         obj = KubeOaatGroup.objects(self.api).get_by_name('test-kog')
         print(f'annotations: {obj.annotations}')
-        self.assertEqual(obj.annotations.get('kawaja.net/test-status'), 'missingItems')
+        self.assertEqual(obj.annotations.get('kawaja.net/test-status'),
+                         'missingItems')
         self.assertEqual(obj.annotations.get('kawaja.net/test-items'), None)
 
     def test_validate_items_one_annotation(self):
@@ -404,7 +437,8 @@ class ValidateTests(unittest.TestCase):
             count_annotation='test-items')
         obj = KubeOaatGroup.objects(self.api).get_by_name('test-kog')
         print(f'annotations: {obj.annotations}')
-        self.assertEqual(obj.annotations.get('kawaja.net/test-status'), 'active')
+        self.assertEqual(obj.annotations.get('kawaja.net/test-status'),
+                         'active')
         self.assertEqual(obj.annotations.get('kawaja.net/test-items'), '1')
 
     def test_validate_state_pod_cr(self):
@@ -443,7 +477,8 @@ class ValidateTests(unittest.TestCase):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         self.kw.setdefault('status', {})['pod'] = 'podname'
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
-        ogo.validate_running_pod()
+        with self.assertRaises(ProcessingComplete):
+            ogo.validate_running_pod()
 
 
 class RunItemTests(unittest.TestCase):
@@ -501,8 +536,8 @@ class RunItemTests(unittest.TestCase):
             'a', 'b', '%%oaat_item%%', 'c'
         ]
         kot['spec']['podspec']['container']['env'] = [
-            { 'name': 'first', 'value': '%%oaat_item%%' },
-            { 'name': 'second', 'value': 'abc%%oaat_item%%def' },
+            {'name': 'first', 'value': '%%oaat_item%%'},
+            {'name': 'second', 'value': 'abc%%oaat_item%%def'},
         ]
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         ogo.validate_oaat_type()
@@ -523,7 +558,8 @@ class RunItemTests(unittest.TestCase):
         self.assertEqual(
             get_env(pod['spec']['containers'][0]['env'], 'first'), 'item1')
         self.assertEqual(
-            get_env(pod['spec']['containers'][0]['env'], 'second'), 'abcitem1def')
+            get_env(pod['spec']['containers'][0]['env'], 'second'),
+            'abcitem1def')
 
 # TODO:
 # - find_job_to_run()
@@ -537,7 +573,7 @@ class RunItemTests(unittest.TestCase):
 # - run_item()
 #   X valid spec
 #   X invalid spec
-#   - %%oaat_item%% substitution
+#   X %%oaat_item%% substitution
 # - validate_items()
 #   X no items
 #   X set annotations
@@ -545,8 +581,8 @@ class RunItemTests(unittest.TestCase):
 #   X invalid state (failed pod creation)
 #   X valid states
 # - validate_running_pod()
-#   - nothing expected to be running
-#   - expected to be running, but not
+#   X nothing expected to be running
+#   X expected to be running, but not
 #   - expected to be running, and is
 #   - running with phase update
 #   - succeeded, but not yet acknowledged
