@@ -59,7 +59,7 @@ jobs:
       id: vars
       shell: bash
       run: |
-        echo "##[set-output name=sha_short::$(git rev-parse --short HEAD)"
+        echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
     - name: Embed Data/Git SHA details
       run: |
         VER=$(grep oaat-operator version.txt | sed -e 's/.*=//' -e 's/\s//g')
