@@ -66,11 +66,10 @@ jobs:
         echo "__version__ = '${VER}'" >> oaatoperator/__init__.py
         echo "__gitsha__ = '${GITHUB_SHA::7}'" >> oaatoperator/__init__.py
         echo "__build_date__ = '$(date +%Y%m%d%H%M%S)'" >> oaatoperator/__init__.py
-        ls -laR
     - name: Build the Docker image (with :<sha> and :dev tags)
       uses: docker/build-push-action@v2
       with:
         context: .
         file: build/Dockerfile
         push: true
-        tags: ${{github.repository}}:${{ steps.vars.outputs.sha_short }},${{github.repository}}:dev
+        tags: ghcr.io/${{github.repository}}:${{ steps.vars.outputs.sha_short }},ghcr.io/${{github.repository}}:dev

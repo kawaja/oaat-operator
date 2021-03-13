@@ -1,0 +1,7 @@
+.git*
+LICENSE
+*.md
+__pycache__
+manifests
+pytest*
+tests
