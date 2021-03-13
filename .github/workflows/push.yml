@@ -39,6 +39,7 @@ jobs:
       with:
         minikube version: 'v1.18.1'
         kubernetes version: 'v1.19.0'
+        start args: --wait=all
     - name: Test Minikube
       run: kubectl get nodes
     - name: Run tests
