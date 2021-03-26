@@ -78,7 +78,7 @@ jobs:
       with:
         registry: ghcr.io
         username: $GITHUB_ACTOR
-        password: ${{ secrets.CR_PAT }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     - name: Get short Git SHA
       id: vars
       shell: bash
