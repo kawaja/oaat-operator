@@ -26,10 +26,15 @@ jobs:
         fi
         echo "TAGS: ${TAGS}"
         echo "::set-output name=imagetags::${TAGS}"
+    - name: Login to Repo
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: $GITHUB_ACTOR
+        password: ${{ secrets.GITHUB_TOKEN }}
     - name: Tag the Docker image
       run: |
         CR="ghcr.io/${{github.repository}}"
-        echo ${{ secrets.CR_PAT }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
         docker pull ${CR}:${GITHUB_SHA::7}
         for tag in ${{steps.tag.outputs.imagetags}}; do
           echo "tagging with $tag"
