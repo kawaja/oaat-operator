@@ -135,11 +135,24 @@ kubectl get oaatgroup -w
 
 ## Testing
 
-As an interim testing approach, `minikube` is used on the developer's
-workstation. See the [minikube documentation](https://minikube.sigs.k8s.io/docs/)
+To run the test suite under `pytest`, a kubernetes environment such as
+`minkube` or `k3s` is required on the developer's workstation. `k3s` is
+currently used for the CI pipeline in GitHub.
+
+See the [minikube documentation](https://minikube.sigs.k8s.io/docs/)
 for details on how to install and set up `minikube`.
 
-Without `minikube` many of the tests will not succeed.
+See the [k3s documentation](https://rancher.com/docs/k3s/latest/en/)
+for details on how to install and set up `k3s`.
+
+Additionally, the CRDs must be installed:
+
+```sh
+kubectl apply -f manifests/01-oaat-operator-crd.yaml
+```
+
+Without this kubernetes testing environment and the CRDs, many of the tests
+will not succeed.
 
 ## Limitations
 
@@ -152,24 +165,26 @@ Without `minikube` many of the tests will not succeed.
   within the specified pod.
 * The list of items is currently fixed, specified in the OaatGroup.
 * Item pods can only have a single container.
-* Only tested on Kubernetes 1.18.
+* Only tested on Kubernetes 1.18 and 1.19 (to be extended in the
+  CI pipeline once test coverage is over 90%).
 
 ## Roadmap
 
 * Documentation
-* Blackout windows ([#2](https://github.com/kawaja/oaat-operator#2)) – time windows during which no items will be
-  started. Potentially also provide an option where running items
-  could be stopped during the blackout window.
-* EachOnce ([#3](https://github.com/kawaja/oaat-operator#3)) – ensure each item runs once successfully and then stop.
-* Exponential backoff ([#4](https://github.com/kawaja/oaat-operator#4)) – rather than just provide a fixed cool-off period
-  exponentially increase the wait.
+* Blackout windows ([#2](https://github.com/kawaja/oaat-operator#2))
+  time windows during which no items will be started. Potentially also
+  provide an option where running items could be stopped during the blackout window.
+* EachOnce ([#3](https://github.com/kawaja/oaat-operator#3)) – ensure each item
+  runs once successfully and then stop.
+* Exponential backoff ([#4](https://github.com/kawaja/oaat-operator#4)) – rather
+  than just providing a fixed cool-off period exponentially increase the wait.
 * Dynamic item list – use other mechanisms to create the list of items:
   * output of a container ([#5](https://github.com/kawaja/oaat-operator#5))
   * contents of a configmap ([#6](https://github.com/kawaja/oaat-operator#6))
   * result of an API call? ([#7](https://github.com/kawaja/oaat-operator#7))
-* Schema validation ([#8](https://github.com/kawaja/oaat-operator#8)) – currently uses some spot checks of certain critical
-  fields; instead, use json-schema to validate the CRD objects against
-  a schema.
+* Schema validation ([#8](https://github.com/kawaja/oaat-operator#8)) – currently
+  uses some spot checks of certain critical fields; instead, use json-schema
+  to validate the CRD objects against a schema.
 * Complete unit test suite ([#9](https://github.com/kawaja/oaat-operator#9))
 
 ## History

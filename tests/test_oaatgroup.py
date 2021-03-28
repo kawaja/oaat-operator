@@ -424,22 +424,24 @@ class ValidateTests(unittest.TestCase):
             ogo.validate_items(
                 status_annotation='test-status',
                 count_annotation='test-items')
-        obj = KubeOaatGroup.objects(self.api).get_by_name('test-kog')
-        print(f'annotations: {obj.annotations}')
-        self.assertEqual(obj.annotations.get('kawaja.net/test-status'),
-                         'missingItems')
-        self.assertEqual(obj.annotations.get('kawaja.net/test-items'), None)
+        self.assertEqual(
+            ogo.patch['metadata']['annotations'].get('kawaja.net/test-status'),
+            'missingItems')
+        self.assertEqual(
+            ogo.patch['metadata']['annotations'].get('kawaja.net/test-items'),
+            None)
 
     def test_validate_items_one_annotation(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         ogo.validate_items(
             status_annotation='test-status',
             count_annotation='test-items')
-        obj = KubeOaatGroup.objects(self.api).get_by_name('test-kog')
-        print(f'annotations: {obj.annotations}')
-        self.assertEqual(obj.annotations.get('kawaja.net/test-status'),
-                         'active')
-        self.assertEqual(obj.annotations.get('kawaja.net/test-items'), '1')
+        self.assertEqual(
+            ogo.patch['metadata']['annotations'].get('kawaja.net/test-status'),
+            'active')
+        self.assertEqual(
+            ogo.patch['metadata']['annotations'].get('kawaja.net/test-items'),
+            '1')
 
     def test_validate_state_pod_cr(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)

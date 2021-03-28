@@ -3,22 +3,28 @@ overseer.py
 
 Overseer base class for Kopf object processing.
 """
-import time
 import pykube
 from typing import Any
 from oaatoperator.common import ProcessingComplete
 
+
+# TODO: the kwargs passed to Overseer needs to be complete (i.e.
+# if the kopf handler "absorbs" a kw arg, then it will not appear in
+# **kwargs, so the Overseer may not behave correctly).
 
 class Overseer:
     """
     Overseer
 
     Base class for managing objects under kopf handler.
+
+    Inheriting class must set self.my_pykube_objtype
     """
     def __init__(self, **kwargs) -> None:
         self.kwargs = kwargs
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         self.name = kwargs.get('name')
+        self.patch = kwargs.get('patch')
         self.namespace = kwargs.get('namespace')
         self.my_pykube_objtype = None
         if self.name is None or self.namespace is None:
@@ -53,9 +59,12 @@ class Overseer:
         """Get a label from the overseen object."""
         return self.kwargs['meta'].get('labels', {}).get(label, default)
 
-    def get_kubeobj(self, reason: str = None) -> None:
+    def get_kubeobj(self, reason: str = None):
         """Get the kube object for the overseen object."""
         namespace = self.namespace if self.namespace else pykube.all
+        if self.my_pykube_objtype is None:
+            raise ProcessingComplete(
+                message='inheriting class must set self.my_pykube_objtype')
         try:
             return (self
                     .my_pykube_objtype
@@ -69,32 +78,30 @@ class Overseer:
                 message=f'cannot retrieve "{self.name}" object')
 
     def set_annotation(self, annotation: str, value: str = None) -> None:
-        """Set or Remove an annotation on the overseen object."""
-        myobj = self.get_kubeobj('set annotation')
+        """
+        Set or Remove an annotation on the overseen object.
+
+        All annotations are prefixed with kawaja.net/
+        """
+        if isinstance(value, int):
+            value = str(value)
+
+        (
+            self
+            .patch
+            .setdefault('metadata', {})
+            .setdefault('annotations', {})
+            [f'kawaja.net/{annotation}']) = value
         if value:
-            myobj.annotations[f'kawaja.net/{annotation}'] = str(value)
-            attempts = 3
-            while attempts > 0:
-                try:
-                    myobj.update()
-                    break
-                except pykube.exceptions.KubernetesError as exc:
-                    if (isinstance(exc, pykube.exceptions.HTTPError)
-                            and exc.args[0] == 429):
-                        time.sleep(10)
-                    attempts -= 1
-                    self.debug(f'error: {type(exc)}, args: {str(exc.args)}')
-                    self.warning(f'failed to set annotation '
-                                 f'(attempts remaining {attempts}): {exc}')
             self.debug(f'added annotation {annotation}={value} to {self.name}')
         else:
-            myobj.annotations.pop(f'kawaja.net/{annotation}', None)
             self.debug(f'removed annotation {annotation} from {self.name}')
 
     def delete(self) -> None:
         myobj = self.get_kubeobj('delete it')
         try:
             myobj.delete(propagation_policy='Background')
+            self.debug(f'delete of {self.name} successful')
         except pykube.exceptions.KubernetesError as exc:
             raise ProcessingComplete(
                 error=f'cannot delete Object {self.name}: {exc}',
@@ -108,7 +115,7 @@ class Overseer:
         if 'error' in exc.ret:
             self.error(exc.ret['error'])
         if 'warning' in exc.ret:
-            self.warning(exc.ret['error'])
+            self.warning(exc.ret['warning'])
         if 'message' in exc.ret:
             return {'message': exc.ret['message']}
         return None
