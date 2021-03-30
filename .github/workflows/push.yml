@@ -34,19 +34,13 @@ jobs:
     - name: Test standalone
       run: |
         python3 -m pytest tests/test_utility.py
-#    - name: Setup Minikube
-#      uses: manusa/actions-setup-minikube@v2.3.0
-#      with:
-#        minikube version: 'v1.18.1'
-#        kubernetes version: 'v1.19.0'
-#        start args: --wait=all
     - name: Setup k3s
       uses: nolar/setup-k3d-k3s@v1
       with:
         version: v1.19
-    - name: Test Minikube
+    - name: Test k3s
       run: kubectl get nodes
-    - name: Configure Minikube
+    - name: Configure k3s
       run: |
         kubectl apply -f manifests/01-oaat-operator-crd.yaml
         kubectl apply -f manifests/sample-oaat-type.yaml
@@ -81,7 +75,7 @@ jobs:
       uses: docker/login-action@v1
       with:
         registry: ghcr.io
-        username: $GITHUB_ACTOR
+        username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Get short Git SHA
       id: vars
