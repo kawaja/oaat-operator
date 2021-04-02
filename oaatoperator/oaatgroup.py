@@ -163,7 +163,8 @@ class OaatGroupOverseer(Overseer):
         Execute an item job Pod with the spec details from the appropriate
         OaatType object.
         """
-        spec = oaatoperator.oaattype.podspec(self.oaattype, name=self.oaattypename)
+        spec = oaatoperator.oaattype.podspec(self.oaattype,
+                                             name=self.oaattypename)
         contspec = spec['container']
         del spec['container']
         contspec.setdefault('env', []).append({

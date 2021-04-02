@@ -52,9 +52,13 @@ class TestData:
             'memo': {},
             'event': {},
             'reason': '',
-            'old': {}, 'new': {}, 'diff': {},
+            'old': {},
+            'new': {},
+            'diff': {},
             'oaattypes': {
-                (body.get('metadata', {}).get('namespace'), kot.get('metadata', {}).get('name')): {**kot}
+                (body.get('metadata', {}).get('namespace'), 'test-kot'): {
+                    **cls.kot
+                }
             }
         }
 
@@ -557,6 +561,8 @@ class RunItemTests(unittest.TestCase):
     @unittest.mock.patch('oaatoperator.oaatgroup.Pod')
     def test_substitute(self, pod_mock, kopf_adopt_mock):
         kot = deepcopy(TestData.kot)
+        print(f'TestData.kot: {TestData.kot}')
+        print(f'kot: {kot}')
         kot['spec']['podspec']['container']['command'] = [
             'a', 'b', '%%oaat_item%%', 'c'
         ]
