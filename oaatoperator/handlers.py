@@ -29,6 +29,11 @@ def is_succeeded(status, **_):
     return status.get('phase') == 'Succeeded'
 
 
+@kopf.index('oaattypes')
+def oaattypes(namespace, name, body, **kwargs):
+    return {(namespace, name): body}
+
+
 @kopf.on.startup()
 def configure(settings: kopf.OperatorSettings, **_):
     """Set kopf configuration."""

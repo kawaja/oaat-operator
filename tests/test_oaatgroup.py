@@ -4,7 +4,7 @@ import datetime
 
 from tests.mocks_pykube import object_setUp
 from oaatoperator.oaatgroup import OaatGroupOverseer
-from oaatoperator.oaattype import OaatType
+import oaatoperator.oaattype
 from oaatoperator.common import KubeOaatGroup, KubeOaatType, ProcessingComplete
 import oaatoperator.utility
 import pykube
@@ -50,7 +50,10 @@ class TestData:
             'memo': {},
             'event': {},
             'reason': '',
-            'old': {}, 'new': {}, 'diff': {}
+            'old': {}, 'new': {}, 'diff': {},
+            'oaattypes': {
+                (body.get('metadata', {}).get('namespace'), 'test-kot'): {**cls.kot}
+            }
         }
 
     kot = {
@@ -121,7 +124,6 @@ class BasicTests(unittest.TestCase):
         ogo = OaatGroupOverseer(**kw)
         self.assertIsInstance(ogo, OaatGroupOverseer)
         self.assertEqual(ogo.freq, datetime.timedelta(seconds=60))
-        self.assertIsInstance(ogo.oaattype, OaatType)
         next(setup)  # delete KubeOaatGroup
         next(setup_kot)  # delete KubeOaatType
 
@@ -185,7 +187,6 @@ class FindJobTests(unittest.TestCase):
         next(self.setup)
         ogo = OaatGroupOverseer(**kw)
         self.assertIsInstance(ogo, OaatGroupOverseer)
-        self.assertIsInstance(ogo.oaattype, OaatType)
         return ogo
 
     def test_noitems(self):
@@ -410,7 +411,6 @@ class ValidateTests(unittest.TestCase):
         next(self.setup)
         ogo = OaatGroupOverseer(**self.kw)
         self.assertIsInstance(ogo, OaatGroupOverseer)
-        self.assertIsInstance(ogo.oaattype, OaatType)
         return ogo
 
     def test_validate_items_none(self):
@@ -496,7 +496,6 @@ class RunItemTests(unittest.TestCase):
         next(self.setup)
         ogo = OaatGroupOverseer(**self.kw)
         self.assertIsInstance(ogo, OaatGroupOverseer)
-        self.assertIsInstance(ogo.oaattype, OaatType)
         return ogo
 
     @unittest.mock.patch('kopf.adopt')
@@ -530,7 +529,9 @@ class RunItemTests(unittest.TestCase):
     @unittest.mock.patch('kopf.adopt')
     @unittest.mock.patch('oaatoperator.oaatgroup.Pod')
     def test_substitute(self, pod_mock, kopf_adopt_mock):
-        kot = TestData.kot
+        kot = deepcopy(TestData.kot)
+        print(f'TestData.kot: {TestData.kot}')
+        print(f'kot: {kot}')
         kot['spec']['podspec']['container']['command'] = [
             'a', 'b', '%%oaat_item%%', 'c'
         ]
@@ -541,7 +542,8 @@ class RunItemTests(unittest.TestCase):
             {'name': 'first', 'value': '%%oaat_item%%'},
             {'name': 'second', 'value': 'abc%%oaat_item%%def'},
         ]
-        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        print(f'kot2: {kot}')
+        ogo = self.extraSetUp(kot, TestData.kog)
         ogo.validate_oaat_type()
         ogo.run_item('item1')
         pod = pod_mock.call_args.args[1]

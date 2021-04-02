@@ -10,9 +10,9 @@ from pykube import Pod
 from oaatoperator.utility import parse_duration
 import oaatoperator.utility
 from oaatoperator.common import ProcessingComplete, KubeOaatGroup
-from oaatoperator.oaattype import OaatType
 from oaatoperator.oaatitem import OaatItems
 from oaatoperator.overseer import Overseer
+import oaatoperator.oaattype
 
 
 class OaatGroupOverseer(Overseer):
@@ -25,16 +25,14 @@ class OaatGroupOverseer(Overseer):
     """
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
+        print(f'keys: {kwargs.keys()}')
         self.freq = parse_duration(kwargs['spec'].get('frequency', '1h'))
         self.my_pykube_objtype = KubeOaatGroup
         self.oaattypename = kwargs.get('spec', {}).get('oaatType')
-        self.oaattype = OaatType(name=self.oaattypename)
+        self.oaattype = kwargs['oaattypes'].get(
+            (kwargs['namespace'], self.oaattypename))
         self.body = kwargs['body']
-        self.cool_off = parse_duration(
-            kwargs
-            .get('spec', {})
-            .get('failureCoolOff')
-        )
+        self.cool_off = parse_duration(kwargs['spec'].get('failureCoolOff'))
         self.items = OaatItems(oaatgroupobject=self)
 
     # TODO: if the oldest item keeps failing, consider running
@@ -163,8 +161,7 @@ class OaatGroupOverseer(Overseer):
         Execute an item job Pod with the spec details from the appropriate
         OaatType object.
         """
-        # TODO: check oaatType
-        spec = self.oaattype.podspec()
+        spec = oaatoperator.oaattype.podspec(self.oaattype, name=self.oaattypename)
         contspec = spec['container']
         del spec['container']
         contspec.setdefault('env', []).append({
@@ -336,7 +333,7 @@ class OaatGroupOverseer(Overseer):
 
         Ensure the group refers to an appropriate OaatType object.
         """
-        if self.oaattype.valid:
+        if self.oaattype:
             self.info('found valid oaat type')
             return None
         self.set_annotation('operator-status', 'missingOaatType')
