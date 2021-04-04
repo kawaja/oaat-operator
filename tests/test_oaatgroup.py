@@ -561,8 +561,6 @@ class RunItemTests(unittest.TestCase):
     @unittest.mock.patch('oaatoperator.oaatgroup.Pod')
     def test_substitute(self, pod_mock, kopf_adopt_mock):
         kot = deepcopy(TestData.kot)
-        print(f'TestData.kot: {TestData.kot}')
-        print(f'kot: {kot}')
         kot['spec']['podspec']['container']['command'] = [
             'a', 'b', '%%oaat_item%%', 'c'
         ]
