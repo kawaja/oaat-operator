@@ -22,7 +22,9 @@ def get_env(env_array, env_var):
 
 class TestData:
     @classmethod
-    def setup_kwargs(cls, kog):
+    def setup_kwargs(cls, kog, kot=None):
+        if not kot:
+            kot = TestData.kot
         body = {
             'spec': kog['spec'],
             'metadata': {
@@ -52,7 +54,7 @@ class TestData:
             'reason': '',
             'old': {}, 'new': {}, 'diff': {},
             'oaattypes': {
-                (body.get('metadata', {}).get('namespace'), 'test-kot'): {**cls.kot}
+                (body.get('metadata', {}).get('namespace'), kot.get('metadata', {}).get('name')): {**kot}
             }
         }
 
@@ -170,40 +172,44 @@ class BasicTests(unittest.TestCase):
 class FindJobTests(unittest.TestCase):
     def setUp(self):
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+        self.setup = None
+        self.setup_kot = None
         return super().setUp()
 
     def tearDown(self):
         if self.setup:
             next(self.setup)  # delete KubeOaatGroup
+            self.setup = None
         if self.setup_kot:
             next(self.setup_kot)  # delete KubeOaatType
+            self.setup_kot = None
         return super().tearDown()
 
-    def extraSetUp(self, kot, kog):
-        kw = TestData.setup_kwargs(kog)
+    def extraSetUp(self, kog, kot=TestData.kot):
+        self.kw = TestData.setup_kwargs(kog, kot=kot)
         self.setup_kot = object_setUp(KubeOaatType, kot)
         self.setup = object_setUp(KubeOaatGroup, kog)
         next(self.setup_kot)
         next(self.setup)
-        ogo = OaatGroupOverseer(**kw)
+        ogo = OaatGroupOverseer(**self.kw)
         self.assertIsInstance(ogo, OaatGroupOverseer)
         return ogo
 
     def test_noitems(self):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog_empty)
+        ogo = self.extraSetUp(TestData.kog_empty)
         ogo.validate_oaat_type()
         with self.assertRaisesRegex(ProcessingComplete,
                                     'error in OaatGroup definition'):
             ogo.find_job_to_run()
 
     def test_oneitem_noprevious_run(self):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        ogo = self.extraSetUp(TestData.kog)
         ogo.validate_oaat_type()
         job = ogo.find_job_to_run()
         self.assertEqual(job, 'item1')
 
     def test_oneitem_success_within_freq(self):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        ogo = self.extraSetUp(TestData.kog)
         ogo.validate_oaat_type()
         ogo.items.obj.setdefault(
             'status',
@@ -217,7 +223,7 @@ class FindJobTests(unittest.TestCase):
             ogo.find_job_to_run()
 
     def test_oneitem_success_outside_freq(self):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        ogo = self.extraSetUp(TestData.kog)
         ogo.validate_oaat_type()
         ogo.debug = print
         ogo.items.obj.setdefault(
@@ -233,7 +239,7 @@ class FindJobTests(unittest.TestCase):
         self.assertEqual(job, 'item1')
 
     def test_oneitem_failure_within_freq_no_cooloff(self):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        ogo = self.extraSetUp(TestData.kog)
         ogo.validate_oaat_type()
         ogo.items.obj.setdefault(
             'status',
@@ -249,7 +255,7 @@ class FindJobTests(unittest.TestCase):
         kog = deepcopy(TestData.kog)
         kog['spec']['failureCoolOff'] = '5m'
         kog['spec']['frequency'] = '10m'
-        ogo = self.extraSetUp(TestData.kot, kog)
+        ogo = self.extraSetUp(kog)
         ogo.validate_oaat_type()
         ogo.debug = print
         ogo.items.obj.setdefault(
@@ -270,7 +276,7 @@ class FindJobTests(unittest.TestCase):
         kog = deepcopy(TestData.kog)
         kog['spec']['failureCoolOff'] = '1m'
         kog['spec']['frequency'] = '10m'
-        ogo = self.extraSetUp(TestData.kot, kog)
+        ogo = self.extraSetUp(kog)
         ogo.validate_oaat_type()
         ogo.debug = print
         ogo.items.obj.setdefault(
@@ -290,7 +296,7 @@ class FindJobTests(unittest.TestCase):
         kog = deepcopy(TestData.kog)
         kog['spec']['failureCoolOff'] = '10m'
         kog['spec']['frequency'] = '1m'
-        ogo = self.extraSetUp(TestData.kot, kog)
+        ogo = self.extraSetUp(kog)
         ogo.validate_oaat_type()
         ogo.items.obj.setdefault(
             'status',
@@ -310,7 +316,7 @@ class FindJobTests(unittest.TestCase):
         kog = deepcopy(TestData.kog)
         kog['spec']['failureCoolOff'] = '5m'
         kog['spec']['frequency'] = '1m'
-        ogo = self.extraSetUp(TestData.kot, kog)
+        ogo = self.extraSetUp(kog)
         ogo.validate_oaat_type()
         ogo.items.obj.setdefault(
             'status',
@@ -326,14 +332,14 @@ class FindJobTests(unittest.TestCase):
 
     # should mock randrange to validate this
     def test_5_noprevious_run(self):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog5)
+        ogo = self.extraSetUp(TestData.kog5)
         ogo.validate_oaat_type()
         job = ogo.find_job_to_run()
         self.assertIn(job, ('item1', 'item2', 'item3', 'item4', 'item5'))
 
     def test_5_single_oldest(self):
         kog = deepcopy(TestData.kog5)
-        ogo = self.extraSetUp(TestData.kot, kog)
+        ogo = self.extraSetUp(kog)
         ogo.validate_oaat_type()
         success = (datetime.datetime.now(tz=UTC) -
                    datetime.timedelta(minutes=5)).isoformat()
@@ -352,7 +358,7 @@ class FindJobTests(unittest.TestCase):
 
     def test_5_single_oldest_failure(self):
         kog = deepcopy(TestData.kog5)
-        ogo = self.extraSetUp(TestData.kot, kog)
+        ogo = self.extraSetUp(kog)
         ogo.validate_oaat_type()
         ogo.debug = print
         success = ((datetime.datetime.now(tz=UTC) -
@@ -373,7 +379,7 @@ class FindJobTests(unittest.TestCase):
 
     def test_5_single_multiple_failure(self):
         kog = deepcopy(TestData.kog5)
-        ogo = self.extraSetUp(TestData.kot, kog)
+        ogo = self.extraSetUp(kog)
         ogo.validate_oaat_type()
         ogo.debug = print
         success = (datetime.datetime.now(tz=UTC) -
@@ -398,13 +404,21 @@ class FindJobTests(unittest.TestCase):
 class ValidateTests(unittest.TestCase):
     def setUp(self):
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+        self.setup = None
+        self.setup_kot = None
         return super().setUp()
 
     def tearDown(self):
+        if self.setup:
+            next(self.setup)  # delete KubeOaatGroup
+            self.setup = None
+        if self.setup_kot:
+            next(self.setup_kot)  # delete KubeOaatType
+            self.setup_kot = None
         return super().tearDown()
 
-    def extraSetUp(self, kot, kog):
-        self.kw = TestData.setup_kwargs(kog)
+    def extraSetUp(self, kog, kot=TestData.kot):
+        self.kw = TestData.setup_kwargs(kog, kot=kot)
         self.setup_kot = object_setUp(KubeOaatType, kot)
         self.setup = object_setUp(KubeOaatGroup, kog)
         next(self.setup_kot)
@@ -414,12 +428,12 @@ class ValidateTests(unittest.TestCase):
         return ogo
 
     def test_validate_items_none(self):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog_empty)
+        ogo = self.extraSetUp(TestData.kog_empty)
         with self.assertRaisesRegex(ProcessingComplete, 'no items found.*'):
             ogo.validate_items()
 
     def test_validate_items_none_annotation(self):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog_empty)
+        ogo = self.extraSetUp(TestData.kog_empty)
         with self.assertRaisesRegex(ProcessingComplete, 'no items found.*'):
             ogo.validate_items(
                 status_annotation='test-status',
@@ -432,7 +446,7 @@ class ValidateTests(unittest.TestCase):
             None)
 
     def test_validate_items_one_annotation(self):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        ogo = self.extraSetUp(TestData.kog)
         ogo.validate_items(
             status_annotation='test-status',
             count_annotation='test-items')
@@ -444,39 +458,39 @@ class ValidateTests(unittest.TestCase):
             '1')
 
     def test_validate_state_pod_cr(self):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        ogo = self.extraSetUp(TestData.kog)
         self.kw.setdefault('status', {})['pod'] = 'podname'
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
         self.assertIsNone(ogo.validate_state())
 
     def test_validate_state_nopod_nocr(self):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        ogo = self.extraSetUp(TestData.kog)
         self.kw.setdefault('status', {})['pod'] = None
         self.kw.setdefault('status', {})['currently_running'] = None
         self.assertIsNone(ogo.validate_state())
 
     def test_validate_state_pod_nocr(self):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        ogo = self.extraSetUp(TestData.kog)
         self.kw.setdefault('status', {})['pod'] = 'podname'
         self.kw.setdefault('status', {})['currently_running'] = None
         with self.assertRaisesRegex(ProcessingComplete, 'internal error'):
             ogo.validate_state()
 
     def test_validate_state_nopod_cr(self):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        ogo = self.extraSetUp(TestData.kog)
         self.kw.setdefault('status', {})['pod'] = None
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
         with self.assertRaisesRegex(ProcessingComplete, 'internal error'):
             ogo.validate_state()
 
     def test_validate_running_nothing_expected(self):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        ogo = self.extraSetUp(TestData.kog)
         self.kw.setdefault('status', {})['pod'] = None
         self.kw.setdefault('status', {})['currently_running'] = None
         ogo.validate_running_pod()
 
     def test_validate_running_expected_running_but_is_not(self):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        ogo = self.extraSetUp(TestData.kog)
         self.kw.setdefault('status', {})['pod'] = 'podname'
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
         with self.assertRaises(ProcessingComplete):
@@ -486,10 +500,21 @@ class ValidateTests(unittest.TestCase):
 class RunItemTests(unittest.TestCase):
     def setUp(self):
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+        self.setup = None
+        self.setup_kot = None
         return super().setUp()
 
-    def extraSetUp(self, kot, kog):
-        self.kw = TestData.setup_kwargs(kog)
+    def tearDown(self):
+        if self.setup:
+            next(self.setup)  # delete KubeOaatGroup
+            self.setup = None
+        if self.setup_kot:
+            next(self.setup_kot)  # delete KubeOaatType
+            self.setup_kot = None
+        return super().tearDown()
+
+    def extraSetUp(self, kog, kot=TestData.kot):
+        self.kw = TestData.setup_kwargs(kog, kot=kot)
         self.setup_kot = object_setUp(KubeOaatType, kot)
         self.setup = object_setUp(KubeOaatGroup, kog)
         next(self.setup_kot)
@@ -501,7 +526,8 @@ class RunItemTests(unittest.TestCase):
     @unittest.mock.patch('kopf.adopt')
     @unittest.mock.patch('oaatoperator.oaatgroup.Pod')
     def test_sunny(self, pod_mock, kopf_adopt_mock):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        print(f'TestData.kot: {TestData.kot}')
+        ogo = self.extraSetUp(TestData.kog)
         ogo.validate_oaat_type()
         ogo.run_item('item1')
         pod = pod_mock.call_args.args[1]
@@ -512,7 +538,7 @@ class RunItemTests(unittest.TestCase):
     @unittest.mock.patch('kopf.adopt')
     @unittest.mock.patch('oaatoperator.oaatgroup.Pod')
     def test_podfail(self, pod_mock, kopf_adopt_mock):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        ogo = self.extraSetUp(TestData.kog)
         ogo.validate_oaat_type()
         pod_instance_mock = pod_mock.return_value
         pod_instance_mock.create.side_effect = pykube.KubernetesError(
@@ -530,8 +556,6 @@ class RunItemTests(unittest.TestCase):
     @unittest.mock.patch('oaatoperator.oaatgroup.Pod')
     def test_substitute(self, pod_mock, kopf_adopt_mock):
         kot = deepcopy(TestData.kot)
-        print(f'TestData.kot: {TestData.kot}')
-        print(f'kot: {kot}')
         kot['spec']['podspec']['container']['command'] = [
             'a', 'b', '%%oaat_item%%', 'c'
         ]
@@ -542,8 +566,8 @@ class RunItemTests(unittest.TestCase):
             {'name': 'first', 'value': '%%oaat_item%%'},
             {'name': 'second', 'value': 'abc%%oaat_item%%def'},
         ]
-        print(f'kot2: {kot}')
-        ogo = self.extraSetUp(kot, TestData.kog)
+        print(f'kot: {kot}')
+        ogo = self.extraSetUp(TestData.kog, kot)
         ogo.validate_oaat_type()
         ogo.run_item('item1')
         pod = pod_mock.call_args.args[1]

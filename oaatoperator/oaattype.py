@@ -3,6 +3,7 @@ oaattype.py
 
 Utilities for working iwth OaatType kubernetes objects.
 """
+from copy import deepcopy
 from oaatoperator.common import ProcessingComplete
 
 
@@ -13,7 +14,7 @@ def podspec(oaattype: dict, name: str = '') -> dict:
         raise ProcessingComplete(message='OaatType invalid',
                 error=f'cannot find OaatType {name}')
     msg = 'error in OaatType definition'
-    spec = oaattype.get('spec')
+    spec = deepcopy(oaattype.get('spec'))
     if spec is None:
         raise ProcessingComplete(
             message=msg,
