@@ -31,6 +31,7 @@ def create_action(**kwargs):
     # [6] get_status
     assert pov.get_status('unset_status') is None
     assert pov.get_status('unset_status', 'empty') == 'empty'
+    # set_status
     pov.set_status('new_status')
     pov.set_status('new_status2', 'new_state')
 
@@ -38,6 +39,7 @@ def create_action(**kwargs):
     assert pov.get_label('nolabel') is None
     assert pov.get_label('nolabel', 'empty') == 'empty'
     assert pov.get_label('testlabel') == 'labelvalue'
+    assert pov.get_label('testlabel', 'empty') == 'labelvalue'
 
     # [8] get_kubeobj without my_pykube_objtype
     try:

@@ -12,7 +12,7 @@ def podspec(oaattype: dict, name: str = '') -> dict:
     """Retrieve Pod specification from this OaatType."""
     if not oaattype:
         raise ProcessingComplete(message='OaatType invalid',
-                error=f'cannot find OaatType {name}')
+                                 error=f'cannot find OaatType {name}')
     msg = 'error in OaatType definition'
     spec = deepcopy(oaattype.get('spec'))
     if spec is None:
