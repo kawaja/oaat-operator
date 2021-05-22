@@ -38,7 +38,6 @@ class OaatType:
                     f'{exc}'),
                 message=f'error retrieving "{self.name}" OaatType object')
 
-    # TODO: do a full schema validation on the pod spec?
     def podspec(self) -> dict:
         """Retrieve Pod specification from this OaatType."""
         if not self.valid:

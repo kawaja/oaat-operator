@@ -9,9 +9,6 @@ from oaatoperator.pod import PodOverseer
 
 # TODO: investigate whether pykube will re-connect to k8s if the session drops
 # for some reason
-# TODO: implement blackout windows for item job start
-# TODO: add 'EachOnce' feature which ensures each item runs once
-# successfully, then the OaatGroup object self-destructs
 
 
 def is_running(status, **_):
