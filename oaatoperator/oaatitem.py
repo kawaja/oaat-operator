@@ -101,16 +101,11 @@ class OaatItems:
             when = now_iso()
 
         if not isinstance(when, str):
-            raise ValueError('mark_failed when= should be iso date string')
+            raise ValueError('mark_success when= should be iso date string')
 
         self.set_status(name, 'failure_count', 0)
         self.set_status(name, 'last_success', when)
 
-    # TODO: provide other mechanisms to get a list of items:
-    #       - output of a container
-    #       - contents of a configmap
-    #       - result of an API call ??
-    #       - concatenate all items gathered from above methods
     # agnostic of object structure
     def list(self) -> list:
         """Return the names of all items in a list."""
