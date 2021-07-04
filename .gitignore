@@ -6,3 +6,4 @@ _Jenkins_changed
 __pycache__
 .coverage
 cov.xml
+k3d*
