@@ -56,9 +56,9 @@ class TestData:
             'new': {},
             'diff': {},
             'oaattypes': {
-                (body.get('metadata', {}).get('namespace'), 'test-kot'): {
-                    **cls.kot
-                }
+                (body.get('metadata', {}).get('namespace'),
+                    kot.get('metadata', {}).get('name')):
+                {**kot}
             }
         }
 
@@ -578,21 +578,31 @@ class RunItemTests(unittest.TestCase):
         pod = pod_mock.call_args.args[1]
         print(f'pod: {pod}')
         self.assertEqual(pod['metadata']['labels']['oaat-name'], 'item1')
-        self.assertEqual(pod['spec']['containers'][0]['command'][0], 'a')
-        self.assertEqual(pod['spec']['containers'][0]['command'][1], 'b')
-        self.assertEqual(pod['spec']['containers'][0]['command'][2], 'item1')
-        self.assertEqual(pod['spec']['containers'][0]['command'][3], 'c')
-        self.assertEqual(pod['spec']['containers'][0]['args'][0], 'a')
-        self.assertEqual(pod['spec']['containers'][0]['args'][1], 'b')
-        self.assertEqual(pod['spec']['containers'][0]['args'][2], 'item1')
-        self.assertEqual(pod['spec']['containers'][0]['args'][3], 'c')
+        self.assertEqual(pod['spec']['containers'][0]['command'][0], 'a',
+                         pod['spec'])
+        self.assertEqual(pod['spec']['containers'][0]['command'][1], 'b',
+                         pod['spec'])
+        self.assertEqual(pod['spec']['containers'][0]['command'][2], 'item1',
+                         pod['spec'])
+        self.assertEqual(pod['spec']['containers'][0]['command'][3], 'c',
+                         pod['spec'])
+        self.assertEqual(pod['spec']['containers'][0]['args'][0], 'a',
+                         pod['spec'])
+        self.assertEqual(pod['spec']['containers'][0]['args'][1], 'b',
+                         pod['spec'])
+        self.assertEqual(pod['spec']['containers'][0]['args'][2], 'item1',
+                         pod['spec'])
+        self.assertEqual(pod['spec']['containers'][0]['args'][3], 'c',
+                         pod['spec'])
         self.assertEqual(
-            get_env(pod['spec']['containers'][0]['env'], 'OAAT_ITEM'), 'item1')
+            get_env(pod['spec']['containers'][0]['env'], 'OAAT_ITEM'), 'item1',
+            pod['spec'])
         self.assertEqual(
-            get_env(pod['spec']['containers'][0]['env'], 'first'), 'item1')
+            get_env(pod['spec']['containers'][0]['env'], 'first'), 'item1',
+            pod['spec'])
         self.assertEqual(
             get_env(pod['spec']['containers'][0]['env'], 'second'),
-            'abcitem1def')
+            'abcitem1def', pod['spec'])
 
 # TODO:
 # - find_job_to_run()
