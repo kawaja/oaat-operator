@@ -21,6 +21,9 @@ rules:
   - apiGroups: [kawaja.net]
     resources: ['*']
     verbs: [list, watch]
+  - apiGroups: ['']
+    resources: ['*']
+    verbs: [list, watch]
   - apiGroups: [""]
     resources: [pods]
     verbs: [list, get, watch, patch, update]
@@ -51,6 +54,9 @@ rules:
     verbs: [get, list, watch, patch]
 
   # Application: other resources it produces and manipulates.
+  - apiGroups: ['']
+    resources: ['*']
+    verbs: [list, watch]
   - apiGroups: [""]
     resources: [pods,pods/status]
     verbs: [create, get, list, watch, patch, update, delete]
