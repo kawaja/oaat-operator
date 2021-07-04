@@ -267,6 +267,67 @@ class OaatGroupOverseer(Overseer):
                 f'with currently_running ({curitem})')
         )
 
+    def validate_no_rogue_pods_are_running(self) -> None:
+        pass
+
+    def is_pod_expected(self) -> bool:
+        curpod = self.get_status('pod')
+        if curpod:
+            return True
+        return False
+
+    def validate_expected_pod_is_running(self) -> None:
+        """
+        validate_expected_pod_is_running
+
+        Validate that the pod which we expect should be running (based
+        on `oaatgroup` status `pod` and `currently_running`)
+
+        Check whether the Pod we previously started is still running. If not,
+        assume the job was killed without being processed by the
+        operator (or was never started) and clean up. Mark as failed.
+
+        Returns:
+        - ProcessingComplete exception:
+            - Cleaned up missing/deleted item
+            - Pod exists and is in state: <state>
+        """
+        curpod = self.get_status('pod')
+        curitem = self.get_status('currently_running')
+        try:
+            pod = Pod.objects(
+                self.api,
+                namespace=self.namespace).get_by_name(curpod).obj
+        except pykube.exceptions.ObjectDoesNotExist:
+            self.info(
+                f'pod {curpod} missing/deleted, cleaning up')
+            self.set_status('currently_running')
+            self.set_status('pod')
+            self.set_status('state', 'missing')
+            self.items.mark_failed(curitem)
+            self.items.set_status(curitem, 'pod_detail')
+            raise ProcessingComplete(
+                info='Cleaned up missing/deleted item')
+
+        podphase = pod.get('status', {}).get('phase', 'unknown')
+        self.info(f'validated that pod {curpod} exists '
+                  f'(phase={podphase})')
+        recorded_phase = self.items.status(curitem, 'podphase', 'unknown')
+
+        # if there is a mismatch in phase, then the pod phase handlers
+        # have not yet picked it up and updated the oaatgroup phase.
+        # Note it here, but take no further action
+        if podphase != recorded_phase:
+            self.info(f'mismatch in phase for pod {curpod}: '
+                      f'pod={podphase}, oaatgroup={recorded_phase}')
+
+        # valid phases are Pending, Running, Succeeded, Failed, Unknown
+        # 'started' is the phase the pods start with when created by
+        # operator.
+
+        raise ProcessingComplete(
+            message=f'Pod {curpod} exists and is in state {podphase}')
+
     def validate_running_pod(self) -> None:
         """
         validate_running_pod
