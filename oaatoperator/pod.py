@@ -124,7 +124,7 @@ class PodOverseer(Overseer):
         query = KubeOaatGroup.objects(self.api, namespace=namespace)
         try:
             parent = (query.get_by_name(
-                self.kwargs['meta']['labels'].get('parent-name')))
+                self.meta['labels'].get('parent-name')))
         except pykube.exceptions.ObjectDoesNotExist:
             raise ProcessingComplete(
                 info=f'ignoring pod {self.name} as associated OaatGroup '
