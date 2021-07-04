@@ -1,0 +1,17 @@
+apiVersion: kawaja.net/v1
+kind: OaatType
+metadata:
+  name: oaattest
+  namespace: oaat-integration
+spec:
+  type: pod
+  podspec:
+    container:
+      name: test
+      image: busybox
+      command: ["sh", "-x", "-c"]
+      args:
+        - |
+          echo "OAAT_ITEM={{oaat_item}}"
+          sleep $(shuf -i 10-180 -n 1)
+          exit $(shuf -i 0-1 -n 1)
