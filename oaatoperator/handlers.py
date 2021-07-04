@@ -50,7 +50,8 @@ def oaat_timer(**kwargs):
 
     Main loop to handle oaatgroup object.
     """
-    kwargs['logger'].debug(f'[{my_name()} reason: {kwargs["reason"]}')
+    kwargs['logger'].debug(
+        f'[{my_name()} reason: {kwargs.get("reason", "timer?")}')
     try:
         oaatgroup = OaatGroupOverseer(**kwargs)
     except ProcessingComplete as exc:
@@ -108,7 +109,8 @@ def pod_phasechange(**kwargs):
     Triggered by change in the pod's "phase" status field, or every
     1/2 hour just in case
     """
-    kwargs['logger'].debug(f'[{my_name()} reason: {kwargs["reason"]}')
+    kwargs['logger'].debug(
+        f'[{my_name()} reason: {kwargs.get("reason", "timer?")}')
     try:
         pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
@@ -141,7 +143,8 @@ def pod_succeeded(**kwargs):
     Record last_success for failed pod. Triggered by change in the
     pod's "phase" status field, or every 1/2 hour just in case
     """
-    kwargs['logger'].debug(f'[{my_name()} reason: {kwargs["reason"]}')
+    kwargs['logger'].debug(
+        f'[{my_name()} reason: {kwargs.get("reason", "timer?")}')
     try:
         pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
@@ -173,7 +176,8 @@ def pod_failed(**kwargs):
     Record last_failure for failed pod. Triggered by change in the
     pod's "phase" status field, or every 1/2 hour just in case
     """
-    kwargs['logger'].debug(f'[{my_name()} reason: {kwargs["reason"]}')
+    kwargs['logger'].debug(
+        f'[{my_name()} reason: {kwargs.get("reason", "timer?")}')
     try:
         pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
@@ -199,7 +203,8 @@ def cleanup_pod(**kwargs):
     After pod has been in 'Failed' or 'Succeeded' phase for more than twelve
     hours, delete it.
     """
-    kwargs['logger'].debug(f'[{my_name()} reason: {kwargs["reason"]}')
+    kwargs['logger'].debug(
+        f'[{my_name()} reason: {kwargs.get("reason", "timer?")}')
     try:
         pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
@@ -228,7 +233,8 @@ def oaat_action(**kwargs):
         * ensure "items" exist
         * annotate self with "operator-status=active" to enable timer
     """
-    kwargs['logger'].debug(f'[{my_name()} reason: {kwargs["reason"]}')
+    kwargs['logger'].debug(
+        f'[{my_name()} reason: {kwargs.get("reason", "timer?")}')
     try:
         oaatgroup = OaatGroupOverseer(**kwargs)
     except ProcessingComplete as exc:
