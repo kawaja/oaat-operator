@@ -25,14 +25,16 @@ class OaatGroupOverseer(Overseer):
     """
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.freq = parse_duration(kwargs['spec'].get('frequency', '1h'))
+        self.obj = kwargs
+        self.spec = kwargs.get('spec', {})
+        self.body = kwargs.get('body')
+        self.freq = parse_duration(self.spec.get('frequency', '1h'))
         self.my_pykube_objtype = KubeOaatGroup
-        self.namespace = kwargs['namespace']
-        self.oaattypename = kwargs.get('spec', {}).get('oaatType')
-        self.oaattype = kwargs['oaattypes'].get(
-            (kwargs['namespace'], self.oaattypename))
-        self.body = kwargs['body']
-        self.cool_off = parse_duration(kwargs['spec'].get('failureCoolOff'))
+        self.namespace = kwargs.get('namespace')
+        self.oaattypename = self.spec.get('oaatType')
+        self.oaattype = kwargs.get('oaattypes').get(
+            (self.namespace, self.oaattypename))
+        self.cool_off = parse_duration(self.spec.get('failureCoolOff'))
         self.items = OaatItems(oaatgroupobject=self)
 
     # TODO: if the oldest item keeps failing, consider running
@@ -324,7 +326,7 @@ class OaatGroupOverseer(Overseer):
             raise ProcessingComplete(
                 error=f'item {curitem} unexpected state: '
                       f'recorded_phase={recorded_phase}, '
-                      f'status={str(self.kwargs["status"])}',
+                      f'status={str(self.status)}',
                 message=f'item {curitem} unexpected state')
 
     def validate_oaat_type(self) -> None:

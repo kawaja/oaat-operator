@@ -8,10 +8,6 @@ from typing import Any
 from oaatoperator.common import ProcessingComplete
 
 
-# TODO: the kwargs passed to Overseer needs to be complete (i.e.
-# if the kopf handler "absorbs" a kw arg, then it will not appear in
-# **kwargs, so the Overseer may not behave correctly).
-
 class Overseer:
     """
     Overseer
@@ -21,43 +17,54 @@ class Overseer:
     Inheriting class must set self.my_pykube_objtype
     """
     def __init__(self, **kwargs) -> None:
-        self.kwargs = kwargs
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         self.name = kwargs.get('name')
         self.patch = kwargs.get('patch')
+        self.status = kwargs.get('status')
+        self.logger = kwargs.get('logger')
+        self.meta = kwargs.get('meta')
+        self.spec = kwargs.get('spec')
         self.namespace = kwargs.get('namespace')
         self.my_pykube_objtype = None
-        if self.name is None or self.namespace is None:
-            raise ValueError('Overseer must be called with kopf kwargs')
+        # this list should contain all elements of kwargs used in this class,
+        # to avoid unpredictable behaviour if a full kwargs list is not passed
+        required_kwargs = [
+            self.name, self.namespace, self.patch, self.logger, self.status,
+            self.meta
+        ]
+
+        if None in required_kwargs:
+            raise ValueError('Overseer must be called with full kopf '
+                             f'kwargs ({required_kwargs}')
 
     def error(self, *args) -> None:
         """Log an error."""
-        self.kwargs['logger'].error(*args)
+        self.logger.error(*args)
 
     def warning(self, *args) -> None:
         """Log a warning."""
-        self.kwargs['logger'].warning(*args)
+        self.logger.warning(*args)
 
     def info(self, *args) -> None:
         """Log an info message."""
-        self.kwargs['logger'].info(*args)
+        self.logger.info(*args)
 
     def debug(self, *args) -> None:
         """Log a debug message."""
-        self.kwargs['logger'].debug(*args)
+        self.logger.debug(*args)
 
     def get_status(self, state: str, default: str = None) -> Any:
         """Get a value from the "status" of the overseen object."""
-        return self.kwargs['status'].get(state, default)
+        return self.status.get(state, default)
 
     def set_status(self, state: str, value: str = None) -> None:
         """Set a field in the "status" of the overseen object."""
-        self.kwargs['patch'].setdefault('status', {})
-        self.kwargs['patch']['status'][state] = value
+        self.patch.setdefault('status', {})
+        self.patch['status'][state] = value
 
     def get_label(self, label: str, default: str = None) -> str:
         """Get a label from the overseen object."""
-        return self.kwargs['meta'].get('labels', {}).get(label, default)
+        return self.meta.get('labels', {}).get(label, default)
 
     def get_kubeobj(self, reason: str = None):
         """Get the kube object for the overseen object."""

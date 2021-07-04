@@ -12,8 +12,19 @@ class OaatGroupTests(unittest.TestCase):
         self.dt = datetime.datetime.now(tz=datetime.timezone.utc)
         self.og_populated = MagicMock(
             spec=OaatGroupOverseer,
-            kwargs={
-                'patch': {'status': {}},
+            patch={'status': {}},
+            status={
+                'items': {
+                    'item': {
+                        'test': 5,
+                        'test_date': self.dt.isoformat()
+                    }
+                }
+            },
+            obj={
+                'patch': {
+                    'status': {}
+                },
                 'status': {
                     'items': {
                         'item': {
@@ -22,11 +33,14 @@ class OaatGroupTests(unittest.TestCase):
                         }
                     }
                 }
-            }
-        )
+            })
+
         self.og_empty = MagicMock(
             spec=OaatGroupOverseer,
-            kwargs={
+            body={},
+            patch={'status': {}},
+            status={},
+            obj={
                 'patch': {'status': {}},
                 'status': {}
             }
@@ -57,14 +71,14 @@ class OaatGroupTests(unittest.TestCase):
         items = OaatItems(oaatgroupobject=og)
         items.set_status('item', 'test', 5)
         self.assertEqual(
-            og.kwargs['patch']['status']['items']['item']['test'], 5)
+            og.patch['status']['items']['item']['test'], 5)
 
     def test_set_phase_oaatgroup(self):
         og = self.og_empty
         items = OaatItems(oaatgroupobject=og)
         items.set_phase('item', 'Phase')
         self.assertEqual(
-            og.kwargs['patch']['status']['items']['item']['podphase'], 'Phase')
+            og.patch['status']['items']['item']['podphase'], 'Phase')
 
 
 class KubeTests(unittest.TestCase):

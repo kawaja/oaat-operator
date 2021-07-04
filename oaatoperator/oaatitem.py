@@ -23,7 +23,7 @@ class OaatItems:
         self.obj = None
         if oaatgroupobject:
             self.oaatgroup = oaatgroupobject
-            self.obj = oaatgroupobject.kwargs
+            self.obj = oaatgroupobject.obj
         elif kubeobject:
             self.kubeobject = kubeobject
             self.obj = kubeobject.obj
@@ -58,7 +58,7 @@ class OaatItems:
 
     def _set_status_kopf(
             self, item: str, key: str, value: str = None) -> None:
-        patch = (self.oaatgroup.kwargs['patch']
+        patch = (self.oaatgroup.patch
                  .setdefault('status', {})
                  .setdefault('items', {})
                  .setdefault(item, {}))
