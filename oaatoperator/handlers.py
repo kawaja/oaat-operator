@@ -51,7 +51,7 @@ def oaat_timer(**kwargs):
     Main loop to handle oaatgroup object.
     """
     kwargs['logger'].debug(
-        f'[{my_name()} reason: {kwargs.get("reason", "timer?")}')
+        f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
         oaatgroup = OaatGroupOverseer(**kwargs)
     except ProcessingComplete as exc:
@@ -110,7 +110,7 @@ def pod_phasechange(**kwargs):
     1/2 hour just in case
     """
     kwargs['logger'].debug(
-        f'[{my_name()} reason: {kwargs.get("reason", "timer?")}')
+        f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
         pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
@@ -144,7 +144,7 @@ def pod_succeeded(**kwargs):
     pod's "phase" status field, or every 1/2 hour just in case
     """
     kwargs['logger'].debug(
-        f'[{my_name()} reason: {kwargs.get("reason", "timer?")}')
+        f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
         pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
@@ -177,7 +177,7 @@ def pod_failed(**kwargs):
     pod's "phase" status field, or every 1/2 hour just in case
     """
     kwargs['logger'].debug(
-        f'[{my_name()} reason: {kwargs.get("reason", "timer?")}')
+        f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
         pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
@@ -204,7 +204,7 @@ def cleanup_pod(**kwargs):
     hours, delete it.
     """
     kwargs['logger'].debug(
-        f'[{my_name()} reason: {kwargs.get("reason", "timer?")}')
+        f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
         pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
@@ -234,7 +234,7 @@ def oaat_action(**kwargs):
         * annotate self with "operator-status=active" to enable timer
     """
     kwargs['logger'].debug(
-        f'[{my_name()} reason: {kwargs.get("reason", "timer?")}')
+        f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
         oaatgroup = OaatGroupOverseer(**kwargs)
     except ProcessingComplete as exc:
