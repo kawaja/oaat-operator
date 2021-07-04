@@ -115,7 +115,8 @@ class PodOverseer(Overseer):
         items = OaatItems(kubeobject=self.get_parent())
 
         items.set_phase(item_name, self.phase)
-        self.debug(f'pod {self.name}, podphase: {self.phase}')
+        raise ProcessingComplete(
+            message=f'updating phase for pod {self.name}: {self.phase}')
 
     def get_parent(self):
         """Retrieve the Pod's parent from the parent-name label."""
