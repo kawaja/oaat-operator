@@ -50,39 +50,50 @@ def oaat_timer(**kwargs):
 
     Main loop to handle oaatgroup object.
     """
+    kwargs['logger'].debug(f'[{my_name()} reason: {kwargs["reason"]}')
     try:
-        overseer = OaatGroupOverseer(**kwargs)
+        oaatgroup = OaatGroupOverseer(**kwargs)
     except ProcessingComplete as exc:
         return {'message': f'Error: {exc.ret.get("error")}'}
-    curloop = overseer.get_status('loops', 0)
+    curloop = oaatgroup.get_status('loops', 0)
 
     try:
-        overseer.validate_items()
-        overseer.validate_state()
+        oaatgroup.validate_items()
+        oaatgroup.validate_state()
+
+        oaatgroup.validate_no_rogue_pods_are_running()
 
         # Check the currently-running job
-        overseer.validate_running_pod()
+        if oaatgroup.is_pod_expected():
+            oaatgroup.validate_expected_pod_is_running()
+            return {
+                'message': 'validate_expected_pod_is_running'
+                'unexpectedly returned (should never happen)'
+            }
 
         # No item running, so check to see if we're ready to start another
-        item_name = overseer.find_job_to_run()
+        item_name = oaatgroup.find_job_to_run()
 
         # Found an oaatgroup job to run, now run it
-        overseer.info(f'running item {item_name}')
-        overseer.set_status('state', 'running')
-        overseer.items.set_phase(item_name, 'started')
-        overseer.set_status('currently_running', item_name)
-        podobj = overseer.run_item(item_name)
-        overseer.set_status('pod', podobj.metadata['name'])
+        oaatgroup.info(f'running item {item_name}')
+        oaatgroup.set_status('state', 'running')
+        oaatgroup.items.set_phase(item_name, 'started')
+        oaatgroup.set_status('currently_running', item_name)
+        podobj = oaatgroup.run_item(item_name)
+        oaatgroup.set_status('pod', podobj.metadata['name'])
 
-        overseer.set_status('last_run', now_iso())
-        overseer.set_status('children', [podobj.metadata['uid']])
+        oaatgroup.set_status('last_run', now_iso())
+        oaatgroup.set_status('children', [podobj.metadata['uid']])
         raise ProcessingComplete(message=f'started item {item_name}')
 
     except ProcessingComplete as exc:
-        overseer.set_status('loops', curloop + 1)
-        return overseer.handle_processing_complete(exc)
+        oaatgroup.set_status('loops', curloop + 1)
+        return oaatgroup.handle_processing_complete(exc)
 
 
+@kopf.timer('', 'v1', 'pods',
+            idle=0.5*3600,
+            labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'})
 @kopf.on.resume('', 'v1', 'pods',
                 labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
                 when=is_running)
@@ -94,21 +105,28 @@ def pod_phasechange(**kwargs):
     pod_phasechange (pod)
 
     Update parent (OaatGroup) phase information for this item.
+    Triggered by change in the pod's "phase" status field, or every
+    1/2 hour just in case
     """
+    kwargs['logger'].debug(f'[{my_name()} reason: {kwargs["reason"]}')
     try:
-        overseer = PodOverseer(**kwargs)
+        pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
         return {'message': f'Error: {exc.ret.get("error")}'}
-    overseer.info(f'[{my_name()}] {overseer.name}')
+    pod.info(f'[{my_name()}] {pod.name}')
 
     try:
-        overseer.update_phase()
+        pod.update_phase()
     except ProcessingComplete as exc:
-        return overseer.handle_processing_complete(exc)
+        return pod.handle_processing_complete(exc)
 
     return {'message': f'[{my_name()}] should never happen'}
 
 
+@kopf.timer('', 'v1', 'pods',
+            idle=0.5*3600,
+            labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
+            when=is_succeeded)
 @kopf.on.resume('', 'v1', 'pods',
                 labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
                 when=is_succeeded)
@@ -120,21 +138,27 @@ def pod_succeeded(**kwargs):
     """
     pod_succeeded (pod)
 
-    Record last_success for failed pod.
+    Record last_success for failed pod. Triggered by change in the
+    pod's "phase" status field, or every 1/2 hour just in case
     """
+    kwargs['logger'].debug(f'[{my_name()} reason: {kwargs["reason"]}')
     try:
-        overseer = PodOverseer(**kwargs)
+        pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
         return {'message': f'Error: {exc.ret.get("error")}'}
 
     try:
-        overseer.update_success_status()
+        pod.update_success_status()
     except ProcessingComplete as exc:
-        return overseer.handle_processing_complete(exc)
+        return pod.handle_processing_complete(exc)
 
     return {'message': f'[{my_name()}] should never happen'}
 
 
+@kopf.timer('', 'v1', 'pods',
+            idle=0.5*3600,
+            labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
+            when=is_failed)
 @kopf.on.resume('', 'v1', 'pods',
                 labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
                 when=is_failed)
@@ -146,18 +170,20 @@ def pod_failed(**kwargs):
     """
     pod_failed (pod)
 
-    Record last_failure for failed pod.
+    Record last_failure for failed pod. Triggered by change in the
+    pod's "phase" status field, or every 1/2 hour just in case
     """
+    kwargs['logger'].debug(f'[{my_name()} reason: {kwargs["reason"]}')
     try:
-        overseer = PodOverseer(**kwargs)
+        pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
         return {'message': f'Error: {exc.ret.get("error")}'}
-    overseer.info(f'[{my_name()}] {overseer.name}')
+    pod.info(f'[{my_name()}] {pod.name}')
 
     try:
-        overseer.update_failure_status()
+        pod.update_failure_status()
     except ProcessingComplete as exc:
-        return overseer.handle_processing_complete(exc)
+        return pod.handle_processing_complete(exc)
 
     return {'message': f'[{my_name()}] should never happen'}
 
@@ -173,17 +199,18 @@ def cleanup_pod(**kwargs):
     After pod has been in 'Failed' or 'Succeeded' phase for more than twelve
     hours, delete it.
     """
+    kwargs['logger'].debug(f'[{my_name()} reason: {kwargs["reason"]}')
     try:
-        overseer = PodOverseer(**kwargs)
+        pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
         return {'message': f'Error: {exc.ret.get("error")}'}
-    overseer.info(f'[{my_name()}] {overseer.name}')
+    pod.info(f'[{my_name()}] {pod.name}')
 
     try:
-        overseer.delete()
+        pod.delete()
         raise ProcessingComplete(message=f'[{my_name()}] deleted')
     except ProcessingComplete as exc:
-        return overseer.handle_processing_complete(exc)
+        return pod.handle_processing_complete(exc)
 
 
 @kopf.on.resume('kawaja.net', 'v1', 'oaatgroups')
@@ -201,21 +228,22 @@ def oaat_action(**kwargs):
         * ensure "items" exist
         * annotate self with "operator-status=active" to enable timer
     """
+    kwargs['logger'].debug(f'[{my_name()} reason: {kwargs["reason"]}')
     try:
-        overseer = OaatGroupOverseer(**kwargs)
+        oaatgroup = OaatGroupOverseer(**kwargs)
     except ProcessingComplete as exc:
         return {'message': f'Error: {exc.ret.get("error")}'}
 
-    overseer.info(f'[{my_name()}] {overseer.name}')
+    oaatgroup.info(f'[{my_name()}] {oaatgroup.name}')
 
     try:
-        overseer.validate_oaat_type()
-        overseer.validate_items(
+        oaatgroup.validate_oaat_type()
+        oaatgroup.validate_items(
             status_annotation='operator-status',
             count_annotation='oaatgroup-items')
         raise ProcessingComplete(message='validated')
     except ProcessingComplete as exc:
-        return overseer.handle_processing_complete(exc)
+        return oaatgroup.handle_processing_complete(exc)
 
 
 @kopf.on.login()
