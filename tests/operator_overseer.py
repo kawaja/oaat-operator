@@ -1,5 +1,6 @@
 from oaatoperator.common import ProcessingComplete
 import time
+import re
 import kopf
 from pykube import Pod
 from oaatoperator.overseer import Overseer
@@ -11,7 +12,8 @@ def create_action(**kwargs):
     try:
         Overseer()
     except ValueError as exc:
-        assert str(exc) == 'Overseer must be called with kopf kwargs', exc
+        assert re.search('Overseer must be called with full kopf kwargs',
+                         str(exc)), exc
         kwargs['logger'].debug('[1] successful')
 
     pov = Overseer(**kwargs)

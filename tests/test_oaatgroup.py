@@ -142,8 +142,9 @@ class BasicTests(unittest.TestCase):
     def test_invalid_object(self):
         with self.assertRaises(ValueError) as exc:
             OaatGroupOverseer(a=1)
-        self.assertEqual(str(exc.exception),
-                         'Overseer must be called with kopf kwargs')
+        self.assertRegexpMatches(
+            str(exc.exception),
+            'Overseer must be called with full kopf kwargs.*')
 
     def test_invalid_none(self):
         with self.assertRaises(TypeError):
