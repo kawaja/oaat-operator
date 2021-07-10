@@ -79,6 +79,7 @@ class OaatGroupOverseer(Overseer):
         # Filter out items which have been recently successful
         self.debug(f'frequency: {self.freq}s')
         self.debug(f'now: {now}')
+        self.debug(f'cool_off: {self.cool_off}')
 
         candidates = []
         for item in oaat_items:
