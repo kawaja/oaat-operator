@@ -295,6 +295,8 @@ class OaatGroupOverseer(Overseer):
     def validate_no_rogue_pods_are_running(self) -> None:
         found_rogue = 0
         for pod in Pod.objects(self.api, namespace=self.namespace).iterator():
+            if pod.name == self.get_status('pod'):
+                continue
             if pod.labels.get('parent-name', '') == self.name:
                 if pod.labels.get('app', '') == 'oaat-operator':
                     podphase = (pod.obj['status'].get('phase', 'unknown'))
