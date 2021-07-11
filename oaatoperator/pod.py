@@ -6,8 +6,8 @@ Overseer object for managing Pod objects.
 import pykube
 from pykube import Pod
 from oaatoperator.utility import date_from_isostr
-from oaatoperator.common import ProcessingComplete, KubeOaatGroup
 from oaatoperator.oaatitem import OaatItems
+from oaatoperator.common import ProcessingComplete
 from oaatoperator.overseer import Overseer
 
 
@@ -19,9 +19,10 @@ class PodOverseer(Overseer):
 
     Initialise with the kwargs for a Pod kopf handler.
     """
-    def __init__(self, **kwargs):
+    def __init__(self, parent_type, **kwargs):
         super().__init__(**kwargs)
-        self.phase = kwargs['status']['phase']
+        self.parent_type = parent_type
+        self.phase = kwargs['status'].get('phase', '')
         self.my_pykube_objtype = Pod
         self.exitcode = None
         self.finished_at = None
@@ -45,7 +46,7 @@ class PodOverseer(Overseer):
         """
         _update_pod_status
 
-        Update status of parent (OaatGroup) object with details of an
+        Update status of parent object with details of an
         execution failure for the current Pod.
         """
         parent = self.get_parent()
@@ -81,7 +82,7 @@ class PodOverseer(Overseer):
         """
         _update_pod_status
 
-        Update status of parent (OaatGroup) object with details of an
+        Update status of parent object with details of an
         execution failure for the current Pod.
         """
         parent = self.get_parent()
@@ -112,26 +113,38 @@ class PodOverseer(Overseer):
 
     def update_phase(self):
         item_name = self.get_label('oaat-name', 'unknown')
-        items = OaatItems(kubeobject=self.get_parent())
+        items = OaatItems(kubeobject=self.get_parent(),
+                          set_item_status=self.set_item_status)
 
         items.set_phase(item_name, self.phase)
         raise ProcessingComplete(
             message=f'updating phase for pod {self.name}: {self.phase}')
 
+    def set_item_status(self, item: str, key: str, value: str = None) -> None:
+        self.get_parent().patch({
+            'status': {
+                'items': {
+                    item: {
+                        key: value
+                    }
+                }
+            }
+        })
+
     def get_parent(self):
         """Retrieve the Pod's parent from the parent-name label."""
         namespace = self.namespace if self.namespace else pykube.all
-        query = KubeOaatGroup.objects(self.api, namespace=namespace)
+        query = self.parent_type.objects(self.api, namespace=namespace)
         try:
             parent = (query.get_by_name(
                 self.meta['labels'].get('parent-name')))
         except pykube.exceptions.ObjectDoesNotExist:
             raise ProcessingComplete(
-                info=f'ignoring pod {self.name} as associated OaatGroup '
-                f'object no longer exists'
+                info=f'ignoring pod {self.name} as associated '
+                f'{self.parent_type} object no longer exists'
             )
         if parent:
             return parent
         raise ProcessingComplete(
             info=f'ignoring pod {self.name} as we cannot find the '
-            f'associated OaatGroup object')
+            f'associated {self.parent_type} object')

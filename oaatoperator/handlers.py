@@ -3,7 +3,7 @@ import sys
 import kopf
 import oaatoperator
 from oaatoperator.utility import now_iso, my_name
-from oaatoperator.common import ProcessingComplete
+from oaatoperator.common import ProcessingComplete, KubeOaatGroup
 from oaatoperator.oaatgroup import OaatGroupOverseer
 from oaatoperator.pod import PodOverseer
 
@@ -112,7 +112,7 @@ def pod_phasechange(**kwargs):
     kwargs['logger'].debug(
         f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
-        pod = PodOverseer(**kwargs)
+        pod = PodOverseer(KubeOaatGroup, **kwargs)
     except ProcessingComplete as exc:
         return {'message': f'Error: {exc.ret.get("error")}'}
     pod.info(f'[{my_name()}] {pod.name}')
@@ -146,7 +146,7 @@ def pod_succeeded(**kwargs):
     kwargs['logger'].debug(
         f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
-        pod = PodOverseer(**kwargs)
+        pod = PodOverseer(KubeOaatGroup, **kwargs)
     except ProcessingComplete as exc:
         return {'message': f'Error: {exc.ret.get("error")}'}
 
@@ -179,7 +179,7 @@ def pod_failed(**kwargs):
     kwargs['logger'].debug(
         f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
-        pod = PodOverseer(**kwargs)
+        pod = PodOverseer(KubeOaatGroup, **kwargs)
     except ProcessingComplete as exc:
         return {'message': f'Error: {exc.ret.get("error")}'}
     pod.info(f'[{my_name()}] {pod.name}')
@@ -206,7 +206,7 @@ def cleanup_pod(**kwargs):
     kwargs['logger'].debug(
         f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
-        pod = PodOverseer(**kwargs)
+        pod = PodOverseer(KubeOaatGroup, **kwargs)
     except ProcessingComplete as exc:
         return {'message': f'Error: {exc.ret.get("error")}'}
     pod.info(f'[{my_name()}] {pod.name}')

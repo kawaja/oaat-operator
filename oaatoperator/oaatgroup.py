@@ -33,7 +33,8 @@ class OaatGroupOverseer(Overseer):
         self.oaattypename = self.spec.get('oaatType')
         self.oaattype = OaatType(name=self.oaattypename)
         self.cool_off = parse_duration(self.spec.get('failureCoolOff'))
-        self.items = OaatItems(oaatgroupobject=self)
+        self.items = OaatItems(oaatgroupobject=self,
+                               set_item_status=self.set_item_status)
 
     # TODO: if the oldest item keeps failing, consider running
     # other items which are ready to run
@@ -96,6 +97,11 @@ class OaatGroupOverseer(Overseer):
 
         # Filter out items which have failed within the cool off period
         if self.cool_off is not None:
+            self.debug(f'testing {item["name"]} - '
+                       f'now: {now}, '
+                       f'failure: {item["failure"]}, '
+                       f'cool_off: {self.cool_off}'
+                       f'test: {now < item["failure"] + self.cool_off}')
             if now < item['failure'] + self.cool_off:
                 candidates.remove(item)
                 item_status[item['name']] = (
@@ -131,14 +137,13 @@ class OaatGroupOverseer(Overseer):
         # Get all items which are "oldest"
         oldest_success_time = min(
             [t['success'] for t in candidates])
-        self.debug(f'oldest_success_time: {oldest_success_time}')
         oldest_success_items = [
             item
             for item in candidates
             if item['success'] == oldest_success_time
         ]
 
-        self.debug('oldest_items:\n' +
+        self.debug('oldest_items {oldest_success_time}: ' +
                    ', '.join([i['name'] for i in oldest_success_items]))
 
         if len(oldest_success_items) == 1:
@@ -240,7 +245,7 @@ class OaatGroupOverseer(Overseer):
 
         Ensure there are oaatItems to process.
         """
-        if not self.items.count():
+        if not len(self.items):
             if status_annotation:
                 self.set_annotation(status_annotation, 'missingItems')
             raise ProcessingComplete(
@@ -254,7 +259,7 @@ class OaatGroupOverseer(Overseer):
         if status_annotation:
             self.set_annotation(status_annotation, 'active')
         if count_annotation:
-            self.set_annotation(count_annotation, value=self.items.count())
+            self.set_annotation(count_annotation, value=len(self.items))
 
     def validate_state(self) -> None:
         """
@@ -395,7 +400,7 @@ class OaatGroupOverseer(Overseer):
                 self.set_status('pod')
                 self.set_status('state', 'missing')
                 self.items.mark_failed(curitem)
-                self.items.set_status(curitem, 'pod_detail')
+                self.items.set_item_status(curitem, 'pod_detail')
                 raise ProcessingComplete(
                     info='Cleaned up missing/deleted item')
 
@@ -426,6 +431,13 @@ class OaatGroupOverseer(Overseer):
                       f'recorded_phase={recorded_phase}, '
                       f'status={str(self.status)}',
                 message=f'item {curitem} unexpected state')
+
+    def set_item_status(self, item: str, key: str, value: str = None) -> None:
+        patch = (self.patch
+                 .setdefault('status', {})
+                 .setdefault('items', {})
+                 .setdefault(item, {}))
+        patch[key] = value
 
     def validate_oaat_type(self) -> None:
         """

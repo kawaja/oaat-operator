@@ -13,6 +13,10 @@ class ProcessingComplete(BaseException):
         return self.ret.get('message', '')
 
 
+class InternalError(BaseException):
+    """Internal error in code/design."""
+
+
 class KubeOaatGroup(pykube.objects.NamespacedAPIObject):
     version = 'kawaja.net/v1'
     endpoint = 'oaatgroups'
