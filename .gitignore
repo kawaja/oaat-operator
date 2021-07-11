@@ -7,3 +7,5 @@ __pycache__
 .coverage
 cov.xml
 k3d*
+.venv
+.DS_Store

@@ -15,6 +15,29 @@ from oaatoperator.oaatitem import OaatItems
 from oaatoperator.overseer import Overseer
 
 
+class OaatGroup:
+    """
+    OaatGroup
+
+    Composite object for KOPF and Kubernetes handling
+    """
+    def __init__(self, **kwargs):
+        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+        if 'kube_object' in kwargs:
+            self.kube_object = self.get_kube_object(kwargs.get('kube_object'))
+        if 'kopf_object' in kwargs:
+            self.kopf_object = OaatGroupOverseer(**kwargs.get('kopf_object'))
+
+    def get_kube_object(self, name):
+        namespace = self.namespace if self.namespace else pykube.all
+        try:
+            return (KubeOaatGroup.objects(
+                self.api, namespace=namespace).get_by_name(name))
+        except pykube.exceptions.ObjectDoesNotExist as exc:
+            self.message = f'cannot find Object {self.name}: {exc}'
+            return None
+
+
 class OaatGroupOverseer(Overseer):
     """
     OaatGroupOverseer
@@ -370,68 +393,6 @@ class OaatGroupOverseer(Overseer):
 
         raise ProcessingComplete(
             message=f'Pod {curpod} exists and is in state {podphase}')
-
-    def validate_running_pod(self) -> None:
-        """
-        validate_running_pod
-
-        Check whether the Pod we previously started is still running. If not,
-        assume the job was killed without being processed by the
-        operator (or was never started) and clean up. Mark as failed.
-
-        If Pod is still running, update the status details.
-
-        Returns:
-        - None if no pod is expected
-        - ProcessingComplete exception if pod is expected but not running
-        - ProcessingComplete exception if pod is expected and is running
-        """
-        # TODO: what if a pod is running, but the operator doesn't expect one?
-        curpod = self.get_status('pod')
-        curitem = self.get_status('currently_running')
-        if curpod:
-            try:
-                pod = Pod.objects(
-                    self.api,
-                    namespace=self.namespace).get_by_name(curpod).obj
-            except pykube.exceptions.ObjectDoesNotExist:
-                self.info(
-                    f'pod {curpod} missing/deleted, cleaning up')
-                self.set_status('currently_running')
-                self.set_status('pod')
-                self.set_status('state', 'missing')
-                self.items.mark_failed(curitem)
-                self.items.set_item_status(curitem, 'pod_detail')
-                raise ProcessingComplete(
-                    info='Cleaned up missing/deleted item')
-
-            podphase = pod.get('status', {}).get('phase', 'unknown')
-            self.info(f'validated that pod {curpod} is '
-                      f'still running (phase={podphase})')
-
-            recorded_phase = self.items.status(curitem, 'podphase', 'unknown')
-
-            # valid phases are Pending, Running, Succeeded, Failed, Unknown
-            # 'started' is the phase the pods start with when created by
-            # operator.
-            if recorded_phase in ('started', 'Pending', 'Running', 'Failed'):
-                self.info(f'item {curitem} status for '
-                          f'{curpod}: {recorded_phase}')
-                raise ProcessingComplete(message=f'item {curitem} %s' %
-                                         recorded_phase.lower())
-
-            if recorded_phase == 'Succeeded':
-                self.info(f'item {curitem} podphase={recorded_phase} but '
-                          f'not yet acknowledged: {curpod}')
-                raise ProcessingComplete(
-                    message=f'item {curitem} succeeded, '
-                    'awaiting acknowledgement')
-
-            raise ProcessingComplete(
-                error=f'item {curitem} unexpected state: '
-                      f'recorded_phase={recorded_phase}, '
-                      f'status={str(self.status)}',
-                message=f'item {curitem} unexpected state')
 
     def set_item_status(self, item: str, key: str, value: str = None) -> None:
         patch = (self.patch
