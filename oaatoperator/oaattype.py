@@ -42,7 +42,7 @@ class OaatType:
         """Retrieve Pod specification from this OaatType."""
         if not self.valid:
             raise ProcessingComplete(message='OaatType invalid',
-                                     error='cannot find OaatType {self.name}')
+                                     error=f'cannot find OaatType {self.name}')
         msg = 'error in OaatType definition'
         spec = self.obj.get('spec')
         if spec is None:

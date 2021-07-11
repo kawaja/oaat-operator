@@ -33,7 +33,7 @@ class OaatGroupOverseer(Overseer):
         self.oaattypename = self.spec.get('oaatType')
         self.oaattype = OaatType(name=self.oaattypename)
         self.cool_off = parse_duration(self.spec.get('failureCoolOff'))
-        self.items = OaatItems(oaatgroupobject=self,
+        self.items = OaatItems(obj=self.obj,
                                set_item_status=self.set_item_status)
 
     # TODO: if the oldest item keeps failing, consider running

@@ -37,6 +37,12 @@ class BasicTests(unittest.TestCase):
     kot_notype = {**header, 'spec': {**kot_spec}}
     kot = {**header, 'spec': {**kot_spec, 'type': 'pod'}}
     kot_nospec = {**header}
+    kot_nonepodspec = {
+        **header, 'spec': {'type': 'pod', 'podspec': None}
+    }
+    kot_nopodspec = {
+        **header, 'spec': {'type': 'pod'}
+    }
     kot_nocontainer = {
         **header, 'spec': {'type': 'pod', 'podspec': {'something': 1}}
     }
@@ -76,8 +82,10 @@ class BasicTests(unittest.TestCase):
 
     def test_invalid_none_podspec(self):
         ot = OaatType(None)
-        with self.assertRaises(ProcessingComplete):
+        with self.assertRaises(ProcessingComplete) as exc:
             ot.podspec()
+        self.assertEqual(exc.exception.ret['error'],
+                         'cannot find OaatType None')
 
     def test_podspec_nospec(self):
         setup = object_setUp(KubeOaatType, BasicTests.kot_nospec)
@@ -87,6 +95,24 @@ class BasicTests(unittest.TestCase):
             ot.podspec()
         self.assertEqual(exc.exception.ret['error'],
                          'missing spec in OaatType definition')
+        next(setup)
+
+    def test_podspec_nonepodspec(self):
+        setup = object_setUp(KubeOaatType, BasicTests.kot_nonepodspec)
+        next(setup)
+        ot = OaatType('test-kot')
+        with self.assertRaises(ProcessingComplete) as exc:
+            ot.podspec()
+        self.assertEqual(exc.exception.ret['error'], 'spec.podspec is missing')
+        next(setup)
+
+    def test_podspec_nopodspec(self):
+        setup = object_setUp(KubeOaatType, BasicTests.kot_nopodspec)
+        next(setup)
+        ot = OaatType('test-kot')
+        with self.assertRaises(ProcessingComplete) as exc:
+            ot.podspec()
+        self.assertEqual(exc.exception.ret['error'], 'spec.podspec is missing')
         next(setup)
 
     def test_podspec_nocontainer(self):
@@ -176,9 +202,9 @@ class MiniKubeTests(unittest.TestCase):
         self.assertIsInstance(kot, Query)
 
 #    @pytest.mark.usefixtures('login_mocks')
-    # if this test fails, it could be because there is no 'oaattest'
-    # OaatType loaded. try:
-    #   kubectl apply -f manifests/sample-oaat-type.yaml
+# if this test fails, it could be because there is no 'oaattest'
+# OaatType loaded. try:
+#   kubectl apply -f manifests/sample-oaat-type.yaml
     def test_oaattype_query(self):
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         kot = KubeOaatType.objects(api)

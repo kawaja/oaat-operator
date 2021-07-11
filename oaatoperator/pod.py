@@ -51,7 +51,7 @@ class PodOverseer(Overseer):
         """
         parent = self.get_parent()
         item_name = self.get_label('oaat-name', 'unknown')
-        items = OaatItems(kubeobject=parent)
+        items = OaatItems(obj=parent.obj)
 
         current_last_failure = items.status_date(item_name, 'last_failure')
 
@@ -87,7 +87,7 @@ class PodOverseer(Overseer):
         """
         parent = self.get_parent()
         item_name = self.get_label('oaat-name', 'unknown')
-        items = OaatItems(kubeobject=parent)
+        items = OaatItems(obj=parent.obj)
 
         current_last_success = items.status_date(item_name, 'last_success')
 
@@ -113,7 +113,7 @@ class PodOverseer(Overseer):
 
     def update_phase(self):
         item_name = self.get_label('oaat-name', 'unknown')
-        items = OaatItems(kubeobject=self.get_parent(),
+        items = OaatItems(obj=self.get_parent().obj,
                           set_item_status=self.set_item_status)
 
         items.set_phase(item_name, self.phase)
