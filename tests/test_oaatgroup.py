@@ -175,7 +175,7 @@ class BasicTests(unittest.TestCase):
     def test_invalid_object(self):
         with self.assertRaises(ValueError) as exc:
             OaatGroupOverseer(a=1)
-        self.assertRegexpMatches(
+        self.assertRegex(
             str(exc.exception),
             'Overseer must be called with full kopf kwargs.*')
 
@@ -225,8 +225,8 @@ class FindJobTests(unittest.TestCase):
     def test_noitems(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog_empty)
         ogo.validate_oaat_type()
-        with self.assertRaisesRegex(ProcessingComplete,
-                                    'error in OaatGroup definition'):
+        with self.assertRaisesRegexp(ProcessingComplete,
+                                     'error in OaatGroup definition'):
             ogo.find_job_to_run()
 
     def test_oneitem_noprevious_run(self):
@@ -245,8 +245,8 @@ class FindJobTests(unittest.TestCase):
                 oaatoperator.utility.now_iso(),
                 'failure_count': 0
             }
-        with self.assertRaisesRegex(ProcessingComplete,
-                                    'not time to run next item'):
+        with self.assertRaisesRegexp(ProcessingComplete,
+                                     'not time to run next item'):
             ogo.find_job_to_run()
 
     def test_oneitem_success_outside_freq(self):
@@ -295,11 +295,11 @@ class FindJobTests(unittest.TestCase):
                     .isoformat()),
                 'failure_count': 0
             }
-        with self.assertRaisesRegex(ProcessingComplete,
-                                    'not time to run next item'):
+        with self.assertRaisesRegexp(ProcessingComplete,
+                                     'not time to run next item'):
             ogo.find_job_to_run()
         print(ogo.info.call_args.args[0])
-        self.assertRegexpMatches(
+        self.assertRegex(
             ogo.info.call_args.args[0],
             'item1 cool_off.*not expired since last failure')
 
@@ -339,8 +339,8 @@ class FindJobTests(unittest.TestCase):
                     .isoformat()),
                 'failure_count': 0
             }
-        with self.assertRaisesRegex(ProcessingComplete,
-                                    'not time to run next item'):
+        with self.assertRaisesRegexp(ProcessingComplete,
+                                     'not time to run next item'):
             ogo.find_job_to_run()
 
     # outside both frequency and cooloff => valid job
@@ -454,12 +454,12 @@ class ValidateTests(unittest.TestCase):
 
     def test_validate_items_none(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog_empty)
-        with self.assertRaisesRegex(ProcessingComplete, 'no items found.*'):
+        with self.assertRaisesRegexp(ProcessingComplete, 'no items found.*'):
             ogo.validate_items()
 
     def test_validate_items_none_annotation(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog_empty)
-        with self.assertRaisesRegex(ProcessingComplete, 'no items found.*'):
+        with self.assertRaisesRegexp(ProcessingComplete, 'no items found.*'):
             ogo.validate_items(
                 status_annotation='test-status',
                 count_annotation='test-items')
@@ -603,14 +603,14 @@ class ValidateTests(unittest.TestCase):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         self.kw.setdefault('status', {})['pod'] = 'podname'
         self.kw.setdefault('status', {})['currently_running'] = None
-        with self.assertRaisesRegex(ProcessingComplete, 'internal error'):
+        with self.assertRaisesRegexp(ProcessingComplete, 'internal error'):
             ogo.validate_state()
 
     def test_validate_state_nopod_cr(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         self.kw.setdefault('status', {})['pod'] = None
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
-        with self.assertRaisesRegex(ProcessingComplete, 'internal error'):
+        with self.assertRaisesRegexp(ProcessingComplete, 'internal error'):
             ogo.validate_state()
 
     # def test_validate_running_nothing_expected(self):
@@ -664,8 +664,8 @@ class RunItemTests(unittest.TestCase):
         pod_instance_mock = pod_mock.return_value
         pod_instance_mock.create.side_effect = pykube.KubernetesError(
             'test error')
-        with self.assertRaisesRegex(ProcessingComplete,
-                                    'error creating pod for item1'):
+        with self.assertRaisesRegexp(ProcessingComplete,
+                                     'error creating pod for item1'):
             ogo.run_item('item1')
         print(f'pod_mock: {pod_mock.call_args}')
         pod = pod_mock.call_args.args[1]
