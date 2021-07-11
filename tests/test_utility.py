@@ -16,7 +16,7 @@ class TestDateFromIsoStr(unittest.TestCase):
         self.assertEqual(retdate.timestamp(), 1597460595.950209, retdate)
 
     def test_with_z(self):
-        retdate = date_from_isostr("2020-08-15T03:03:15.950209+00:00")
+        retdate = date_from_isostr("2020-08-15T03:03:15.950209Z")
         self.assertEqual(retdate.timestamp(), 1597460595.950209, retdate)
 
     def test_with_notz(self):
@@ -38,6 +38,9 @@ class ParseTimeTests(unittest.TestCase):
             'time': '0:00',
             'tz': 'Y'
         }), td(0))
+
+    def test_None_time(self):
+        self.assertEqual(parse_time({'time': None}), td(0))
 
     def test_bad_time(self):
         self.assertEqual(parse_time({'time': 'none'}), td(0))

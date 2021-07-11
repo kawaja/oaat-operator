@@ -1,6 +1,7 @@
 import unittest
 from copy import deepcopy
 import datetime
+from time import sleep
 
 from tests.mocks_pykube import object_setUp
 from oaatoperator.oaatgroup import OaatGroupOverseer
@@ -103,6 +104,38 @@ class TestData:
     kog['spec']['oaatItems'] = ['item1']
     kog5 = deepcopy(kog_empty)
     kog5['spec']['oaatItems'] = ['item1', 'item2', 'item3', 'item4', 'item5']
+
+    contspec = {
+        'name': 'test',
+        'image': 'busybox',
+        'command': ['/bin/sleep', '30']
+    }
+
+    pod_spec = {
+        'apiVersion': 'v1',
+        'kind': 'Pod',
+        'metadata': {
+            'generateName': 'oaat-item1-',
+            'labels': {
+                'parent-name': 'test-kog',
+                'app': 'oaat-operator',
+                'oaat-name': 'item1'
+            }
+        },
+        'spec': {
+            'containers': [contspec],
+            'restartPolicy': 'Never'
+        }
+    }
+
+    pod_spec_noapp = deepcopy(pod_spec)
+    del pod_spec_noapp['metadata']['labels']['app']
+    pod_spec_noapp['metadata']['generateName'] = 'oaat-noapp-'
+
+    pod_spec_noapp_or_parent = deepcopy(pod_spec)
+    del pod_spec_noapp_or_parent['metadata']['labels']['app']
+    del pod_spec_noapp_or_parent['metadata']['labels']['parent-name']
+    pod_spec_noapp['metadata']['generateName'] = 'oaat-noapp-or-parent-'
 
 
 class BasicTests(unittest.TestCase):
@@ -455,6 +488,111 @@ class ValidateTests(unittest.TestCase):
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
         self.assertIsNone(ogo.validate_state())
 
+    def test_validate_is_pod_expected(self):
+        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        self.assertFalse(ogo.is_pod_expected())
+        self.kw.setdefault('status', {})['pod'] = 'podname'
+        self.kw.setdefault('status', {})['currently_running'] = 'itemname'
+        self.assertTrue(ogo.is_pod_expected())
+
+    def test_validate_expected_pod(self):
+        pod1 = pykube.Pod(self.api, TestData.pod_spec)
+        pod1.create()
+        while not pod1.ready:
+            pod1.reload()
+            sleep(1)
+        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        self.assertFalse(ogo.is_pod_expected())
+        self.kw.setdefault('status', {})['pod'] = pod1.name
+        self.kw.setdefault('status', {})['currently_running'] = 'itemname'
+        self.assertEqual(ogo.get_status('pod'), pod1.name)
+        with self.assertRaisesRegexp(ProcessingComplete,
+                                     'Pod.*exists and is in state'):
+            ogo.validate_expected_pod_is_running()
+        pod1.obj['metadata']['labels'] = None
+        pod1.update()
+        pod1.delete()
+
+    def test_validate_expected_pod_negative(self):
+        pod1 = pykube.Pod(self.api, TestData.pod_spec)
+        pod1.create()
+        while not pod1.ready:
+            pod1.reload()
+            sleep(1)
+        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        self.assertFalse(ogo.is_pod_expected())
+        self.kw.setdefault('status', {})['pod'] = f'not-{pod1.name}'
+        self.kw.setdefault('status', {})['currently_running'] = 'itemname'
+        with self.assertRaisesRegexp(ProcessingComplete,
+                                     'item.*failed during validation'):
+            ogo.validate_expected_pod_is_running()
+        pod1.obj['metadata']['labels'] = None
+        pod1.update()
+        pod1.delete()
+
+    def test_validate_no_rogue(self):
+        pod1 = pykube.Pod(self.api, TestData.pod_spec)
+        pod1.create()
+        while not pod1.ready:
+            pod1.reload()
+            sleep(1)
+        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        self.assertFalse(ogo.is_pod_expected())
+        self.kw.setdefault('status', {})['pod'] = pod1.name
+        self.kw.setdefault('status', {})['currently_running'] = 'itemname'
+        self.assertEqual(ogo.get_status('pod'), pod1.name)
+        self.assertIsNone(ogo.validate_no_rogue_pods_are_running())
+        pod1.obj['metadata']['labels'] = None
+        pod1.update()
+        pod1.delete()
+
+    def test_validate_rogue_unrelated(self):
+        pod1 = pykube.Pod(self.api, TestData.pod_spec)
+        pod2 = pykube.Pod(self.api, TestData.pod_spec_noapp)
+        pod1.create()
+        pod2.create()
+        while not pod1.ready:
+            pod1.reload()
+            sleep(1)
+        while not pod2.ready:
+            pod2.reload()
+            sleep(1)
+        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        self.assertFalse(ogo.is_pod_expected())
+        self.kw.setdefault('status', {})['pod'] = pod1.name
+        self.kw.setdefault('status', {})['currently_running'] = 'itemname'
+        self.assertIsNone(ogo.validate_no_rogue_pods_are_running())
+        pod1.obj['metadata']['labels'] = None
+        pod2.obj['metadata']['labels'] = None
+        pod1.update()
+        pod2.update()
+        pod1.delete()
+        pod2.delete()
+
+    def test_validate_rogue(self):
+        pod1 = pykube.Pod(self.api, TestData.pod_spec)
+        pod2 = pykube.Pod(self.api, TestData.pod_spec)
+        pod1.create()
+        pod2.create()
+        while not pod1.ready:
+            pod1.reload()
+            sleep(1)
+        while not pod2.ready:
+            pod2.reload()
+            sleep(1)
+        ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        self.assertFalse(ogo.is_pod_expected())
+        self.kw.setdefault('status', {})['pod'] = pod1.name
+        self.kw.setdefault('status', {})['currently_running'] = 'itemname'
+        with self.assertRaisesRegexp(ProcessingComplete, 'rogue pods running'):
+            ogo.validate_no_rogue_pods_are_running()
+        pod1.obj['metadata']['labels'] = None
+        pod2.obj['metadata']['labels'] = None
+        pod1.update()
+        pod2.update()
+        pod1.delete()
+        pod2.delete()
+
     def test_validate_state_nopod_nocr(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         self.kw.setdefault('status', {})['pod'] = None
@@ -475,18 +613,20 @@ class ValidateTests(unittest.TestCase):
         with self.assertRaisesRegex(ProcessingComplete, 'internal error'):
             ogo.validate_state()
 
-    def test_validate_running_nothing_expected(self):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog)
-        self.kw.setdefault('status', {})['pod'] = None
-        self.kw.setdefault('status', {})['currently_running'] = None
-        ogo.validate_running_pod()
+    # def test_validate_running_nothing_expected(self):
+    #     ogo = self.extraSetUp(TestData.kot, TestData.kog)
+    #     self.kw.setdefault('status', {})['pod'] = None
+    #     self.kw.setdefault('status', {})['currently_running'] = None
+    #     ogo.validate_running_pod()
 
-    def test_validate_running_expected_running_but_is_not(self):
-        ogo = self.extraSetUp(TestData.kot, TestData.kog)
-        self.kw.setdefault('status', {})['pod'] = 'podname'
-        self.kw.setdefault('status', {})['currently_running'] = 'itemname'
-        with self.assertRaises(ProcessingComplete):
-            ogo.validate_running_pod()
+    # def test_validate_running_expected_running_but_is_not(self):
+    #     ogo = self.extraSetUp(TestData.kot, TestData.kog)
+    #     self.kw.setdefault('status', {})['pod'] = 'podname'
+    #     self.kw.setdefault('status', {})['currently_running'] = 'itemname'
+    #     with self.assertRaises(ProcessingComplete):
+    #         ogo.validate_running_pod()
+
+    # def test_validate_running_pod_expected_running_and_is(self):
 
 
 class RunItemTests(unittest.TestCase):
