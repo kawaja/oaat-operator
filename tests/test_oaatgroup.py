@@ -252,6 +252,7 @@ class FindJobTests(unittest.TestCase):
         ogo = self.extraSetUp(TestData.kot, kog)
         ogo.validate_oaat_type()
         ogo.debug = print
+        ogo.info = unittest.mock.MagicMock()
         ogo.items.obj.setdefault(
             'status',
             {}).setdefault('items', {})['item1'] = {
@@ -264,6 +265,10 @@ class FindJobTests(unittest.TestCase):
         with self.assertRaisesRegex(ProcessingComplete,
                                     'not time to run next item'):
             ogo.find_job_to_run()
+        print(ogo.info.call_args.args[0])
+        self.assertRegexpMatches(
+            ogo.info.call_args.args[0],
+            'item1 cool_off.*not expired since last failure')
 
     # inside frequency but outside cooloff => valid job
     def test_oneitem_failure_within_freq_outside_cooloff(self):

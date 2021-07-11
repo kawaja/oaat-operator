@@ -73,8 +73,8 @@ class OaatGroupOverseer(Overseer):
                 message='error in OaatGroup definition',
                 error='no items found. please set "oaatItems"')
 
-        self.debug('oaat_items:\n' +
-                   ','.join([i['name'] for i in oaat_items]))
+        self.debug('oaat_items: ' +
+                   ', '.join([i['name'] for i in oaat_items]))
 
         # Filter out items which have been recently successful
         self.debug(f'frequency: {self.freq}s')
@@ -86,34 +86,30 @@ class OaatGroupOverseer(Overseer):
             if now > item['success'] + self.freq:
                 candidates.append(item)
                 item_status[item['name']] = (
-                    f'not successful ({item["success"].isoformat()}) '
-                    f'within last freq ({self.freq}) seconds')
+                    f'not successful within last freq ({self.freq})')
             else:
                 item_status[item['name']] = (
-                    f'successful ({item["success"].isoformat()}) '
-                    f'within last freq ({self.freq}) seconds')
+                    f'successful within last freq ({self.freq})')
 
-        self.debug('Valid, based on success:\n' +
-                   ','.join([i['name'] for i in candidates]))
+        self.debug('Valid, based on success: ' +
+                   ', '.join([i['name'] for i in candidates]))
 
         # Filter out items which have failed within the cool off period
-        if self.cool_off:
-            if now > item['failure'] + self.cool_off:
-                item_status[item['name']] = (
-                    f'cool_off ({self.cool_off}) expired since '
-                    f'last failure ({item["failure"].isoformat()})')
-            else:
+        if self.cool_off is not None:
+            if now < item['failure'] + self.cool_off:
                 candidates.remove(item)
                 item_status[item['name']] = (
                     f'cool_off ({self.cool_off}) not expired since '
-                    f'last failure ({item["failure"].isoformat()})')
+                    f'last failure')
 
-            self.debug('Valid, based on success and failure cool off:\n' +
-                       ','.join([i['name'] for i in candidates]))
+            self.debug('Valid, based on success and failure cool off: ' +
+                       ', '.join([i['name'] for i in candidates]))
 
-        self.debug(
-            'item status:\n' +
+        self.info(
+            'item status (* = candidate):\n' +
             '\n'.join([
+                ('* ' if i in candidates else '- ') +
+                f'{i["name"]} ' +
                 f'{item_status[i["name"]]} ' +
                 f'success={i["success"].isoformat()}, ' +
                 f'failure={i["failure"].isoformat()}, ' +
@@ -143,7 +139,7 @@ class OaatGroupOverseer(Overseer):
         ]
 
         self.debug('oldest_items:\n' +
-                   ','.join([i['name'] for i in oldest_success_items]))
+                   ', '.join([i['name'] for i in oldest_success_items]))
 
         if len(oldest_success_items) == 1:
             return oldest_success_items[0]['name']
@@ -168,8 +164,8 @@ class OaatGroupOverseer(Overseer):
                 if item['failure'] == oldest_failure_time
             ]
 
-            self.debug('oldest_failure_items:\n' +
-                       ','.join([i['name'] for i in oldest_failure_items]))
+            self.debug('oldest_failure_items: ' +
+                       ', '.join([i['name'] for i in oldest_failure_items]))
 
             if len(oldest_failure_items) == 1:
                 return oldest_failure_items[0]['name']
