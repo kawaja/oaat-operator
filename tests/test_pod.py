@@ -92,7 +92,7 @@ class BasicTests(unittest.TestCase):
     def test_invalid_object(self):
         with self.assertRaises(ValueError) as exc:
             PodOverseer(parent_type=unittest.mock.MagicMock(), a=1)
-        self.assertRegexpMatches(
+        self.assertRegex(
             str(exc.exception),
             'Overseer must be called with full kopf kwargs.*')
 
