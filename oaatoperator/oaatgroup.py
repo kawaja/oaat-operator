@@ -488,10 +488,10 @@ class OaatGroupOverseer(Overseer):
             self.set_status('currently_running')
             self.set_status('pod')
             self.set_status('state', 'missing')
-            self.parent.mark_item_failed(curitem)
-            self.parent.set_item_status(curitem, 'pod_detail')
+            self.items.mark_failed(curitem)
+            self.items.set_item_status(curitem, 'pod_detail')
             raise ProcessingComplete(
-                message='item {curitem} failed during validation',
+                message=f'item {curitem} failed during validation',
                 info='Cleaned up missing/deleted item')
 
         podphase = pod.get('status', {}).get('phase', 'unknown')
