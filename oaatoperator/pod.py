@@ -11,29 +11,6 @@ from oaatoperator.common import ProcessingComplete
 from oaatoperator.overseer import Overseer
 
 
-class OaatPod:
-    """
-    OaatPod
-
-    Composite object for KOPF and Kubernetes handling
-    """
-    def __init__(self, **kwargs):
-        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
-        if 'kube_object' in kwargs:
-            self.kube_object = self.get_kube_object(kwargs.get('kube_object'))
-        if 'kopf_object' in kwargs:
-            self.kopf_object = PodOverseer(**kwargs.get('kopf_object'))
-
-    def get_kube_object(self, name):
-        namespace = self.namespace if self.namespace else pykube.all
-        try:
-            return (Pod.objects(
-                self.api, namespace=namespace).get_by_name(name))
-        except pykube.exceptions.ObjectDoesNotExist as exc:
-            self.message = f'cannot find Object {self.name}: {exc}'
-            return None
-
-
 class PodOverseer(Overseer):
     """
     PodOverseer
