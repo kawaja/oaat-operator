@@ -1,5 +1,4 @@
 import unittest
-# from copy import deepcopy
 import datetime
 
 from tests.mocks_pykube import object_setUp
@@ -123,6 +122,23 @@ class TestData:
         }
     }
 
+    kog = copy.deepcopy(kog_empty)
+    kog['spec']['oaatItems'] = ['item1']
+    kog_previous_fail = copy.deepcopy(kog)
+    kog_previous_fail['status']['items'] = {
+        'item1': {
+            'failure_count': 1,
+            'last_failure': failure_time.isoformat()
+        }
+    }
+    kog_previous_success = copy.deepcopy(kog)
+    kog_previous_success['status']['items'] = {
+        'item1': {
+            'failure_count': 0,
+            'last_success': success_time.isoformat()
+        }
+    }
+
 
 class BasicTests(unittest.TestCase):
     def setUp(self):
@@ -156,6 +172,30 @@ class StatusTests(unittest.TestCase):
         return super().setUp()
 
     @patch('oaatoperator.pod.OaatGroup', spec=True)
+    def test_success_old(self, og_mock):
+        og_mock.kopf_object = TestData.kog_previous_success
+        finished_at = (TestData.success_time - datetime.timedelta(hours=2))
+        og_instance_mock = og_mock.return_value
+        og_instance_mock.mark_item_success.return_value = False
+        op = TestData.setup_kwargs(TestData.kp_success)
+        op['status']['containerStatuses'][0]['state']['terminated'][
+            'finishedAt'] = finished_at.isoformat()
+        p = PodOverseer(**op)
+        self.assertIsInstance(p, PodOverseer)
+        with self.assertRaisesRegex(ProcessingComplete,
+                                    'ignoring old successful job pod=test-kp'):
+            p.update_success_status()
+        self.assertEqual(p.finished_at, finished_at)
+        self.assertEqual(
+            og_instance_mock.mark_item_success.call_args,
+            call(op['labels']['oaat-name'], finished_at=finished_at))
+        p.finished_at = 7
+        with self.assertRaisesRegex(ProcessingComplete,
+                                    'ignoring old successful job pod=test-kp'):
+            p.update_success_status()
+        self.assertEqual(p.finished_at, 7)
+
+    @patch('oaatoperator.pod.OaatGroup', spec=True)
     def test_success(self, og):
         og.kopf_object = TestData.kog_empty
         op = TestData.setup_kwargs(TestData.kp_success)
@@ -173,13 +213,38 @@ class StatusTests(unittest.TestCase):
         og.kopf_object = TestData.kog_empty
         op = TestData.setup_kwargs(TestData.kp_failure)
         p = PodOverseer(**op)
+        exit_code = (op['status']['containerStatuses'][0]['state']
+                     ['terminated']['exitCode'])
         self.assertIsInstance(p, PodOverseer)
-        with self.assertRaises(ProcessingComplete):
+        with self.assertRaisesRegex(
+                ProcessingComplete,
+                f'item failed with exit code: {exit_code}'):
             p.update_failure_status()
         self.assertEqual(
             og().mark_item_failed.call_args,
             call(op['labels']['oaat-name'],
                  finished_at=TestData.failure_time,
+                 exit_code=exit_code))
+
+    @patch('oaatoperator.pod.OaatGroup', spec=True)
+    def test_failure_old(self, og_mock):
+        og_mock.kopf_object = TestData.kog_previous_fail
+        og_instance_mock = og_mock.return_value
+        og_instance_mock.mark_item_failed.return_value = False
+        op = TestData.setup_kwargs(TestData.kp_failure)
+        op['status']['containerStatuses'][0]['state']['terminated'][
+            'finishedAt'] = (TestData.failure_time -
+                             datetime.timedelta(hours=2)).isoformat()
+        p = PodOverseer(**op)
+        self.assertIsInstance(p, PodOverseer)
+        with self.assertRaisesRegex(ProcessingComplete,
+                                    'ignoring old failed job pod=test-kp'):
+            p.update_failure_status()
+        self.assertEqual(
+            og_instance_mock.mark_item_failed.call_args,
+            call(op['labels']['oaat-name'],
+                 finished_at=(TestData.failure_time -
+                              datetime.timedelta(hours=2)),
                  exit_code=op['status']['containerStatuses'][0]['state']
                  ['terminated']['exitCode']))
 

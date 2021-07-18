@@ -820,8 +820,8 @@ class OaatGroupTests(unittest.TestCase):
                              datetime.timedelta(hours=2))))
 
     @patch('oaatoperator.utility.now')
-    def test_mark_item_failed_no_date_provided(self, now_iso):
-        now_iso.return_value = (TestData.failure_time +
+    def test_mark_item_failed_no_date_provided(self, now):
+        now.return_value = (TestData.failure_time +
                                 datetime.timedelta(hours=2))
         kog = TestData.kog_previous_fail
         self.extraSetUp(TestData.kot, kog)
@@ -860,8 +860,8 @@ class OaatGroupTests(unittest.TestCase):
                              datetime.timedelta(hours=2))))
 
     @patch('oaatoperator.utility.now')
-    def test_mark_item_success_no_date_provided(self, now_iso):
-        now_iso.return_value = (TestData.success_time +
+    def test_mark_item_success_no_date_provided(self, now):
+        now.return_value = (TestData.success_time +
                                 datetime.timedelta(hours=2))
         kog = TestData.kog_previous_fail
         self.extraSetUp(TestData.kot, kog)
