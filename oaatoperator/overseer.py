@@ -66,7 +66,7 @@ class Overseer:
         """Get a label from the overseen object."""
         return self.meta.get('labels', {}).get(label, default)
 
-    def get_kubeobj(self, reason: str = None):
+    def get_kubeobj(self, reason: str = None) -> object:
         """Get the kube object for the overseen object."""
         namespace = self.namespace if self.namespace else pykube.all
         if self.my_pykube_objtype is None:
