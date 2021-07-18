@@ -4,12 +4,14 @@ import datetime
 from time import sleep
 
 from tests.mocks_pykube import object_setUp
-from oaatoperator.oaatgroup import OaatGroupOverseer
+from oaatoperator.oaatgroup import OaatGroup, OaatGroupOverseer
 from oaatoperator.oaattype import OaatType
-from oaatoperator.common import KubeOaatGroup, KubeOaatType, ProcessingComplete
+from oaatoperator.common import (InternalError, KubeOaatGroup, KubeOaatType,
+                                 ProcessingComplete)
 import oaatoperator.utility
 import pykube
 import unittest.mock
+from unittest.mock import MagicMock, patch
 import logging
 
 UTC = datetime.timezone.utc
@@ -23,17 +25,17 @@ def get_env(env_array, env_var):
 
 class TestData:
     @classmethod
-    def setup_kwargs(cls, kog):
+    def setup_kwargs(cls, obj):
         body = {
-            'spec': kog['spec'],
+            'spec': obj['spec'],
             'metadata': {
                 'namespace': 'default',
-                'name': kog.get('metadata', {}).get('name'),
+                'name': obj.get('metadata', {}).get('name', 'unknown'),
                 'uid': 'uid',
-                'labels': {},
-                'annotations': {}
+                'labels': obj.get('metadata', {}).get('labels', {}),
+                'annotations': obj.get('metadata', {}.get('annotations', {}))
             },
-            'status': {}
+            'status': obj.get('status')
         }
 
         return {
@@ -53,6 +55,9 @@ class TestData:
             'reason': '',
             'old': {}, 'new': {}, 'diff': {}
         }
+
+    failure_time = oaatoperator.utility.now()
+    success_time = oaatoperator.utility.now()
 
     kot = {
         'apiVersion': 'kawaja.net/v1',
@@ -104,6 +109,20 @@ class TestData:
     kog['spec']['oaatItems'] = ['item1']
     kog5 = deepcopy(kog_empty)
     kog5['spec']['oaatItems'] = ['item1', 'item2', 'item3', 'item4', 'item5']
+    kog_previous_fail = deepcopy(kog)
+    kog_previous_fail['status']['items'] = {
+        'item1': {
+            'failure_count': 1,
+            'last_failure': failure_time.isoformat()
+        }
+    }
+    kog_previous_success = deepcopy(kog)
+    kog_previous_success['status']['items'] = {
+        'item1': {
+            'failure_count': 0,
+            'last_success': success_time.isoformat()
+        }
+    }
 
     contspec = {
         'name': 'test',
@@ -151,10 +170,24 @@ class BasicTests(unittest.TestCase):
         setup = object_setUp(KubeOaatGroup, kog)
         next(setup_kot)
         next(setup)
-        ogo = OaatGroupOverseer(**kw)
+        ogo = OaatGroupOverseer(MagicMock(), **kw)
         self.assertIsInstance(ogo, OaatGroupOverseer)
         self.assertEqual(ogo.freq, datetime.timedelta(seconds=60))
         self.assertIsInstance(ogo.oaattype, OaatType)
+        next(setup)  # delete KubeOaatGroup
+        next(setup_kot)  # delete KubeOaatType
+
+    def test_get_kubeobj(self):
+        kog = TestData.kog
+        kw = TestData.setup_kwargs(kog)
+        setup_kot = object_setUp(KubeOaatType, TestData.kot)
+        setup = object_setUp(KubeOaatGroup, kog)
+        next(setup_kot)
+        next(setup)
+        ogo = OaatGroupOverseer(MagicMock(), **kw)
+        kobj = ogo.get_kubeobj()
+        self.assertIsInstance(kobj, KubeOaatGroup)
+        self.assertEqual(kobj.name, kog['metadata']['name'])
         next(setup)  # delete KubeOaatGroup
         next(setup_kot)  # delete KubeOaatType
 
@@ -166,7 +199,7 @@ class BasicTests(unittest.TestCase):
         setup = object_setUp(KubeOaatGroup, kog)
         next(setup_kot)
         next(setup)
-        ogo = OaatGroupOverseer(**kw)
+        ogo = OaatGroupOverseer(MagicMock(), **kw)
         ogo.validate_oaat_type()
         next(setup)  # delete KubeOaatGroup
         next(setup_kot)  # delete KubeOaatType
@@ -174,14 +207,14 @@ class BasicTests(unittest.TestCase):
 #    @pytest.mark.usefixtures('login_mocks')
     def test_invalid_object(self):
         with self.assertRaises(ValueError) as exc:
-            OaatGroupOverseer(a=1)
+            OaatGroupOverseer(MagicMock(), a=1)
         self.assertRegex(
             str(exc.exception),
             'Overseer must be called with full kopf kwargs.*')
 
     def test_invalid_none(self):
         with self.assertRaises(TypeError):
-            OaatGroupOverseer(None)
+            OaatGroupOverseer(MagicMock(), None)
 
     def test_podspec_emptyspec(self):
         kog = TestData.kog_emptyspec
@@ -190,7 +223,7 @@ class BasicTests(unittest.TestCase):
         setup = object_setUp(KubeOaatGroup, kog)
         next(setup_kot)
         next(setup)
-        og = OaatGroupOverseer(**kw)
+        og = OaatGroupOverseer(MagicMock(), **kw)
         with self.assertRaises(ProcessingComplete) as exc:
             og.validate_oaat_type()
         self.assertEqual(exc.exception.ret['error'],
@@ -213,11 +246,11 @@ class FindJobTests(unittest.TestCase):
 
     def extraSetUp(self, kot, kog):
         kw = TestData.setup_kwargs(kog)
-        self.setup_kot = object_setUp(KubeOaatType, kot)
-        self.setup = object_setUp(KubeOaatGroup, kog)
+        self.setup_kot = object_setUp(KubeOaatType, deepcopy(kot))
+        self.setup = object_setUp(KubeOaatGroup, deepcopy(kog))
         next(self.setup_kot)
         next(self.setup)
-        ogo = OaatGroupOverseer(**kw)
+        ogo = OaatGroupOverseer(MagicMock(), **kw)
         self.assertIsInstance(ogo, OaatGroupOverseer)
         self.assertIsInstance(ogo.oaattype, OaatType)
         return ogo
@@ -225,8 +258,8 @@ class FindJobTests(unittest.TestCase):
     def test_noitems(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog_empty)
         ogo.validate_oaat_type()
-        with self.assertRaisesRegexp(ProcessingComplete,
-                                     'error in OaatGroup definition'):
+        with self.assertRaisesRegex(ProcessingComplete,
+                                    'error in OaatGroup definition'):
             ogo.find_job_to_run()
 
     def test_oneitem_noprevious_run(self):
@@ -245,8 +278,8 @@ class FindJobTests(unittest.TestCase):
                 oaatoperator.utility.now_iso(),
                 'failure_count': 0
             }
-        with self.assertRaisesRegexp(ProcessingComplete,
-                                     'not time to run next item'):
+        with self.assertRaisesRegex(ProcessingComplete,
+                                    'not time to run next item'):
             ogo.find_job_to_run()
 
     def test_oneitem_success_outside_freq(self):
@@ -295,8 +328,8 @@ class FindJobTests(unittest.TestCase):
                     .isoformat()),
                 'failure_count': 0
             }
-        with self.assertRaisesRegexp(ProcessingComplete,
-                                     'not time to run next item'):
+        with self.assertRaisesRegex(ProcessingComplete,
+                                    'not time to run next item'):
             ogo.find_job_to_run()
         print(ogo.info.call_args.args[0])
         self.assertRegex(
@@ -339,8 +372,8 @@ class FindJobTests(unittest.TestCase):
                     .isoformat()),
                 'failure_count': 0
             }
-        with self.assertRaisesRegexp(ProcessingComplete,
-                                     'not time to run next item'):
+        with self.assertRaisesRegex(ProcessingComplete,
+                                    'not time to run next item'):
             ogo.find_job_to_run()
 
     # outside both frequency and cooloff => valid job
@@ -442,24 +475,24 @@ class ValidateTests(unittest.TestCase):
         return super().tearDown()
 
     def extraSetUp(self, kot, kog):
-        self.kw = TestData.setup_kwargs(kog)
-        self.setup_kot = object_setUp(KubeOaatType, kot)
-        self.setup = object_setUp(KubeOaatGroup, kog)
+        self.kw = TestData.setup_kwargs(deepcopy(kog))
+        self.setup_kot = object_setUp(KubeOaatType, deepcopy(kot))
+        self.setup = object_setUp(KubeOaatGroup, deepcopy(kog))
         next(self.setup_kot)
         next(self.setup)
-        ogo = OaatGroupOverseer(**self.kw)
+        ogo = OaatGroupOverseer(MagicMock(), **self.kw)
         self.assertIsInstance(ogo, OaatGroupOverseer)
         self.assertIsInstance(ogo.oaattype, OaatType)
         return ogo
 
     def test_validate_items_none(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog_empty)
-        with self.assertRaisesRegexp(ProcessingComplete, 'no items found.*'):
+        with self.assertRaisesRegex(ProcessingComplete, 'no items found.*'):
             ogo.validate_items()
 
     def test_validate_items_none_annotation(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog_empty)
-        with self.assertRaisesRegexp(ProcessingComplete, 'no items found.*'):
+        with self.assertRaisesRegex(ProcessingComplete, 'no items found.*'):
             ogo.validate_items(
                 status_annotation='test-status',
                 count_annotation='test-items')
@@ -506,8 +539,8 @@ class ValidateTests(unittest.TestCase):
         self.kw.setdefault('status', {})['pod'] = pod1.name
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
         self.assertEqual(ogo.get_status('pod'), pod1.name)
-        with self.assertRaisesRegexp(ProcessingComplete,
-                                     'Pod.*exists and is in state'):
+        with self.assertRaisesRegex(ProcessingComplete,
+                                    'Pod.*exists and is in state'):
             ogo.validate_expected_pod_is_running()
         pod1.obj['metadata']['labels'] = None
         pod1.update()
@@ -523,8 +556,8 @@ class ValidateTests(unittest.TestCase):
         self.assertFalse(ogo.is_pod_expected())
         self.kw.setdefault('status', {})['pod'] = f'not-{pod1.name}'
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
-        with self.assertRaisesRegexp(ProcessingComplete,
-                                     'item.*failed during validation'):
+        with self.assertRaisesRegex(ProcessingComplete,
+                                    'item.*failed during validation'):
             ogo.validate_expected_pod_is_running()
         pod1.obj['metadata']['labels'] = None
         pod1.update()
@@ -584,7 +617,7 @@ class ValidateTests(unittest.TestCase):
         self.assertFalse(ogo.is_pod_expected())
         self.kw.setdefault('status', {})['pod'] = pod1.name
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
-        with self.assertRaisesRegexp(ProcessingComplete, 'rogue pods running'):
+        with self.assertRaisesRegex(ProcessingComplete, 'rogue pods running'):
             ogo.validate_no_rogue_pods_are_running()
         pod1.obj['metadata']['labels'] = None
         pod2.obj['metadata']['labels'] = None
@@ -603,14 +636,14 @@ class ValidateTests(unittest.TestCase):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         self.kw.setdefault('status', {})['pod'] = 'podname'
         self.kw.setdefault('status', {})['currently_running'] = None
-        with self.assertRaisesRegexp(ProcessingComplete, 'internal error'):
+        with self.assertRaisesRegex(ProcessingComplete, 'internal error'):
             ogo.validate_state()
 
     def test_validate_state_nopod_cr(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         self.kw.setdefault('status', {})['pod'] = None
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
-        with self.assertRaisesRegexp(ProcessingComplete, 'internal error'):
+        with self.assertRaisesRegex(ProcessingComplete, 'internal error'):
             ogo.validate_state()
 
     # def test_validate_running_nothing_expected(self):
@@ -635,18 +668,18 @@ class RunItemTests(unittest.TestCase):
         return super().setUp()
 
     def extraSetUp(self, kot, kog):
-        self.kw = TestData.setup_kwargs(kog)
-        self.setup_kot = object_setUp(KubeOaatType, kot)
-        self.setup = object_setUp(KubeOaatGroup, kog)
+        self.kw = TestData.setup_kwargs(deepcopy(kog))
+        self.setup_kot = object_setUp(KubeOaatType, deepcopy(kot))
+        self.setup = object_setUp(KubeOaatGroup, deepcopy(kog))
         next(self.setup_kot)
         next(self.setup)
-        ogo = OaatGroupOverseer(**self.kw)
+        ogo = OaatGroupOverseer(MagicMock(), **self.kw)
         self.assertIsInstance(ogo, OaatGroupOverseer)
         self.assertIsInstance(ogo.oaattype, OaatType)
         return ogo
 
     @unittest.mock.patch('kopf.adopt')
-    @unittest.mock.patch('oaatoperator.oaatgroup.Pod')
+    @unittest.mock.patch('pykube.Pod')
     def test_sunny(self, pod_mock, kopf_adopt_mock):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         ogo.validate_oaat_type()
@@ -657,15 +690,15 @@ class RunItemTests(unittest.TestCase):
             get_env(pod['spec']['containers'][0]['env'], 'OAAT_ITEM'), 'item1')
 
     @unittest.mock.patch('kopf.adopt')
-    @unittest.mock.patch('oaatoperator.oaatgroup.Pod')
+    @unittest.mock.patch('pykube.Pod')
     def test_podfail(self, pod_mock, kopf_adopt_mock):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         ogo.validate_oaat_type()
         pod_instance_mock = pod_mock.return_value
         pod_instance_mock.create.side_effect = pykube.KubernetesError(
             'test error')
-        with self.assertRaisesRegexp(ProcessingComplete,
-                                     'error creating pod for item1'):
+        with self.assertRaisesRegex(ProcessingComplete,
+                                    'error creating pod for item1'):
             ogo.run_item('item1')
         print(f'pod_mock: {pod_mock.call_args}')
         pod = pod_mock.call_args.args[1]
@@ -674,7 +707,7 @@ class RunItemTests(unittest.TestCase):
             get_env(pod['spec']['containers'][0]['env'], 'OAAT_ITEM'), 'item1')
 
     @unittest.mock.patch('kopf.adopt')
-    @unittest.mock.patch('oaatoperator.oaatgroup.Pod')
+    @unittest.mock.patch('pykube.Pod')
     def test_substitute(self, pod_mock, kopf_adopt_mock):
         kot = TestData.kot
         kot['spec']['podspec']['container']['command'] = [
@@ -708,6 +741,149 @@ class RunItemTests(unittest.TestCase):
         self.assertEqual(
             get_env(pod['spec']['containers'][0]['env'], 'second'),
             'abcitem1def')
+
+
+class OaatGroupTests(unittest.TestCase):
+    def setUp(self):
+        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+        self.setup = None
+        self.setup_kot = None
+        return super().setUp()
+
+    def tearDown(self):
+        if self.setup:
+            next(self.setup)  # delete KubeOaatGroup
+        if self.setup_kot:
+            next(self.setup_kot)  # delete KubeOaatType
+        return super().tearDown()
+
+    def extraSetUp(self, kot, kog):
+        self.kw = TestData.setup_kwargs(deepcopy(kog))
+        self.setup_kot = object_setUp(KubeOaatType, deepcopy(kot))
+        self.setup = object_setUp(KubeOaatGroup, deepcopy(kog))
+        next(self.setup_kot)
+        next(self.setup)
+
+    def test_create_none(self):
+        with self.assertRaisesRegex(InternalError,
+                                    'OaatGroup must be called with either.*'):
+            OaatGroup()
+
+    def test_create_with_kubeobj(self):
+        kog = TestData.kog
+        self.extraSetUp(TestData.kot, kog)
+        og = OaatGroup(kube_object='test-kog')
+        self.assertIsInstance(og.kube_object, KubeOaatGroup)
+        self.assertEqual(og.kopf_object, None)
+        self.assertEqual(og.kube_object.name, kog['metadata']['name'])
+        self.assertEqual(og.namespace(), 'default')
+
+    def test_create_with_kopfobj(self):
+        kog = TestData.kog
+        self.extraSetUp(TestData.kot, kog)
+        og = OaatGroup(kopf_object={**self.kw})
+        self.assertIsInstance(og.kube_object, KubeOaatGroup)
+        self.assertIsInstance(og.kopf_object, OaatGroupOverseer)
+        self.assertEqual(og.kube_object.name, kog['metadata']['name'])
+        self.assertEqual(og.kopf_object.name, kog['metadata']['name'])
+        self.assertEqual(og.namespace(), 'default')
+
+    def test_mark_failed_invalid_finished_at(self):
+        kog = TestData.kog_previous_fail
+        self.extraSetUp(TestData.kot, kog)
+        og = OaatGroup(kopf_object={**self.kw})
+        with self.assertRaisesRegex(
+                ValueError, 'mark_item_failed finished_at= should '
+                'be datetime.datetime object'):
+            og.mark_item_failed(
+                'item1',
+                finished_at='hello')
+
+    def test_mark_item_failed_new_failure(self):
+        kog = TestData.kog_previous_fail
+        self.extraSetUp(TestData.kot, kog)
+        og = OaatGroup(kopf_object={**self.kw})
+        self.assertTrue(
+            og.mark_item_failed(
+                'item1',
+                finished_at=(TestData.failure_time +
+                             datetime.timedelta(hours=2))))
+
+    def test_mark_item_failed_old_failure(self):
+        kog = TestData.kog_previous_fail
+        self.extraSetUp(TestData.kot, kog)
+        og = OaatGroup(kopf_object={**self.kw})
+        self.assertFalse(
+            og.mark_item_failed(
+                'item1',
+                finished_at=(TestData.failure_time -
+                             datetime.timedelta(hours=2))))
+
+    @patch('oaatoperator.utility.now')
+    def test_mark_item_failed_no_date_provided(self, now_iso):
+        now_iso.return_value = (TestData.failure_time +
+                                datetime.timedelta(hours=2))
+        kog = TestData.kog_previous_fail
+        self.extraSetUp(TestData.kot, kog)
+        og = OaatGroup(kopf_object={**self.kw})
+        self.assertTrue(og.mark_item_failed('item1'))
+
+    def test_mark_success_invalid_finished_at(self):
+        kog = TestData.kog_previous_success
+        self.extraSetUp(TestData.kot, kog)
+        og = OaatGroup(kopf_object={**self.kw})
+        with self.assertRaisesRegex(
+                ValueError, 'mark_item_success finished_at= should '
+                'be datetime.datetime object'):
+            og.mark_item_success(
+                'item1',
+                finished_at='hello')
+
+    def test_mark_item_success_new_success(self):
+        kog = TestData.kog_previous_success
+        self.extraSetUp(TestData.kot, kog)
+        og = OaatGroup(kopf_object={**self.kw})
+        self.assertTrue(
+            og.mark_item_success(
+                'item1',
+                finished_at=(TestData.success_time +
+                             datetime.timedelta(hours=2))))
+
+    def test_mark_item_success_old_success(self):
+        kog = TestData.kog_previous_success
+        self.extraSetUp(TestData.kot, kog)
+        og = OaatGroup(kopf_object={**self.kw})
+        self.assertFalse(
+            og.mark_item_success(
+                'item1',
+                finished_at=(TestData.success_time -
+                             datetime.timedelta(hours=2))))
+
+    @patch('oaatoperator.utility.now')
+    def test_mark_item_success_no_date_provided(self, now_iso):
+        now_iso.return_value = (TestData.success_time +
+                                datetime.timedelta(hours=2))
+        kog = TestData.kog_previous_fail
+        self.extraSetUp(TestData.kot, kog)
+        og = OaatGroup(kopf_object={**self.kw})
+        self.assertTrue(og.mark_item_success('item1'))
+
+    def test_find_job_oneitem_noprevious_run(self):
+        self.extraSetUp(TestData.kot, TestData.kog)
+        og = OaatGroup(kopf_object={**self.kw})
+        job = og.find_job_to_run()
+        self.assertEqual(job, 'item1')
+
+    @unittest.mock.patch('kopf.adopt')
+    @unittest.mock.patch('pykube.Pod')
+    def test_run_itme_sunny(self, pod_mock, kopf_adopt_mock):
+        self.extraSetUp(TestData.kot, TestData.kog)
+        og = OaatGroup(kopf_object={**self.kw})
+        og.run_item('item1')
+        pod = pod_mock.call_args.args[1]
+        self.assertEqual(pod['metadata']['labels']['oaat-name'], 'item1')
+        self.assertEqual(
+            get_env(pod['spec']['containers'][0]['env'], 'OAAT_ITEM'), 'item1')
 
 # TODO:
 # - find_job_to_run()

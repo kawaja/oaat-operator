@@ -30,6 +30,8 @@ def is_succeeded(status, **_):
 def configure(settings: kopf.OperatorSettings, **_):
     """Set kopf configuration."""
     settings.posting.level = logging.INFO
+    settings.persistence.progress_storage = kopf.AnnotationsProgressStorage(
+        prefix='kawaja.net')
     print('Oaat Operator Version: ' +
           getattr(oaatoperator, '__version__', '<not set>'),
           file=sys.stderr)
@@ -78,7 +80,7 @@ def oaat_timer(**kwargs):
         # Found an oaatgroup job to run, now run it
         oaatgroup.info(f'running item {item_name}')
         oaatgroup.set_status('state', 'running')
-        oaatgroup.items.set_phase(item_name, 'started')
+        oaatgroup.set_item_status(item_name, 'podphase', 'started')
         oaatgroup.set_status('currently_running', item_name)
         podobj = oaatgroup.run_item(item_name)
         oaatgroup.set_status('pod', podobj.metadata['name'])

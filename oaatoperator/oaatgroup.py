@@ -4,12 +4,12 @@ oaatgroup.py
 Overseer object for managing OaatGroup objects.
 """
 from random import randrange
+import datetime
 import kopf
 import pykube
-from pykube import Pod
-from oaatoperator.utility import parse_duration
 import oaatoperator.utility
-from oaatoperator.common import ProcessingComplete, KubeOaatGroup
+from oaatoperator.common import (InternalError, ProcessingComplete,
+                                 KubeOaatGroup)
 from oaatoperator.oaattype import OaatType
 from oaatoperator.oaatitem import OaatItems
 from oaatoperator.overseer import Overseer
@@ -21,21 +21,137 @@ class OaatGroup:
 
     Composite object for KOPF and Kubernetes handling
     """
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
-        if 'kube_object' in kwargs:
-            self.kube_object = self.get_kube_object(kwargs.get('kube_object'))
-        if 'kopf_object' in kwargs:
-            self.kopf_object = OaatGroupOverseer(**kwargs.get('kopf_object'))
+        self.kopf_object = None
+        self.kube_object = None
+        self.items = None
+        kube_object_name = None
 
-    def get_kube_object(self, name):
-        namespace = self.namespace if self.namespace else pykube.all
+        if 'kopf_object' in kwargs:
+            self.kopf_object = OaatGroupOverseer(self,
+                                                 **kwargs.get('kopf_object'))
+            self.items = OaatItems(obj=kwargs.get('kopf_object'))
+            kube_object_name = self.kopf_object.name
+        if 'kube_object' in kwargs:
+            kube_object_name = kwargs.get('kube_object')
+        if kube_object_name is None:
+            raise InternalError(
+                f'{self.__class__.__name__} must be called with either a '
+                'kopf_object= kopf context or a kube_object= name')
+        self.kube_object = self.get_kube_object(kube_object_name)
+        if self.items is None:
+            self.items = OaatItems(obj=self.kube_object)
+
+    def namespace(self) -> str:
+        if self.kopf_object:
+            return self.kopf_object.namespace
+        if self.kube_object:
+            return self.kube_object.metadata.get('namespace')
+        return None
+
+    def get_kube_object(self, name: str) -> KubeOaatGroup:
+        namespace = self.namespace()
+
         try:
             return (KubeOaatGroup.objects(
                 self.api, namespace=namespace).get_by_name(name))
         except pykube.exceptions.ObjectDoesNotExist as exc:
             self.message = f'cannot find Object {self.name}: {exc}'
             return None
+
+    def find_job_to_run(self) -> str:
+        # find_job_to_run should only be called when kopf is operating on
+        # an oaatgroup
+        return self.kopf_object.find_job_to_run()
+
+    def run_item(self, item_name: str) -> dict:
+        # run_item should only be called when kopf is operating on an oaatgroup
+        return self.kopf_object.run_item(item_name)
+
+    def mark_item_failed(self,
+                         item_name: str,
+                         finished_at: datetime.datetime = None,
+                         exit_code: int = -1) -> bool:
+        """Mark an item as failed."""
+
+        current_last_failure = self.items.status_date(item_name,
+                                                      'last_failure')
+        if not finished_at:
+            finished_at = oaatoperator.utility.now()
+        if not isinstance(finished_at, datetime.datetime):
+            raise ValueError(
+                'mark_item_failed finished_at= should be '
+                'datetime.datetime object')
+
+        if finished_at > current_last_failure:
+            failure_count = self.items.status(item_name, 'failure_count', 0)
+            self.set_item_status(item_name, 'failure_count', failure_count + 1)
+            self.set_item_status(item_name, 'last_failure', finished_at)
+
+            # TODO: if via kopf, will this get overwritten by handler exit?
+            self.kube_object.patch({
+                'status': {
+                    'currently_running': None,
+                    'pod': None,
+                    'oaat_timer': {
+                        'message':
+                        f'item {item_name} failed with exit '
+                        f'code {exit_code}'
+                    },
+                    'state': 'idle',
+                }
+            })
+            return True
+        return False
+
+    def mark_item_success(self,
+                          item_name: str,
+                          finished_at: datetime.datetime = None) -> bool:
+        """Mark an item as succeeded."""
+
+        current_last_success = self.items.status_date(item_name,
+                                                      'last_success')
+        if not finished_at:
+            finished_at = oaatoperator.utility.now()
+        if not isinstance(finished_at, datetime.datetime):
+            raise ValueError(
+                'mark_item_success finished_at= should be '
+                'datetime.datetime object')
+
+        if finished_at > current_last_success:
+            self.set_item_status(item_name, 'failure_count', 0)
+            self.set_item_status(item_name, 'last_success', finished_at)
+
+            # TODO: if via kopf, will this get overwritten by handler exit?
+            self.kube_object.patch({
+                'status': {
+                    'currently_running': None,
+                    'pod': None,
+                    'oaat_timer': {
+                        'message': f'item {item_name} completed '
+                    },
+                    'state': 'idle',
+                }
+            })
+            return True
+        return False
+
+    def set_item_status(self,
+                        item_name: str,
+                        key: str,
+                        value: str = None) -> None:
+        if self.kopf_object is None:
+            self.kube_object.patch(
+                {'status': {
+                    'items': {
+                        item_name: {
+                            key: value
+                        }
+                    }
+                }})
+        else:
+            self.kopf_object._set_item_status(item_name, key, value)
 
 
 class OaatGroupOverseer(Overseer):
@@ -46,18 +162,20 @@ class OaatGroupOverseer(Overseer):
 
     Initialise with the kwargs for a OaatGroup kopf handler.
     """
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, parent: OaatGroup, **kwargs) -> None:
         super().__init__(**kwargs)
+        self.my_pykube_objtype = KubeOaatGroup
         self.obj = kwargs
+        self.parent = parent
         self.spec = kwargs.get('spec', {})
         self.body = kwargs.get('body')
-        self.freq = parse_duration(self.spec.get('frequency', '1h'))
-        self.my_pykube_objtype = KubeOaatGroup
+        self.freq = oaatoperator.utility.parse_duration(
+            self.spec.get('frequency', '1h'))
         self.oaattypename = self.spec.get('oaatType')
         self.oaattype = OaatType(name=self.oaattypename)
-        self.cool_off = parse_duration(self.spec.get('failureCoolOff'))
-        self.items = OaatItems(obj=self.obj,
-                               set_item_status=self.set_item_status)
+        self.cool_off = oaatoperator.utility.parse_duration(
+            self.spec.get('failureCoolOff'))
+        self.items = OaatItems(obj=self.obj)
 
     # TODO: if the oldest item keeps failing, consider running
     # other items which are ready to run
@@ -250,12 +368,12 @@ class OaatGroupOverseer(Overseer):
         }
 
         kopf.adopt(doc)
-        pod = Pod(self.api, doc)
+        pod = pykube.Pod(self.api, doc)
 
         try:
             pod.create()
         except pykube.exceptions.KubernetesError as exc:
-            self.items.mark_failed(item_name)
+            self.parent.mark_item_failed(item_name)
             raise ProcessingComplete(
                 error=f'could not create pod {doc}: {exc}',
                 message=f'error creating pod for {item_name}')
@@ -318,7 +436,8 @@ class OaatGroupOverseer(Overseer):
 
     def validate_no_rogue_pods_are_running(self) -> None:
         found_rogue = 0
-        for pod in Pod.objects(self.api, namespace=self.namespace).iterator():
+        for pod in pykube.Pod.objects(self.api,
+                                      namespace=self.namespace).iterator():
             if pod.name == self.get_status('pod'):
                 continue
             if pod.labels.get('parent-name', '') == self.name:
@@ -360,7 +479,7 @@ class OaatGroupOverseer(Overseer):
         curpod = self.get_status('pod')
         curitem = self.get_status('currently_running')
         try:
-            pod = Pod.objects(
+            pod = pykube.Pod.objects(
                 self.api,
                 namespace=self.namespace).get_by_name(curpod).obj
         except pykube.exceptions.ObjectDoesNotExist:
@@ -369,8 +488,8 @@ class OaatGroupOverseer(Overseer):
             self.set_status('currently_running')
             self.set_status('pod')
             self.set_status('state', 'missing')
-            self.items.mark_failed(curitem)
-            self.items.set_item_status(curitem, 'pod_detail')
+            self.parent.mark_item_failed(curitem)
+            self.parent.set_item_status(curitem, 'pod_detail')
             raise ProcessingComplete(
                 message=f'item {curitem} failed during validation',
                 info='Cleaned up missing/deleted item')
@@ -394,11 +513,14 @@ class OaatGroupOverseer(Overseer):
         raise ProcessingComplete(
             message=f'Pod {curpod} exists and is in state {podphase}')
 
-    def set_item_status(self, item: str, key: str, value: str = None) -> None:
+    def _set_item_status(self,
+                         item_name: str,
+                         key: str,
+                         value: str = None) -> None:
         patch = (self.patch
                  .setdefault('status', {})
                  .setdefault('items', {})
-                 .setdefault(item, {}))
+                 .setdefault(item_name, {}))
         patch[key] = value
 
     def validate_oaat_type(self) -> None:

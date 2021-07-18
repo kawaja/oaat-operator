@@ -4,9 +4,13 @@ import datetime
 
 from tests.mocks_pykube import object_setUp
 from oaatoperator.pod import PodOverseer
+from oaatoperator.common import ProcessingComplete
+import oaatoperator.utility
 import pykube
 from pykube import Pod
 import unittest.mock
+from unittest.mock import patch, call
+import copy
 import logging
 
 UTC = datetime.timezone.utc
@@ -20,17 +24,17 @@ def get_env(env_array, env_var):
 
 class TestData:
     @classmethod
-    def setup_kwargs(cls, kog):
+    def setup_kwargs(cls, obj):
         body = {
-            'spec': kog['spec'],
+            'spec': obj['spec'],
             'metadata': {
                 'namespace': 'default',
-                'name': kog.get('metadata', {}).get('name'),
+                'name': obj.get('metadata', {}).get('name', 'unknown'),
                 'uid': 'uid',
-                'labels': {},
-                'annotations': {}
+                'labels': obj.get('metadata', {}).get('labels', {}),
+                'annotations': obj.get('metadata', {}.get('annotations', {}))
             },
-            'status': {}
+            'status': obj.get('status')
         }
 
         return {
@@ -55,9 +59,12 @@ class TestData:
         'apiVersion': 'v1',
         'kind': 'Pod',
         'metadata': {
-            'name': 'test-kp'
+            'name': 'test-kp',
+            'labels': {'parent-name': 'test-kog', 'oaat-name': 'item'}
         },
-        'status': {},
+        'status': {
+            'phase': 'Running'
+        },
         'spec': {
             'containers': [
                 {
@@ -74,6 +81,48 @@ class TestData:
         }
     }
 
+    failure_time = oaatoperator.utility.now()
+    kp_failure = copy.deepcopy(kp)
+    kp_failure['status'] = {
+        'phase': 'Failed',
+        'containerStatuses': [{
+            'state': {
+                'terminated': {
+                    'exitCode': 5,
+                    'finishedAt': failure_time.isoformat()
+                }
+            }
+        }]
+    }
+
+    success_time = oaatoperator.utility.now()
+    kp_success = copy.deepcopy(kp)
+    kp_success['status'] = {
+        'phase': 'Completed',
+        'containerStatuses': [{
+            'state': {
+                'terminated': {
+                    'exitCode': 0,
+                    'finishedAt': success_time.isoformat()
+                }
+            }
+        }]
+    }
+
+    kog_empty = {
+        'apiVersion': 'kawaja.net/v1',
+        'kind': 'OaatGroup',
+        'metadata': {
+            'name': 'test-kog'
+        },
+        'status': {},
+        'spec': {
+            'frequency': '1m',
+            'oaatType': 'test-kot',
+            'oaatItems': []
+        }
+    }
+
 
 class BasicTests(unittest.TestCase):
     def setUp(self):
@@ -85,20 +134,63 @@ class BasicTests(unittest.TestCase):
         kw = TestData.setup_kwargs(kp)
         setup_kp = object_setUp(Pod, TestData.kp)
         next(setup_kp)
-        op = PodOverseer(object, **kw)
+        op = PodOverseer(**kw)
         self.assertIsInstance(op, PodOverseer)
         next(setup_kp)  # delete Pod
 
     def test_invalid_object(self):
         with self.assertRaises(ValueError) as exc:
-            PodOverseer(parent_type=unittest.mock.MagicMock(), a=1)
+            PodOverseer(a=1)
         self.assertRegex(
             str(exc.exception),
             'Overseer must be called with full kopf kwargs.*')
 
     def test_invalid_none(self):
         with self.assertRaises(TypeError):
-            PodOverseer(unittest.mock.MagicMock(), None)
+            PodOverseer(None)
 
-# TODO:
-#   - create
+
+class StatusTests(unittest.TestCase):
+    def setUp(self):
+        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+        return super().setUp()
+
+    @patch('oaatoperator.pod.OaatGroup', spec=True)
+    def test_success(self, og):
+        og.kopf_object = TestData.kog_empty
+        op = TestData.setup_kwargs(TestData.kp_success)
+        p = PodOverseer(**op)
+        self.assertIsInstance(p, PodOverseer)
+        with self.assertRaises(ProcessingComplete):
+            p.update_success_status()
+        self.assertEqual(
+            og().mark_item_success.call_args,
+            call(op['labels']['oaat-name'],
+                 finished_at=TestData.success_time))
+
+    @patch('oaatoperator.pod.OaatGroup', spec=True)
+    def test_failure(self, og):
+        og.kopf_object = TestData.kog_empty
+        op = TestData.setup_kwargs(TestData.kp_failure)
+        p = PodOverseer(**op)
+        self.assertIsInstance(p, PodOverseer)
+        with self.assertRaises(ProcessingComplete):
+            p.update_failure_status()
+        self.assertEqual(
+            og().mark_item_failed.call_args,
+            call(op['labels']['oaat-name'],
+                 finished_at=TestData.failure_time,
+                 exit_code=op['status']['containerStatuses'][0]['state']
+                 ['terminated']['exitCode']))
+
+    @patch('oaatoperator.pod.OaatGroup', spec=True)
+    def test_update_phase(self, og):
+        og.kopf_object = TestData.kog_empty
+        op = TestData.setup_kwargs(TestData.kp)
+        p = PodOverseer(**op)
+        self.assertIsInstance(p, PodOverseer)
+        with self.assertRaisesRegex(
+                ProcessingComplete, f'updating phase for pod {op["name"]}: '
+                f'{op["status"]["phase"]}'):
+            p.update_phase()
+        print(og.call_args_list)
