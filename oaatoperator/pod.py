@@ -58,7 +58,7 @@ class PodOverseer(Overseer):
                 error=f'item failed with exit code: {self.exitcode}',
                 message=f'item failed with exit code: {self.exitcode}')
         raise ProcessingComplete(
-            info=f'ignoring old failed job {self.name}')
+            message=f'ignoring old failed job pod={self.name}')
 
     def update_success_status(self) -> None:
         """
@@ -73,7 +73,7 @@ class PodOverseer(Overseer):
                 item_name, finished_at=self.finished_at):
             raise ProcessingComplete(message=f'item {item_name} completed')
         raise ProcessingComplete(
-            info=f'ignoring old successful job {self.name}')
+            message=f'ignoring old successful job pod={self.name}')
 
     def update_phase(self) -> None:
         item_name = self.get_label('oaat-name', 'unknown')
