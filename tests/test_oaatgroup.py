@@ -480,9 +480,10 @@ class ValidateTests(unittest.TestCase):
         self.setup = object_setUp(KubeOaatGroup, deepcopy(kog))
         next(self.setup_kot)
         next(self.setup)
-        ogo = OaatGroupOverseer(MagicMock(), **self.kw)
-        self.assertIsInstance(ogo, OaatGroupOverseer)
-        self.assertIsInstance(ogo.oaattype, OaatType)
+        ogo = OaatGroup(kopf_object=self.kw)
+        self.assertIsInstance(ogo, OaatGroup)
+        self.assertIsInstance(ogo.kopf_object, OaatGroupOverseer)
+        self.assertIsInstance(ogo.kopf_object.oaattype, OaatType)
         return ogo
 
     def test_validate_items_none(self):
@@ -497,11 +498,11 @@ class ValidateTests(unittest.TestCase):
                 status_annotation='test-status',
                 count_annotation='test-items')
         self.assertEqual(
-            ogo.patch['metadata']['annotations'].get('kawaja.net/test-status'),
-            'missingItems')
+            ogo.kopf_object.patch['metadata']['annotations'].get(
+                'kawaja.net/test-status'), 'missingItems')
         self.assertEqual(
-            ogo.patch['metadata']['annotations'].get('kawaja.net/test-items'),
-            None)
+            ogo.kopf_object.patch['metadata']['annotations'].get(
+                'kawaja.net/test-items'), None)
 
     def test_validate_items_one_annotation(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
@@ -509,11 +510,11 @@ class ValidateTests(unittest.TestCase):
             status_annotation='test-status',
             count_annotation='test-items')
         self.assertEqual(
-            ogo.patch['metadata']['annotations'].get('kawaja.net/test-status'),
-            'active')
+            ogo.kopf_object.patch['metadata']['annotations'].get(
+                'kawaja.net/test-status'), 'active')
         self.assertEqual(
-            ogo.patch['metadata']['annotations'].get('kawaja.net/test-items'),
-            '1')
+            ogo.kopf_object.patch['metadata']['annotations'].get(
+                'kawaja.net/test-items'), '1')
 
     def test_validate_state_pod_cr(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
@@ -769,6 +770,23 @@ class OaatGroupTests(unittest.TestCase):
                                     'OaatGroup must be called with either.*'):
             OaatGroup()
 
+    def test_no_kopf(self):
+        kog = TestData.kog
+        self.extraSetUp(TestData.kot, kog)
+        og = OaatGroup(kube_object='test-kog')
+        with self.assertRaisesRegex(
+                InternalError,
+                'attempt to run find_job_to_run outside of kopf'):
+            og.find_job_to_run()
+        with self.assertRaisesRegex(
+                InternalError,
+                'attempt to run run_item outside of kopf'):
+            og.run_item('item')
+        with self.assertRaisesRegex(
+                InternalError,
+                'attempt to run set_status outside of kopf'):
+            og.set_status('state', 'value')
+
     def test_create_with_kubeobj(self):
         kog = TestData.kog
         self.extraSetUp(TestData.kot, kog)
@@ -822,7 +840,7 @@ class OaatGroupTests(unittest.TestCase):
     @patch('oaatoperator.utility.now')
     def test_mark_item_failed_no_date_provided(self, now):
         now.return_value = (TestData.failure_time +
-                                datetime.timedelta(hours=2))
+                            datetime.timedelta(hours=2))
         kog = TestData.kog_previous_fail
         self.extraSetUp(TestData.kot, kog)
         og = OaatGroup(kopf_object={**self.kw})
@@ -862,7 +880,7 @@ class OaatGroupTests(unittest.TestCase):
     @patch('oaatoperator.utility.now')
     def test_mark_item_success_no_date_provided(self, now):
         now.return_value = (TestData.success_time +
-                                datetime.timedelta(hours=2))
+                            datetime.timedelta(hours=2))
         kog = TestData.kog_previous_fail
         self.extraSetUp(TestData.kot, kog)
         og = OaatGroup(kopf_object={**self.kw})
@@ -876,7 +894,7 @@ class OaatGroupTests(unittest.TestCase):
 
     @unittest.mock.patch('kopf.adopt')
     @unittest.mock.patch('pykube.Pod')
-    def test_run_itme_sunny(self, pod_mock, kopf_adopt_mock):
+    def test_run_item_sunny(self, pod_mock, kopf_adopt_mock):
         self.extraSetUp(TestData.kot, TestData.kog)
         og = OaatGroup(kopf_object={**self.kw})
         og.run_item('item1')
