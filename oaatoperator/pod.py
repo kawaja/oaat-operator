@@ -4,7 +4,6 @@ pod.py
 Overseer object for managing Pod objects.
 """
 import pykube
-# from pykube import Pod
 from oaatoperator.utility import date_from_isostr
 from oaatoperator.oaatgroup import OaatGroup
 from oaatoperator.common import ProcessingComplete

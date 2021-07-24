@@ -4,7 +4,7 @@ import kopf
 import oaatoperator
 from oaatoperator.utility import now_iso, my_name
 from oaatoperator.common import ProcessingComplete, KubeOaatGroup
-from oaatoperator.oaatgroup import OaatGroupOverseer
+from oaatoperator.oaatgroup import OaatGroup
 from oaatoperator.pod import PodOverseer
 
 # TODO: investigate whether pykube will re-connect to k8s if the session drops
@@ -55,7 +55,7 @@ def oaat_timer(**kwargs):
     kwargs['logger'].debug(
         f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
-        oaatgroup = OaatGroupOverseer(**kwargs)
+        oaatgroup = OaatGroup(**kwargs)
     except ProcessingComplete as exc:
         return {'message': f'Error: {exc.ret.get("error")}'}
     curloop = oaatgroup.get_status('loops', 0)
@@ -238,7 +238,7 @@ def oaat_action(**kwargs):
     kwargs['logger'].debug(
         f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
-        oaatgroup = OaatGroupOverseer(**kwargs)
+        oaatgroup = OaatGroup(**kwargs)
     except ProcessingComplete as exc:
         return {'message': f'Error: {exc.ret.get("error")}'}
 
