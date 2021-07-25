@@ -1,0 +1,11 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: oaatgroups.kawaja.net
+status:
+  acceptedNames:
+    kind: OaatGroup
+    plural: oaatgroups
+    singular: oaatgroup
+  storedVersions:
+    - v1

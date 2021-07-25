@@ -1,0 +1,11 @@
+apiVersion: kawaja.net/v1
+kind: OaatGroup
+metadata:
+  name: test-oaat
+spec:
+  frequency: 5m
+  oaatType: oaattest
+  oaatItems:
+    - item1
+    - item2
+# vim: sw=2 et ts=2

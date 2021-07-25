@@ -1,0 +1,4 @@
+apiVersion: kawaja.net/v1
+kind: OaatType
+#metadata:
+#  name: oaattest

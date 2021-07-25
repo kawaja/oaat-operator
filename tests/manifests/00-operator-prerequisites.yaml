@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: default
+  name: oaat-operator-sa
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oaat-operator-clusterrole
+rules:
+
+  # Framework: knowing which other operators are running (i.e. peering).
+  - apiGroups: [kawaja.net]
+    resources: [clusterkopfpeerings]
+    verbs: [list, watch, patch, get]
+
+  # Framework: runtime observation of namespaces & CRDs (addition/deletion)
+  - apiGroups: [apiextensions.k8s.io]
+    resources: [customresourcedefinitions]
+    verbs: [list, watch]
+  - apiGroups: ['']
+    resources: [namespaces]
+    verbs: [list, watch]
+
+  # Framework: admission webhook configuration management.
+  - apiGroups: [admissionregistration.k8s.io/v1, admissionregistration.k8s.io/v1beta1]
+    resources: [validatingwebhookconfigurations, mutatingwebhookconfigurations]
+    verbs: [create, patch]
+
+  # Application: read-only access for watching cluster-wide.
+  - apiGroups: ['kawaja.net']
+    resources: ['*']
+    verbs: [list, watch]
+
+  # Application: manage pods
+  - apiGroups: ['']
+    resources: [pods]
+    verbs: [list, get, watch, patch, update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: oaat-operator-role-default
+rules:
+
+  # Framework: knowing which other operators are running (i.e. peering).
+  - apiGroups: [kawaja.net]
+    resources: [kopfpeerings]
+    verbs: [list, watch, patch, get]
+
+  # Framework: posting the events about the handlers progress/errors.
+  - apiGroups: ['', 'events.k8s.io']
+    resources: [events]
+    verbs: [create]
+
+  # Application: watching & handling for the custom resource we declare.
+  - apiGroups: [kawaja.net]
+    resources: ['*']
+    verbs: [get, list, watch, patch]
+
+  # Application: other resources it produces and manipulates.
+  - apiGroups: ['']
+    resources: [pods, 'pods/status']
+    verbs: [create, get, list, watch, patch, update, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oaat-operator-clusterrole-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oaat-operator-clusterrole
+subjects:
+  - kind: ServiceAccount
+    name: oaat-operator-sa
+    namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: default
+  name: oaat-operator-role-binding-default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: oaat-operator-role-default
+subjects:
+  - kind: ServiceAccount
+    name: oaat-operator-sa

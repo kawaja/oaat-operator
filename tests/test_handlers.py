@@ -5,7 +5,7 @@ from copy import deepcopy
 import kopf
 import pykube
 import logging
-from kopf.structs import credentials
+from kopf._cogs.structs import credentials
 import oaatoperator.oaatgroup
 import oaatoperator.handlers
 

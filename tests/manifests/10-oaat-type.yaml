@@ -1,0 +1,25 @@
+apiVersion: kawaja.net/v1
+kind: OaatType
+metadata:
+  name: oaattest
+spec:
+  type: pod
+  podspec:
+    container:
+      name: test
+      image: busybox
+      command: ["sh", "-x", "-c"]
+      args:
+        - |
+          echo "OAAT_ITEM={{oaat_item}}"
+          while /bin/true; do
+            sleep 5
+            echo "."
+            if -f /oaat-test-exitcode; then
+              exit $(cat /oaat-test-exitcode)
+            fi
+          done
+      resources:
+        requests:
+          memory: 200Mi
+          cpu: 50m

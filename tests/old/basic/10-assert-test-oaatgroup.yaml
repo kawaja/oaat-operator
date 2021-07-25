@@ -1,0 +1,4 @@
+apiVersion: kawaja.net/v1
+kind: OaatGroup
+metadata:
+  name: test-oaat

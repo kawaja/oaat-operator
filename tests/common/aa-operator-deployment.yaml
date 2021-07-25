@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oaat-operator
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      application: oaat-operator
+  template:
+    metadata:
+      labels:
+        application: oaat-operator
+    spec:
+      serviceAccountName: oaat-operator-sa
+      containers:
+      - name: oaat-operator
+        image: ghcr.io/kawaja/oaat-operator:v0.5.7
+        imagePullPolicy: Always
