@@ -15,7 +15,7 @@ spec:
           while /bin/true; do
             sleep 5
             echo "."
-            if -f /oaat-test-exitcode; then
+            if [ -f /oaat-test-exitcode ]; then
               exit $(cat /oaat-test-exitcode)
             fi
           done

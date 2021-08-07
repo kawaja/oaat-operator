@@ -9,10 +9,10 @@ function copy() {
    echo -e '\n# DO NOT MODIFY. Master in tests/common' >> ${to}
 }
 
-copy aa-local-operator.yaml 10-start-operator.yaml
-copy 01-assert-pod-exists.yaml 30-assert-pod-exists.yaml
-copy 01-test-single-pod.yaml 40-test-single-pod.yaml
-copy 01-check-operator-logs-for-error.yaml 11-check-operator-logs-for-error-1.yaml
-copy 01-check-operator-logs-for-error.yaml 21-check-operator-logs-for-error-2.yaml
-#copy 01-check-operator-logs-for-error.yaml 30-check-operator-logs-for-error-3.yaml
-#copy 01-check-operator-logs-for-error.yaml 40-check-operator-logs-for-error-4.yaml
+#copy aa-local-operator.yaml 10-start-operator-COPY.yaml
+copy 01-assert-pod-exists.yaml 30-assert-pod-exists-COPY.yaml
+copy 01-test-single-pod.yaml 40-test-single-pod-COPY.yaml
+copy 01-check-operator-logs-for-error.yaml 11-check-operator-logs-for-error-COPY.yaml
+copy 01-check-operator-logs-for-error.yaml 21-check-operator-logs-for-error-COPY.yaml
+copy 01-check-operator-logs-for-error.yaml 31-check-operator-logs-for-error-COPY.yaml
+copy 01-check-operator-logs-for-error.yaml 41-check-operator-logs-for-error-COPY.yaml

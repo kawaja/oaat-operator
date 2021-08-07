@@ -1,9 +1,0 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestStep
-commands:
-  - script: |
-      cd ../../..
-      PYTHONPATH=. kopf run --debug oaatoperator/handlers.py > tests/operator-output.log 2>&1
-    background: true
-
-# DO NOT MODIFY. Master in tests/common
