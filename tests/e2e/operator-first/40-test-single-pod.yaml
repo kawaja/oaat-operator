@@ -1,6 +1,0 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestStep
-commands:
-  - command: kubectl get po | grep testsimple-oaat
-
-# DO NOT MODIFY. Master in tests/common

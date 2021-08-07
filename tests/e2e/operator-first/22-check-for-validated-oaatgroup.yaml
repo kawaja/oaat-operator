@@ -1,0 +1,10 @@
+apiVersion: kawaja.net/v1
+kind: OaatGroup
+metadata:
+  kawaja.net/kopf-managed: "yes"
+  kawaja.net/oaatgroup-items: "2"
+  kawaja.net/operator-status: active
+  name: testsimple-oaat
+status:
+  oaat_action:
+    message: validated

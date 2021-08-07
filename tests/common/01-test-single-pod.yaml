@@ -1,4 +1,10 @@
 apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
-  - command: kubectl get po | grep testsimple-oaat
+  - script: |
+      LINES=$(kubectl get po | grep testsimple-oaat | wc -l)
+      if [ ${LINES} -ne 1 ]; then
+        echo "Expected 1 pod, but found ${LINES} instead"
+        exit 2
+      fi
+      exit 0
