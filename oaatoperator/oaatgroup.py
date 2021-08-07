@@ -146,7 +146,7 @@ class OaatGroupOverseer(Overseer):
             if item['success'] == oldest_success_time
         ]
 
-        self.debug('oldest_items {oldest_success_time}: ' +
+        self.debug(f'oldest_items {oldest_success_time}: ' +
                    ', '.join([i['name'] for i in oldest_success_items]))
 
         if len(oldest_success_items) == 1:
@@ -179,6 +179,9 @@ class OaatGroupOverseer(Overseer):
                 return oldest_failure_items[0]['name']
 
             remaining_items = oldest_failure_items
+
+            self.debug('randomly choosing from: ' +
+                       ', '.join([i['name'] for i in remaining_items]))
 
         # more than one "equally old" failure.  Choose at random
         return remaining_items[
@@ -412,7 +415,7 @@ class OaatGroup:
     items: OaatItems = None
     passthrough_names: list = [
         i for i in dir(OaatGroupOverseer) if i[0] != '_'
-    ]
+    ] + ["name"]
 
     def __init__(self, **kwargs) -> None:
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
@@ -478,7 +481,8 @@ class OaatGroup:
         if finished_at > current_last_failure:
             failure_count = self.items.status(item_name, 'failure_count', 0)
             self.set_item_status(item_name, 'failure_count', failure_count + 1)
-            self.set_item_status(item_name, 'last_failure', finished_at)
+            self.set_item_status(item_name, 'last_failure',
+                                 finished_at.isoformat())
 
             # TODO: if via kopf, will this get overwritten by handler exit?
             self.kube_object.patch({
@@ -512,7 +516,8 @@ class OaatGroup:
 
         if finished_at > current_last_success:
             self.set_item_status(item_name, 'failure_count', 0)
-            self.set_item_status(item_name, 'last_success', finished_at)
+            self.set_item_status(item_name, 'last_success',
+                                 finished_at.isoformat())
 
             # TODO: if via kopf, will this get overwritten by handler exit?
             self.kube_object.patch({

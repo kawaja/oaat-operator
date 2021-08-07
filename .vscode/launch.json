@@ -5,6 +5,21 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Run KOPF",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/.venv/bin/kopf",
+            "env": { "PYTHONPATH": "${workspaceFolder}"},
+            "args": [
+                "run",
+                "--debug",
+                "--standalone",
+                "--dev",
+                "${workspaceFolder}/oaatoperator/handlers.py"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
@@ -16,7 +31,9 @@
             "type": "python",
             "request": "test",
             "console": "integratedTerminal",
-            "env": {"PYTEST_ADDOPTS": "--no-cov"}
+            "env": {
+                "PYTEST_ADDOPTS": "--no-cov"
+            }
         }
     ]
 }:w
