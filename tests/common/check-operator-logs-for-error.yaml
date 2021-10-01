@@ -1,0 +1,9 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: |
+      err=$(grep ERROR ../../operator-output.log | grep -v 'rogue pods running')
+      if [ -n "${err}" ]; then
+        echo $err >&2
+        exit 2
+      fi

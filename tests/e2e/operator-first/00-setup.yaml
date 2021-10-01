@@ -1,7 +1,0 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestStep
-name: Setup
-assert:
-  - ../../common/01-assert-oaat-type.yaml
-error:
-  - ../../common/01-error-if-pods-exist.yaml

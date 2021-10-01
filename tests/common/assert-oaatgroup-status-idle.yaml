@@ -1,0 +1,8 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 60
+---
+apiVersion: kawaja.net/v1
+kind: OaatGroup
+status:
+  state: idle

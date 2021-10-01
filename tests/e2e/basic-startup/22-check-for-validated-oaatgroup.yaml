@@ -4,7 +4,7 @@ metadata:
   kawaja.net/kopf-managed: "yes"
   kawaja.net/oaatgroup-items: "2"
   kawaja.net/operator-status: active
-  name: testsimple-oaat
+  name: basic-startup
 status:
   oaat_action:
     message: validated

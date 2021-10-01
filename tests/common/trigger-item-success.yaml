@@ -1,0 +1,11 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: |
+      set -x
+      POD=$(kubectl get po -ojson | jq -r '.items | map(select(.metadata.labels.app=="oaat-operator" and .status.phase=="Running") | .metadata.name)[0]')
+      if [ -z "${POD}" ]; then
+        echo "Could not find pod"
+        exit 2
+      fi
+      kubectl exec ${POD} -- /bin/sh -c "echo 0 >> /oaat-test-exitcode"
