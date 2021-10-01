@@ -43,11 +43,11 @@ class TestData:
             'spec': body.get('spec'),
             'meta': body.get('metadata'),
             'status': body.get('status'),
-            'namespace': body.get('metadata', {}).get('namespace'),
+            'namespace': body.get('metadata', {}).get('namespace', 'default'),
             'name': body.get('metadata', {}).get('name'),
             'uid': body.get('metadata', {}).get('uid'),
-            'labels': body.get('metadata', {}).get('labels'),
-            'annotations': body.get('metadata', {}).get('annotations'),
+            'labels': body.get('metadata', {}).get('labels', {}),
+            'annotations': body.get('metadata', {}).get('annotations', {}),
             'logger': unittest.mock.MagicMock(spec=logging.Logger),
             'patch': {},
             'memo': {},
@@ -63,7 +63,9 @@ class TestData:
         'apiVersion': 'kawaja.net/v1',
         'kind': 'OaatType',
         'metadata': {
-            'name': 'test-kot'
+            'name': 'test-kot',
+            'labels': {},
+            'annotations': {}
         },
         'status': {},
         'spec': {
@@ -87,7 +89,9 @@ class TestData:
         'apiVersion': 'kawaja.net/v1',
         'kind': 'OaatGroup',
         'metadata': {
-            'name': 'test-kog'
+            'name': 'test-kog',
+            'labels': {},
+            'annotations': {}
         },
         'status': {},
         'spec': {
@@ -317,8 +321,7 @@ class FindJobTests(unittest.TestCase):
         kog['spec']['frequency'] = '10m'
         ogo = self.extraSetUp(TestData.kot, kog)
         ogo.validate_oaat_type()
-        ogo.debug = print
-        ogo.info = unittest.mock.MagicMock()
+        ogo.debug = unittest.mock.MagicMock()
         ogo.items.obj.setdefault(
             'status',
             {}).setdefault('items', {})['item1'] = {
@@ -331,9 +334,9 @@ class FindJobTests(unittest.TestCase):
         with self.assertRaisesRegex(ProcessingComplete,
                                     'not time to run next item'):
             ogo.find_job_to_run()
-        print(ogo.info.call_args.args[0])
+        print(ogo.debug.call_args.args[0])
         self.assertRegex(
-            ogo.info.call_args.args[0],
+            ogo.debug.call_args.args[0],
             'item1 cool_off.*not expired since last failure')
 
     # inside frequency but outside cooloff => valid job
@@ -596,6 +599,8 @@ class ValidateTests(unittest.TestCase):
         self.kw.setdefault('status', {})['pod'] = pod1.name
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
         self.assertIsNone(ogo.validate_no_rogue_pods_are_running())
+        pod1.reload()
+        pod2.reload()
         pod1.obj['metadata']['labels'] = None
         pod2.obj['metadata']['labels'] = None
         pod1.update()
@@ -620,6 +625,8 @@ class ValidateTests(unittest.TestCase):
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
         with self.assertRaisesRegex(ProcessingComplete, 'rogue pods running'):
             ogo.validate_no_rogue_pods_are_running()
+        pod1.reload()
+        pod2.reload()
         pod1.obj['metadata']['labels'] = None
         pod2.obj['metadata']['labels'] = None
         pod1.update()
@@ -773,7 +780,7 @@ class OaatGroupTests(unittest.TestCase):
     def test_no_kopf(self):
         kog = TestData.kog
         self.extraSetUp(TestData.kot, kog)
-        og = OaatGroup(kube_object='test-kog')
+        og = OaatGroup(kube_object_name='test-kog', logger=MagicMock())
         with self.assertRaisesRegex(
                 InternalError,
                 'attempt to run find_job_to_run outside of kopf'):
@@ -790,7 +797,7 @@ class OaatGroupTests(unittest.TestCase):
     def test_create_with_kubeobj(self):
         kog = TestData.kog
         self.extraSetUp(TestData.kot, kog)
-        og = OaatGroup(kube_object='test-kog')
+        og = OaatGroup(kube_object_name='test-kog', logger=MagicMock())
         self.assertIsInstance(og.kube_object, KubeOaatGroup)
         self.assertEqual(og.kopf_object, None)
         self.assertEqual(og.kube_object.name, kog['metadata']['name'])

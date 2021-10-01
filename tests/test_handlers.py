@@ -19,14 +19,14 @@ class TestData:
     body = {}
     kw = {
         'body': body,
-        'spec': body.get('spec'),
-        'meta': body.get('metadata'),
-        'status': body.get('status'),
-        'namespace': body.get('metadata', {}).get('namespace'),
+        'spec': body.get('spec', {}),
+        'meta': body.get('metadata', {}),
+        'status': body.get('status', {}),
+        'namespace': body.get('metadata', {}).get('namespace', 'default'),
         'name': body.get('metadata', {}).get('name'),
         'uid': body.get('metadata', {}).get('uid'),
-        'labels': body.get('metadata', {}).get('labels'),
-        'annotations': body.get('metadata', {}).get('annotations'),
+        'labels': body.get('metadata', {}).get('labels', {}),
+        'annotations': body.get('metadata', {}).get('annotations', {}),
         'logger': unittest.mock.MagicMock(spec=logging.Logger),
         'patch': {},
         'memo': {},
@@ -305,6 +305,24 @@ class TestHandlerOaatTimer(unittest.TestCase):
         self.assertEqual(self.ogi.find_job_to_run.call_count, 1)
         self.assertEqual(self.ogi.run_item.call_count, 1)
         self.assertEqual(result.get('message'), 'started item None')
+
+    def test_oaat_timer_paused(self):
+        kw = deepcopy(TestData.kw)
+        kw['body'].setdefault('metadata',
+                              {}).setdefault('annotations',
+                                             {})['pause_new_jobs'] = 'yes'
+        kw['meta'].setdefault('annotations', {})['pause_new_jobs'] = 'yes'
+        kw['annotations']['pause_new_jobs'] = 'yes'
+        oaatoperator.handlers.oaat_timer(**kw)
+        result = self.ogi.handle_processing_complete.call_args[0][0].ret
+        self.assertEqual(self.ogi.validate_items.call_count, 1)
+        self.assertEqual(
+            self.ogi.validate_expected_pod_is_running.call_count, 0)
+        self.assertEqual(self.ogi.is_pod_expected.call_count, 1)
+        self.assertEqual(self.ogi.find_job_to_run.call_count, 1)
+        self.assertEqual(self.ogi.run_item.call_count, 0)
+        self.assertEqual(result.get('message'),
+                         'paused via pause_new_jobs annotation')
 
     def test_oaat_timer_items_issue(self):
         kw = deepcopy(TestData.kw)

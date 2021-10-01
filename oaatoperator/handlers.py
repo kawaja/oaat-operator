@@ -82,6 +82,11 @@ def oaat_timer(**kwargs):
         oaatgroup.set_status('state', 'running')
         oaatgroup.set_item_status(item_name, 'podphase', 'started')
         oaatgroup.set_status('currently_running', item_name)
+
+        if kwargs['annotations'].get('pause_new_jobs'):
+            raise ProcessingComplete(
+                message='paused via pause_new_jobs annotation')
+
         podobj = oaatgroup.run_item(item_name)
         oaatgroup.set_status('pod', podobj.metadata['name'])
 

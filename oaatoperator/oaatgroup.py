@@ -114,7 +114,7 @@ class OaatGroupOverseer(Overseer):
             self.debug('Valid, based on success and failure cool off: ' +
                        ', '.join([i['name'] for i in candidates]))
 
-        self.info(
+        self.debug(
             'item status (* = candidate):\n' +
             '\n'.join([
                 ('* ' if i in candidates else '- ') +
@@ -309,6 +309,7 @@ class OaatGroupOverseer(Overseer):
                 if pod.labels.get('app', '') == 'oaat-operator':
                     podphase = (pod.obj['status'].get('phase', 'unknown'))
                     if podphase in ['Running', 'Pending']:
+                        pod.delete()
                         self.warning(
                             f'rogue pod {pod.name} found (phase={podphase})')
                         found_rogue += 1
@@ -422,18 +423,31 @@ class OaatGroup:
         kube_object_name = None
 
         if 'kopf_object' in kwargs:
-            self.kopf_object = OaatGroupOverseer(self,
-                                                 **kwargs.get('kopf_object'))
-            self.items = OaatItems(obj=kwargs.get('kopf_object'))
+            kopf_object = kwargs.get('kopf_object')
+            self.kopf_object = OaatGroupOverseer(self, **kopf_object)
+            self.items = OaatItems(obj=kopf_object)
             kube_object_name = self.kopf_object.name
-        if 'kube_object' in kwargs:
-            kube_object_name = kwargs.get('kube_object')
+
+        # override kopf object
+        if 'kube_object_name' in kwargs:
+            kube_object_name = kwargs.get('kube_object_name')
+            self.logger = kwargs.get('logger')
+            if self.logger is None:
+                raise InternalError(
+                    'must supply logger= parameter to '
+                    f'{self.__class__.__name__} when using kube_object_name'
+                )
+
         if kube_object_name is None:
             raise InternalError(
                 f'{self.__class__.__name__} must be called with either a '
-                'kopf_object= kopf context or a kube_object= name')
+                'kopf_object= kopf context or a kube_object_name= name')
         self.kube_object = self.get_kube_object(kube_object_name)
+        if isinstance(self.kube_object, str):
+            raise TypeError(
+                f'get_kube_object returned string: {self.kube_object}')
         if self.items is None:
+            self.logger.info(f'kube_object: {self.kube_object}')
             self.items = OaatItems(obj=self.kube_object)
 
     def namespace(self) -> str:
