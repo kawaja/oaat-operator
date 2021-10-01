@@ -1,0 +1,6 @@
+apiVersion: kawaja.net/v1
+kind: OaatGroup
+metadata:
+  name: basic-startup
+  annotations:
+    pause_new_jobs: 'true'

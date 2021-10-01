@@ -1,0 +1,9 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: |
+      if grep 'not time to run next item' ../../operator-output.log; then
+        exit 0
+      else
+        exit 3
+      fi

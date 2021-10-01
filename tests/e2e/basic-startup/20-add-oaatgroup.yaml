@@ -1,7 +1,7 @@
 apiVersion: kawaja.net/v1
 kind: OaatGroup
 metadata:
-  name: testsimple-oaat
+  name: basic-startup
 spec:
   frequency: 1m
   oaatType: oaattest

@@ -10,5 +10,5 @@ parallel: 1
 commands:
   - script: |
       cd ..
-      PYTHONPATH=. kopf run --debug oaatoperator/handlers.py > tests/operator-output.log 2>&1
+      PYTHONPATH=. kopf run --debug oaatoperator/handlers.py >> tests/operator-output.log 2>&1
     background: true

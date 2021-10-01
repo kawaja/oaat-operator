@@ -1,0 +1,15 @@
+apiVersion: kawaja.net/v1
+kind: OaatGroup
+metadata:
+  name: rogue-pods-deleted
+spec:
+  frequency: 1m
+  oaatType: oaattest
+  oaatItems:
+    - item1
+    - item2
+status:
+  items:
+    item2:
+      failure_count: 0
+      last_success: "2021-04-15T06:32:00+00:00"

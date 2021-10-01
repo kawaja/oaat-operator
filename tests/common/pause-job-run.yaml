@@ -1,0 +1,5 @@
+apiVersion: kawaja.net/v1
+kind: OaatGroup
+metadata:
+  annotations:
+    pause_new_jobs: 'true'
