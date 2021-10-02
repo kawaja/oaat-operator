@@ -66,6 +66,11 @@ class OaatGroupTests(unittest.TestCase):
         self.assertIsInstance(rdt, datetime.datetime)
         self.assertEqual(rdt, self.dt)
 
+    def test_invalid_object(self):
+        with self.assertRaisesRegex(
+                TypeError, 'obj should be dict, not <class \'str\'>=silly'):
+            OaatItems(obj='silly')
+
     # def test_set_status_oaatgroup(self):
     #     og = self.og_empty
     #     items = OaatItems(obj=og.obj)

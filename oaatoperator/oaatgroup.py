@@ -16,6 +16,16 @@ from oaatoperator.oaatitem import OaatItems
 from oaatoperator.overseer import Overseer
 
 
+# TODO: I'm not convinced about this composite object. It's essentially
+# trying to keep things DRY when sometimes we need to operate with
+# an OaatGroup Kopf object and sometimes we only have a KubeOaatGroup
+# (specifically when Kopf is processing a Pod but we need to interact)
+# with the OaatGroup. However, there's so many conditionals required
+# that it would seem like having separate objects might actually make
+# more sense, even if there are two totally separate implementations
+# of some functions (like mark_failed())
+
+
 class OaatGroupOverseer(Overseer):
     """
     OaatGroupOverseer
@@ -448,7 +458,7 @@ class OaatGroup:
                 f'get_kube_object returned string: {self.kube_object}')
         if self.items is None:
             self.logger.info(f'kube_object: {self.kube_object}')
-            self.items = OaatItems(obj=self.kube_object)
+            self.items = OaatItems(obj=self.kube_object.obj)
 
     def namespace(self) -> str:
         if self.kopf_object:

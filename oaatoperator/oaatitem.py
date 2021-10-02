@@ -6,14 +6,13 @@ Manage OaatItems within an OaatGroup.
 
 import datetime
 from oaatoperator.utility import date_from_isostr
-from oaatoperator.common import KubeOaatGroup
 
 
 class OaatItems:
     def __init__(self, obj: dict) -> None:
-        if not isinstance(obj, KubeOaatGroup):
+        if not isinstance(obj, dict):
             print(f'obj: {obj}')
-            raise TypeError(f'obj should be KubeOaatGroup, not {type(obj)}={obj}')
+            raise TypeError(f'obj should be dict, not {type(obj)}={obj}')
         self.obj = obj
 
     def status(self, item_name: str, key: str, default: str = None) -> str:
