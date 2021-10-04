@@ -268,6 +268,7 @@ class FindJobTests(unittest.TestCase):
 
     def test_oneitem_noprevious_run(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
+        ogo.debug = print
         ogo.validate_oaat_type()
         job = ogo.find_job_to_run()
         self.assertEqual(job, 'item1')
