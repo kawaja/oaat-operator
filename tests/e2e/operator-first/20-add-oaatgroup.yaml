@@ -1,0 +1,10 @@
+apiVersion: kawaja.net/v1
+kind: OaatGroup
+metadata:
+  name: testsimple-oaat
+spec:
+  frequency: 1m
+  oaatType: oaattest
+  oaatItems:
+    - item1
+    - item2

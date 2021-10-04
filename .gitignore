@@ -1,3 +1,4 @@
+.DS_Store
 pods
 jobs
 cronjobs
@@ -9,3 +10,4 @@ cov.xml
 k3d*
 .venv
 .DS_Store
+*.log

@@ -1,0 +1,10 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: |
+      ls -la ../../operator-output.log
+      if grep ERROR ../../operator-output.log; then
+        exit 2
+      fi
+
+# DO NOT MODIFY. Master in tests/common
