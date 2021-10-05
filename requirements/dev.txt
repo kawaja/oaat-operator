@@ -4,7 +4,7 @@ flake8==3.9.2
 pycodestyle==2.7.0
 pyflakes==2.3.1
 pytest==6.2.5
-pytest-cov==2.12.1
+pytest-cov==3.0.0
 pytest-mock==3.6.1
 yapf==0.31.0
 bandit==1.7.0
