@@ -87,6 +87,7 @@ class OaatGroupOverseer(Overseer):
                 message='error in OaatGroup definition',
                 error='no items found. please set "oaatItems"')
 
+        print(f'debug: {self.debug}')
         self.debug('oaat_items: ' +
                    ', '.join([i['name'] for i in oaat_items]))
 
