@@ -897,6 +897,7 @@ class OaatGroupTests(unittest.TestCase):
         self.extraSetUp(TestData.kot, TestData.kog)
         og = OaatGroup(kopf_object={**self.kw})
         og.debug = print
+        print('about to find_job_to_run()')
         job = og.find_job_to_run()
         self.assertEqual(job, 'item1')
 
