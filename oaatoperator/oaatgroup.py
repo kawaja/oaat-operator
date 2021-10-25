@@ -111,16 +111,17 @@ class OaatGroupOverseer(Overseer):
 
         # Filter out items which have failed within the cool off period
         if self.cool_off is not None:
-            self.debug(f'testing {item["name"]} - '
-                       f'now: {now}, '
-                       f'failure: {item["failure"]}, '
-                       f'cool_off: {self.cool_off}'
-                       f'test: {now < item["failure"] + self.cool_off}')
-            if now < item['failure'] + self.cool_off:
-                candidates.remove(item)
-                item_status[item['name']] = (
-                    f'cool_off ({self.cool_off}) not expired since '
-                    f'last failure')
+            for item in oaat_items:
+                self.debug(f'testing {item["name"]} - '
+                           f'now: {now}, '
+                           f'failure: {item["failure"]}, '
+                           f'cool_off: {self.cool_off}, '
+                           f'cooling off?: {now < item["failure"] + self.cool_off}')
+                if now < item['failure'] + self.cool_off:
+                    candidates.remove(item)
+                    item_status[item['name']] = (
+                        f'cool_off ({self.cool_off}) not expired since '
+                        f'last failure')
 
             self.debug('Valid, based on success and failure cool off: ' +
                        ', '.join([i['name'] for i in candidates]))
