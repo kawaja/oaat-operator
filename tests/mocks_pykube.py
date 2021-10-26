@@ -5,6 +5,7 @@ import dataclasses
 
 import pykube
 from time import sleep
+from copy import deepcopy
 
 
 @dataclasses.dataclass(frozen=True, eq=False, order=False)
@@ -93,7 +94,8 @@ def ensure_kubeobj_exists(ktype, spec, name):
     return kobj
 
 
-def object_setUp(ktype, spec):
+def object_setUp(ktype, input_spec):
+    spec = deepcopy(input_spec)
     name = spec.get('metadata', {}).get('name')
     if name is None:
         raise ValueError(f'kube object {ktype} is missing name')

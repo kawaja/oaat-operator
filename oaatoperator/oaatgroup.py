@@ -87,7 +87,6 @@ class OaatGroupOverseer(Overseer):
                 message='error in OaatGroup definition',
                 error='no items found. please set "oaatItems"')
 
-        print(f'debug: {self.debug}')
         self.debug('oaat_items: ' +
                    ', '.join([i['name'] for i in oaat_items]))
 
@@ -106,7 +105,7 @@ class OaatGroupOverseer(Overseer):
                 item_status[item['name']] = (
                     f'successful within last freq ({self.freq})')
 
-        self.debug('Valid, based on success: ' +
+        self.debug('remaining items, based on last success & frequency: ' +
                    ', '.join([i['name'] for i in candidates]))
 
         # Filter out items which have failed within the cool off period
@@ -123,7 +122,7 @@ class OaatGroupOverseer(Overseer):
                         f'cool_off ({self.cool_off}) not expired since '
                         f'last failure')
 
-            self.debug('Valid, based on success and failure cool off: ' +
+            self.debug('remaining items, based on failure cool off: ' +
                        ', '.join([i['name'] for i in candidates]))
 
         self.debug(

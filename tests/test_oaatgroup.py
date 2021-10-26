@@ -25,7 +25,8 @@ def get_env(env_array, env_var):
 
 class TestData:
     @classmethod
-    def setup_kwargs(cls, obj):
+    def setup_kwargs(cls, input_obj):
+        obj = deepcopy(input_obj)
         body = {
             'spec': obj['spec'],
             'metadata': {
@@ -250,8 +251,8 @@ class FindJobTests(unittest.TestCase):
 
     def extraSetUp(self, kot, kog):
         kw = TestData.setup_kwargs(kog)
-        self.setup_kot = object_setUp(KubeOaatType, deepcopy(kot))
-        self.setup = object_setUp(KubeOaatGroup, deepcopy(kog))
+        self.setup_kot = object_setUp(KubeOaatType, kot)
+        self.setup = object_setUp(KubeOaatGroup, kog)
         next(self.setup_kot)
         next(self.setup)
         ogo = OaatGroupOverseer(MagicMock(), **kw)
@@ -406,14 +407,13 @@ class FindJobTests(unittest.TestCase):
         self.assertIn(job, ('item1', 'item2', 'item3', 'item4', 'item5'))
 
     def test_5_single_oldest(self):
-        kog = deepcopy(TestData.kog5)
-        ogo = self.extraSetUp(TestData.kot, kog)
+        ogo = self.extraSetUp(TestData.kot, TestData.kog5)
         ogo.validate_oaat_type()
         success = (datetime.datetime.now(tz=UTC) -
                    datetime.timedelta(minutes=5)).isoformat()
         osuccess = (datetime.datetime.now(tz=UTC) -
                     datetime.timedelta(minutes=7)).isoformat()
-        for i in kog['spec']['oaatItems']:
+        for i in TestData.kog5['spec']['oaatItems']:
             ogo.items.obj.setdefault(
                 'status',
                 {}).setdefault('items', {})[i] = {
@@ -425,15 +425,14 @@ class FindJobTests(unittest.TestCase):
         self.assertEqual(job, 'item3')
 
     def test_5_single_oldest_failure(self):
-        kog = deepcopy(TestData.kog5)
-        ogo = self.extraSetUp(TestData.kot, kog)
+        ogo = self.extraSetUp(TestData.kot, TestData.kog5)
         ogo.validate_oaat_type()
         ogo.debug = print
         success = ((datetime.datetime.now(tz=UTC) -
                     datetime.timedelta(minutes=5)).isoformat())
         failure = (datetime.datetime.now(tz=UTC) -
                    datetime.timedelta(minutes=7)).isoformat()
-        for i in kog['spec']['oaatItems']:
+        for i in TestData.kog5['spec']['oaatItems']:
             ogo.items.obj.setdefault(
                 'status',
                 {}).setdefault('items', {})[i] = {
@@ -446,15 +445,14 @@ class FindJobTests(unittest.TestCase):
         self.assertEqual(job, 'item4')
 
     def test_5_single_multiple_failure(self):
-        kog = deepcopy(TestData.kog5)
-        ogo = self.extraSetUp(TestData.kot, kog)
+        ogo = self.extraSetUp(TestData.kot, TestData.kog5)
         ogo.validate_oaat_type()
         ogo.debug = print
         success = (datetime.datetime.now(tz=UTC) -
                    datetime.timedelta(minutes=5)).isoformat()
         failure = (datetime.datetime.now(tz=UTC) -
                    datetime.timedelta(minutes=7)).isoformat()
-        for i in kog['spec']['oaatItems']:
+        for i in TestData.kog5['spec']['oaatItems']:
             ogo.items.obj.setdefault(
                 'status',
                 {}).setdefault('items', {})[i] = {
@@ -478,9 +476,9 @@ class ValidateTests(unittest.TestCase):
         return super().tearDown()
 
     def extraSetUp(self, kot, kog):
-        self.kw = TestData.setup_kwargs(deepcopy(kog))
-        self.setup_kot = object_setUp(KubeOaatType, deepcopy(kot))
-        self.setup = object_setUp(KubeOaatGroup, deepcopy(kog))
+        self.kw = TestData.setup_kwargs(kog)
+        self.setup_kot = object_setUp(KubeOaatType, kot)
+        self.setup = object_setUp(KubeOaatGroup, kog)
         next(self.setup_kot)
         next(self.setup)
         ogo = OaatGroup(kopf_object=self.kw)
@@ -676,9 +674,9 @@ class RunItemTests(unittest.TestCase):
         return super().setUp()
 
     def extraSetUp(self, kot, kog):
-        self.kw = TestData.setup_kwargs(deepcopy(kog))
-        self.setup_kot = object_setUp(KubeOaatType, deepcopy(kot))
-        self.setup = object_setUp(KubeOaatGroup, deepcopy(kog))
+        self.kw = TestData.setup_kwargs(kog)
+        self.setup_kot = object_setUp(KubeOaatType, kot)
+        self.setup = object_setUp(KubeOaatGroup, kog)
         next(self.setup_kot)
         next(self.setup)
         ogo = OaatGroupOverseer(MagicMock(), **self.kw)
@@ -766,9 +764,9 @@ class OaatGroupTests(unittest.TestCase):
         return super().tearDown()
 
     def extraSetUp(self, kot, kog):
-        self.kw = TestData.setup_kwargs(deepcopy(kog))
-        self.setup_kot = object_setUp(KubeOaatType, deepcopy(kot))
-        self.setup = object_setUp(KubeOaatGroup, deepcopy(kog))
+        self.kw = TestData.setup_kwargs(kog)
+        self.setup_kot = object_setUp(KubeOaatType, kot)
+        self.setup = object_setUp(KubeOaatGroup, kog)
         next(self.setup_kot)
         next(self.setup)
 
@@ -894,10 +892,11 @@ class OaatGroupTests(unittest.TestCase):
         self.assertTrue(og.mark_item_success('item1'))
 
     def test_find_job_oneitem_noprevious_run(self):
+        print(f'kog: {TestData.kog}')
         self.extraSetUp(TestData.kot, TestData.kog)
+        print(f'kw: {self.kw}')
         og = OaatGroup(kopf_object={**self.kw})
         og.kopf_object.debug = print
-        print(f'about to find_job_to_run() [debug={og.debug}')
         job = og.find_job_to_run()
         self.assertEqual(job, 'item1')
 
