@@ -896,8 +896,8 @@ class OaatGroupTests(unittest.TestCase):
     def test_find_job_oneitem_noprevious_run(self):
         self.extraSetUp(TestData.kot, TestData.kog)
         og = OaatGroup(kopf_object={**self.kw})
-        og.debug = print
-        print('about to find_job_to_run()')
+        og.kopf_object.debug = print
+        print(f'about to find_job_to_run() [debug={og.debug}')
         job = og.find_job_to_run()
         self.assertEqual(job, 'item1')
 
