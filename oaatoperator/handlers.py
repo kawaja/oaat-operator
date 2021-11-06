@@ -30,8 +30,12 @@ def is_succeeded(status, **_):
 def configure(settings: kopf.OperatorSettings, **_):
     """Set kopf configuration."""
     settings.posting.level = logging.INFO
+    settings.persistence.finalizer = 'oaatoperator.kawaja.net/kopf-finalizer'
+    settings.persistence.diffbase_storage = kopf.AnnotationsDiffBaseStorage(
+            prefix='oaatoperator.kawaja.net',
+            key='last-handled-configuration')
     settings.persistence.progress_storage = kopf.AnnotationsProgressStorage(
-        prefix='kawaja.net')
+        prefix='oaatoperator.kawaja.net')
     print('Oaat Operator Version: ' +
           getattr(oaatoperator, '__version__', '<not set>'),
           file=sys.stderr)
