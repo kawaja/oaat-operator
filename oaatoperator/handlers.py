@@ -48,7 +48,7 @@ def configure(settings: kopf.OperatorSettings, **_):
 
 
 @kopf.timer('kawaja.net', 'v1', 'oaatgroups',
-            initial_delay=30, interval=30,
+            initial_delay=90, interval=300,
             annotations={'kawaja.net/operator-status': 'active'})
 def oaat_timer(**kwargs):
     """
@@ -233,7 +233,7 @@ def cleanup_pod(**kwargs):
 @kopf.on.update('kawaja.net', 'v1', 'oaatgroups')
 @kopf.on.create('kawaja.net', 'v1', 'oaatgroups')
 @kopf.timer('kawaja.net', 'v1', 'oaatgroups',
-            initial_delay=30, interval=30,
+            initial_delay=90, interval=300,
             annotations={'kawaja.net/operator-status': kopf.ABSENT})
 def oaat_action(**kwargs):
     """
