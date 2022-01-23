@@ -312,8 +312,11 @@ class OaatGroupOverseer(Overseer):
 
     def validate_no_rogue_pods_are_running(self) -> None:
         found_rogue = 0
+        self.debug(f'searching for rogue pods.')
+        self.debug(f'  current={self.get_status("pod")}')
         for pod in pykube.Pod.objects(self.api,
                                       namespace=self.namespace).iterator():
+            self.debug(f'  checking {pod.name}')
             if pod.name == self.get_status('pod'):
                 continue
             if pod.labels.get('parent-name', '') == self.name:
