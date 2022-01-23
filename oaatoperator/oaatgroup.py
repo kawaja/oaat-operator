@@ -311,6 +311,12 @@ class OaatGroupOverseer(Overseer):
         )
 
     def validate_no_rogue_pods_are_running(self) -> None:
+        curpod = self.get_status('pod')
+        if not curpod:
+            self.info(f'curpod is "{curpod} (self: {self})')
+            self.debug(
+                f'currently_running: {self.get_status("currently_running")}')
+            return
         found_rogue = 0
         self.debug(f'searching for rogue pods.')
         self.debug(f'  current={self.get_status("pod")}')
