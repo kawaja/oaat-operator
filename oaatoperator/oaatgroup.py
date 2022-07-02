@@ -278,9 +278,9 @@ class OaatGroupOverseer(Overseer):
         if count_annotation:
             self.set_annotation(count_annotation, value=len(self.items))
 
-    def validate_state(self) -> None:
+    def verify_state(self) -> None:
         """
-        validate_state
+        verify_state
 
         "pod" and "currently_running" should both be None or both be
         set. If they are out of sync, then our state is inconsistent.
@@ -288,7 +288,7 @@ class OaatGroupOverseer(Overseer):
         oaat-operator being killed while starting a pod.
 
         TODO: currently just resets both to None, effectively ignoring
-        the result of a running pod. Ideally, we should validate the
+        the result of a running pod. Ideally, we should verify the
         status of the pod and clean up.
         """
         curpod = self.get_status('pod')
@@ -310,7 +310,7 @@ class OaatGroupOverseer(Overseer):
                 f'with currently_running ({curitem})')
         )
 
-    def validate_no_rogue_pods_are_running(self) -> None:
+    def delete_rogue_pods(self) -> None:
         curpod = self.get_status('pod')
         if not curpod:
             self.info(f'curpod is "{curpod} (self: {self})')
@@ -320,19 +320,23 @@ class OaatGroupOverseer(Overseer):
         found_rogue = 0
         self.debug(f'searching for rogue pods.')
         self.debug(f'  current={self.get_status("pod")}')
-        for pod in pykube.Pod.objects(self.api,
-                                      namespace=self.namespace).iterator():
+        candidate_pods = (
+            pykube.Pod
+            .objects(self.api)
+            .filter(namespace=self.namespace)
+            .filter(selector={'app': 'oaat-operator'})
+        )
+        for pod in candidate_pods.iterator():
             self.debug(f'  checking {pod.name}')
             if pod.name == self.get_status('pod'):
-                continue
+                continue    # skip over the active pod
             if pod.labels.get('parent-name', '') == self.name:
-                if pod.labels.get('app', '') == 'oaat-operator':
-                    podphase = (pod.obj['status'].get('phase', 'unknown'))
-                    if podphase in ['Running', 'Pending']:
-                        pod.delete()
-                        self.warning(
-                            f'rogue pod {pod.name} found (phase={podphase})')
-                        found_rogue += 1
+                podphase = (pod.obj['status'].get('phase', 'unknown'))
+                if podphase in ['Running', 'Pending']:
+                    pod.delete()
+                    self.warning(
+                        f'rogue pod {pod.name} found (phase={podphase})')
+                    found_rogue += 1
 
         if found_rogue > 0:
             raise ProcessingComplete(
@@ -346,12 +350,13 @@ class OaatGroupOverseer(Overseer):
             return True
         return False
 
-    def validate_expected_pod_is_running(self) -> None:
+    def verify_expected_pod_is_running(self) -> None:
         """
-        validate_expected_pod_is_running
+        verify_expected_pod_is_running
 
-        Validate that the pod which we expect should be running (based
-        on `oaatgroup` status `pod` and `currently_running`)
+        Verify that the pod which we expect should be running (based
+        on `oaatgroup` status `pod` and `currently_running`) is actually
+        running.
 
         Check whether the Pod we previously started is still running. If not,
         assume the job was killed without being processed by the
@@ -369,8 +374,7 @@ class OaatGroupOverseer(Overseer):
                 self.api,
                 namespace=self.namespace).get_by_name(curpod).obj
         except pykube.exceptions.ObjectDoesNotExist:
-            self.info(
-                f'pod {curpod} missing/deleted, cleaning up')
+            self.info(f'pod {curpod} missing/deleted, cleaning up')
             self.set_status('currently_running')
             self.set_status('pod')
             self.set_status('state', 'missing')
@@ -381,13 +385,14 @@ class OaatGroupOverseer(Overseer):
                 info='Cleaned up missing/deleted item')
 
         podphase = pod.get('status', {}).get('phase', 'unknown')
-        self.info(f'validated that pod {curpod} exists '
+        self.info(f'verified that pod {curpod} exists '
                   f'(phase={podphase})')
         recorded_phase = self.items.status(curitem, 'podphase', 'unknown')
 
         # if there is a mismatch in phase, then the pod phase handlers
         # have not yet picked it up and updated the oaatgroup phase.
-        # Note it here, but take no further action
+        # Note it here, but take no further action (pod_phasechange should
+        # deal with it within its interval time)
         if podphase != recorded_phase:
             self.info(f'mismatch in phase for pod {curpod}: '
                       f'pod={podphase}, oaatgroup={recorded_phase}')

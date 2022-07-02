@@ -10,7 +10,6 @@ from oaatoperator.pod import PodOverseer
 # TODO: investigate whether pykube will re-connect to k8s if the session drops
 # for some reason
 
-
 def is_running(status, **_):
     """For when= function to test if a pod is running."""
     return status.get('phase') == 'Running'
@@ -66,15 +65,15 @@ def oaat_timer(**kwargs):
 
     try:
         oaatgroup.validate_items()
-        oaatgroup.validate_state()
+        oaatgroup.verify_state()
 
-        oaatgroup.validate_no_rogue_pods_are_running()
+        oaatgroup.delete_rogue_pods()
 
         # Check the currently-running job
         if oaatgroup.is_pod_expected():
-            oaatgroup.validate_expected_pod_is_running()
+            oaatgroup.verify_expected_pod_is_running()
             return {
-                'message': 'validate_expected_pod_is_running'
+                'message': 'verify_expected_pod_is_running'
                 'unexpectedly returned (should never happen)'
             }
 
@@ -104,7 +103,7 @@ def oaat_timer(**kwargs):
 
 
 @kopf.timer('', 'v1', 'pods',
-            idle=0.5*3600,
+            interval=0.5*3600,
             labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'})
 @kopf.on.resume('', 'v1', 'pods',
                 labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
@@ -137,7 +136,7 @@ def pod_phasechange(**kwargs):
 
 
 @kopf.timer('', 'v1', 'pods',
-            idle=0.5*3600,
+            interval=0.5*3600,
             labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
             when=is_succeeded)
 @kopf.on.resume('', 'v1', 'pods',
@@ -170,7 +169,7 @@ def pod_succeeded(**kwargs):
 
 
 @kopf.timer('', 'v1', 'pods',
-            idle=0.5*3600,
+            interval=0.5*3600,
             labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
             when=is_failed)
 @kopf.on.resume('', 'v1', 'pods',
@@ -204,7 +203,7 @@ def pod_failed(**kwargs):
 
 
 @kopf.timer('', 'v1', 'pods',
-            idle=12*3600,
+            interval=12*3600,
             labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
             when=kopf.any_([is_succeeded, is_failed]))
 def cleanup_pod(**kwargs):

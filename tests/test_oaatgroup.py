@@ -517,20 +517,20 @@ class ValidateTests(unittest.TestCase):
             ogo.kopf_object.patch['metadata']['annotations'].get(
                 'kawaja.net/test-items'), '1')
 
-    def test_validate_state_pod_cr(self):
+    def test_verify_state_pod_cr(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         self.kw.setdefault('status', {})['pod'] = 'podname'
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
-        self.assertIsNone(ogo.validate_state())
+        self.assertIsNone(ogo.verify_state())
 
-    def test_validate_is_pod_expected(self):
+    def test_verify_is_pod_expected(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         self.assertFalse(ogo.is_pod_expected())
         self.kw.setdefault('status', {})['pod'] = 'podname'
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
         self.assertTrue(ogo.is_pod_expected())
 
-    def test_validate_expected_pod(self):
+    def test_verify_expected_pod(self):
         pod1 = pykube.Pod(self.api, TestData.pod_spec)
         pod1.create()
         while not pod1.ready:
@@ -543,12 +543,12 @@ class ValidateTests(unittest.TestCase):
         self.assertEqual(ogo.get_status('pod'), pod1.name)
         with self.assertRaisesRegex(ProcessingComplete,
                                     'Pod.*exists and is in state'):
-            ogo.validate_expected_pod_is_running()
+            ogo.verify_expected_pod_is_running()
         pod1.obj['metadata']['labels'] = None
         pod1.update()
         pod1.delete()
 
-    def test_validate_expected_pod_negative(self):
+    def test_verify_expected_pod_negative(self):
         pod1 = pykube.Pod(self.api, TestData.pod_spec)
         pod1.create()
         while not pod1.ready:
@@ -560,12 +560,12 @@ class ValidateTests(unittest.TestCase):
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
         with self.assertRaisesRegex(ProcessingComplete,
                                     'item.*failed during validation'):
-            ogo.validate_expected_pod_is_running()
+            ogo.verify_expected_pod_is_running()
         pod1.obj['metadata']['labels'] = None
         pod1.update()
         pod1.delete()
 
-    def test_validate_no_rogue(self):
+    def test_delete_rogue_none(self):
         pod1 = pykube.Pod(self.api, TestData.pod_spec)
         pod1.create()
         while not pod1.ready:
@@ -576,12 +576,12 @@ class ValidateTests(unittest.TestCase):
         self.kw.setdefault('status', {})['pod'] = pod1.name
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
         self.assertEqual(ogo.get_status('pod'), pod1.name)
-        self.assertIsNone(ogo.validate_no_rogue_pods_are_running())
+        self.assertIsNone(ogo.delete_rogue_pods())
         pod1.obj['metadata']['labels'] = None
         pod1.update()
         pod1.delete()
 
-    def test_validate_rogue_unrelated(self):
+    def test_delete_rogue_skip_unrelated(self):
         pod1 = pykube.Pod(self.api, TestData.pod_spec)
         pod2 = pykube.Pod(self.api, TestData.pod_spec_noapp)
         pod1.create()
@@ -596,7 +596,7 @@ class ValidateTests(unittest.TestCase):
         self.assertFalse(ogo.is_pod_expected())
         self.kw.setdefault('status', {})['pod'] = pod1.name
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
-        self.assertIsNone(ogo.validate_no_rogue_pods_are_running())
+        self.assertIsNone(ogo.delete_rogue_pods())
         pod1.reload()
         pod2.reload()
         pod1.obj['metadata']['labels'] = None
@@ -606,7 +606,7 @@ class ValidateTests(unittest.TestCase):
         pod1.delete()
         pod2.delete()
 
-    def test_validate_rogue(self):
+    def test_delete_rogue(self):
         pod1 = pykube.Pod(self.api, TestData.pod_spec)
         pod2 = pykube.Pod(self.api, TestData.pod_spec)
         pod1.create()
@@ -622,7 +622,7 @@ class ValidateTests(unittest.TestCase):
         self.kw.setdefault('status', {})['pod'] = pod1.name
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
         with self.assertRaisesRegex(ProcessingComplete, 'rogue pods running'):
-            ogo.validate_no_rogue_pods_are_running()
+            ogo.delete_rogue_pods()
         pod1.reload()
         pod2.reload()
         pod1.obj['metadata']['labels'] = None
@@ -632,40 +632,40 @@ class ValidateTests(unittest.TestCase):
         pod1.delete()
         pod2.delete()
 
-    def test_validate_state_nopod_nocr(self):
+    def test_verify_state_nopod_nocr(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         self.kw.setdefault('status', {})['pod'] = None
         self.kw.setdefault('status', {})['currently_running'] = None
-        self.assertIsNone(ogo.validate_state())
+        self.assertIsNone(ogo.verify_state())
 
-    def test_validate_state_pod_nocr(self):
+    def test_verify_state_pod_nocr(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         self.kw.setdefault('status', {})['pod'] = 'podname'
         self.kw.setdefault('status', {})['currently_running'] = None
         with self.assertRaisesRegex(ProcessingComplete, 'internal error'):
-            ogo.validate_state()
+            ogo.verify_state()
 
-    def test_validate_state_nopod_cr(self):
+    def test_verify_state_nopod_cr(self):
         ogo = self.extraSetUp(TestData.kot, TestData.kog)
         self.kw.setdefault('status', {})['pod'] = None
         self.kw.setdefault('status', {})['currently_running'] = 'itemname'
         with self.assertRaisesRegex(ProcessingComplete, 'internal error'):
-            ogo.validate_state()
+            ogo.verify_state()
 
-    # def test_validate_running_nothing_expected(self):
+    # def test_verify_running_nothing_expected(self):
     #     ogo = self.extraSetUp(TestData.kot, TestData.kog)
     #     self.kw.setdefault('status', {})['pod'] = None
     #     self.kw.setdefault('status', {})['currently_running'] = None
-    #     ogo.validate_running_pod()
+    #     ogo.verify_running_pod()
 
-    # def test_validate_running_expected_running_but_is_not(self):
+    # def test_verify_running_expected_running_but_is_not(self):
     #     ogo = self.extraSetUp(TestData.kot, TestData.kog)
     #     self.kw.setdefault('status', {})['pod'] = 'podname'
     #     self.kw.setdefault('status', {})['currently_running'] = 'itemname'
     #     with self.assertRaises(ProcessingComplete):
-    #         ogo.validate_running_pod()
+    #         ogo.verify_running_pod()
 
-    # def test_validate_running_pod_expected_running_and_is(self):
+    # def test_verify_running_pod_expected_running_and_is(self):
 
 
 class RunItemTests(unittest.TestCase):
@@ -927,10 +927,10 @@ class OaatGroupTests(unittest.TestCase):
 # - validate_items()
 #   X no items
 #   X set annotations
-# - validate_state()
+# - verify_state()
 #   X invalid state (failed pod creation)
 #   X valid states
-# - validate_running_pod()
+# - verify_running_pod()
 #   X nothing expected to be running
 #   X expected to be running, but not
 #   - expected to be running, and is

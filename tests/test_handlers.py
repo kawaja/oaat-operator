@@ -272,14 +272,14 @@ class TestHandlerOaatTimer(unittest.TestCase):
         self.ogi.get_status.side_effect = [5]
         self.ogi.validate_items = MagicMock()
         self.ogi.validate_items.side_effect = [None]
-        self.ogi.validate_state = MagicMock()
-        self.ogi.validate_state.side_effect = [None]
-        self.ogi.validate_no_rogue_pods_are_running = MagicMock()
-        self.ogi.validate_no_rogue_pods_are_running.side_effect = [None]
+        self.ogi.verify_state = MagicMock()
+        self.ogi.verify_state.side_effect = [None]
+        self.ogi.delete_rogue_pods = MagicMock()
+        self.ogi.delete_rogue_pods.side_effect = [None]
         self.ogi.is_pod_expected = MagicMock()
         self.ogi.is_pod_expected.side_effect = [None]
-        self.ogi.validate_expected_pod_is_running = MagicMock()
-        self.ogi.validate_expected_pod_is_running.side_effect = [
+        self.ogi.verify_expected_pod_is_running = MagicMock()
+        self.ogi.verify_expected_pod_is_running.side_effect = [
             ProcessingComplete(
                 message='pod xxx exists and is in state Running')
         ]
@@ -300,7 +300,7 @@ class TestHandlerOaatTimer(unittest.TestCase):
         result = self.ogi.handle_processing_complete.call_args[0][0].ret
         self.assertEqual(self.ogi.validate_items.call_count, 1)
         self.assertEqual(
-            self.ogi.validate_expected_pod_is_running.call_count, 0)
+            self.ogi.verify_expected_pod_is_running.call_count, 0)
         self.assertEqual(self.ogi.is_pod_expected.call_count, 1)
         self.assertEqual(self.ogi.find_job_to_run.call_count, 1)
         self.assertEqual(self.ogi.run_item.call_count, 1)
@@ -317,7 +317,7 @@ class TestHandlerOaatTimer(unittest.TestCase):
         result = self.ogi.handle_processing_complete.call_args[0][0].ret
         self.assertEqual(self.ogi.validate_items.call_count, 1)
         self.assertEqual(
-            self.ogi.validate_expected_pod_is_running.call_count, 0)
+            self.ogi.verify_expected_pod_is_running.call_count, 0)
         self.assertEqual(self.ogi.is_pod_expected.call_count, 1)
         self.assertEqual(self.ogi.find_job_to_run.call_count, 1)
         self.assertEqual(self.ogi.run_item.call_count, 0)
@@ -333,7 +333,7 @@ class TestHandlerOaatTimer(unittest.TestCase):
         result = self.ogi.handle_processing_complete.call_args[0][0].ret
         self.assertEqual(self.ogi.validate_items.call_count, 1)
         self.assertEqual(
-            self.ogi.validate_expected_pod_is_running.call_count, 0)
+            self.ogi.verify_expected_pod_is_running.call_count, 0)
         self.assertEqual(self.ogi.is_pod_expected.call_count, 0)
         self.assertEqual(self.ogi.find_job_to_run.call_count, 0)
         self.assertEqual(self.ogi.run_item.call_count, 0)
@@ -351,16 +351,16 @@ class TestHandlerOaatTimer(unittest.TestCase):
     def test_oaat_timer_expected_pod_found_bad_running_function(self):
         kw = deepcopy(TestData.kw)
         self.ogi.is_pod_expected.side_effect = [True]
-        self.ogi.validate_expected_pod_is_running.side_effect = [None]
+        self.ogi.verify_expected_pod_is_running.side_effect = [None]
         result = oaatoperator.handlers.oaat_timer(**kw)
         self.assertEqual(self.ogi.validate_items.call_count, 1)
         self.assertEqual(
-            self.ogi.validate_expected_pod_is_running.call_count, 1)
+            self.ogi.verify_expected_pod_is_running.call_count, 1)
         self.assertEqual(self.ogi.is_pod_expected.call_count, 1)
         self.assertEqual(self.ogi.find_job_to_run.call_count, 0)
         self.assertEqual(self.ogi.run_item.call_count, 0)
         self.assertRegex(result.get('message'),
-                         'validate_expected.*should never happen')
+                         'verify_expected.*should never happen')
 
     def test_oaat_timer_expected_pod_found(self):
         kw = deepcopy(TestData.kw)
@@ -369,7 +369,7 @@ class TestHandlerOaatTimer(unittest.TestCase):
         result = self.ogi.handle_processing_complete.call_args[0][0].ret
         self.assertEqual(self.ogi.validate_items.call_count, 1)
         self.assertEqual(
-            self.ogi.validate_expected_pod_is_running.call_count, 1)
+            self.ogi.verify_expected_pod_is_running.call_count, 1)
         self.assertEqual(self.ogi.is_pod_expected.call_count, 1)
         self.assertEqual(self.ogi.find_job_to_run.call_count, 0)
         self.assertEqual(self.ogi.run_item.call_count, 0)
