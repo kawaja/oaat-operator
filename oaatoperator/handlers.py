@@ -126,6 +126,7 @@ def pod_phasechange(**kwargs):
     except ProcessingComplete as exc:
         return {'message': f'Error: {exc.ret.get("error")}'}
     pod.info(f'[{my_name()}] {pod.name}')
+    pod.debug(f'[{my_name()}] {kwargs}')
 
     try:
         pod.update_phase()
