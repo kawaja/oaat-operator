@@ -65,37 +65,29 @@ def oaat_timer(**kwargs):
 
     try:
         oaatgroup.validate_items()
-        oaatgroup.verify_state()
 
-        oaatgroup.delete_rogue_pods()
-
-        # Check the currently-running job
-        if oaatgroup.is_pod_expected():
-            oaatgroup.verify_expected_pod_is_running()
-            return {
-                'message': 'verify_expected_pod_is_running'
-                'unexpectedly returned (should never happen)'
-            }
+        # Verify that an existing job is running (returns if not)
+        oaatgroup.verify_running()
 
         # No item running, so check to see if we're ready to start another
-        item_name = oaatgroup.find_job_to_run()
+        next_item = oaatgroup.find_job_to_run()
 
         # Found an oaatgroup job to run, now run it
-        oaatgroup.info(f'running item {item_name}')
+        oaatgroup.info(f'running item {next_item.name}')
         oaatgroup.set_status('state', 'running')
-        oaatgroup.set_item_status(item_name, 'podphase', 'started')
-        oaatgroup.set_status('currently_running', item_name)
+        oaatgroup.set_item_status(next_item.name, 'podphase', 'started')
+        oaatgroup.set_status('currently_running', next_item.name)
 
         if kwargs['annotations'].get('pause_new_jobs'):
             raise ProcessingComplete(
                 message='paused via pause_new_jobs annotation')
 
-        podobj = oaatgroup.run_item(item_name)
+        podobj = next_item.run()
         oaatgroup.set_status('pod', podobj.metadata['name'])
 
         oaatgroup.set_status('last_run', now_iso())
         oaatgroup.set_status('children', [podobj.metadata['uid']])
-        raise ProcessingComplete(message=f'started item {item_name}')
+        raise ProcessingComplete(message=f'started item {next_item.name}')
 
     except ProcessingComplete as exc:
         oaatgroup.set_status('loops', curloop + 1)
