@@ -31,8 +31,8 @@ def configure(settings: kopf.OperatorSettings, **_):
     settings.posting.level = logging.INFO
     settings.persistence.finalizer = 'oaatoperator.kawaja.net/kopf-finalizer'
     settings.persistence.diffbase_storage = kopf.AnnotationsDiffBaseStorage(
-            prefix='oaatoperator.kawaja.net',
-            key='last-handled-configuration')
+        prefix='oaatoperator.kawaja.net',
+        key='last-handled-configuration')
     settings.persistence.progress_storage = kopf.AnnotationsProgressStorage(
         prefix='oaatoperator.kawaja.net')
     print('Oaat Operator Version: ' +
