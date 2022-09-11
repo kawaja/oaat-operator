@@ -1,7 +1,11 @@
 import logging
 import sys
+from typing import ParamSpec
+from typing_extensions import Unpack
 import kopf
+from kopf._core.intents.callbacks import ActivityFn
 import oaatoperator
+from oaatoperator.types import CallbackArgs
 from oaatoperator.utility import now_iso, my_name
 from oaatoperator.common import ProcessingComplete
 from oaatoperator.oaatgroup import OaatGroup
@@ -25,8 +29,8 @@ def is_succeeded(status, **_):
     return status.get('phase') == 'Succeeded'
 
 
-@kopf.on.startup()
-def configure(settings: kopf.OperatorSettings, **_):
+@kopf.on.startup()  # type: ignore
+def configure(settings: kopf.OperatorSettings, **_) -> None:
     """Set kopf configuration."""
     settings.posting.level = logging.INFO
     settings.persistence.finalizer = 'oaatoperator.kawaja.net/kopf-finalizer'
@@ -48,8 +52,8 @@ def configure(settings: kopf.OperatorSettings, **_):
 
 @kopf.timer('kawaja.net', 'v1', 'oaatgroups',
             initial_delay=90, interval=300,
-            annotations={'kawaja.net/operator-status': 'active'})
-def oaat_timer(**kwargs):
+            annotations={'kawaja.net/operator-status': 'active'})  # type: ignore
+def oaat_timer(**kwargs: Unpack[CallbackArgs]):
     """
     oaat_timer (oaatgroup)
 
@@ -96,14 +100,14 @@ def oaat_timer(**kwargs):
 
 @kopf.timer('', 'v1', 'pods',
             interval=0.5*3600,
-            labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'})
+            labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'})  # type: ignore
 @kopf.on.resume('', 'v1', 'pods',
                 labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-                when=is_running)
+                when=is_running)  # type: ignore
 @kopf.on.field('', 'v1', 'pods',
                field='status.phase',
-               labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'})
-def pod_phasechange(**kwargs):
+               labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'})  # type: ignore
+def pod_phasechange(**kwargs: Unpack[CallbackArgs]):
     """
     pod_phasechange (pod)
 
@@ -131,15 +135,15 @@ def pod_phasechange(**kwargs):
 @kopf.timer('', 'v1', 'pods',
             interval=0.5*3600,
             labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-            when=is_succeeded)
+            when=is_succeeded)  # type: ignore
 @kopf.on.resume('', 'v1', 'pods',
                 labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-                when=is_succeeded)
+                when=is_succeeded)  # type: ignore
 @kopf.on.field('', 'v1', 'pods',
                field='status.phase',
                labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-               when=is_succeeded)
-def pod_succeeded(**kwargs):
+               when=is_succeeded)  # type: ignore
+def pod_succeeded(**kwargs: Unpack[CallbackArgs]):
     """
     pod_succeeded (pod)
 
@@ -164,15 +168,15 @@ def pod_succeeded(**kwargs):
 @kopf.timer('', 'v1', 'pods',
             interval=0.5*3600,
             labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-            when=is_failed)
+            when=is_failed)  # type: ignore
 @kopf.on.resume('', 'v1', 'pods',
                 labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-                when=is_failed)
+                when=is_failed)  # type: ignore
 @kopf.on.field('', 'v1', 'pods',
                field='status.phase',
                labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-               when=is_failed)
-def pod_failed(**kwargs):
+               when=is_failed)  # type: ignore
+def pod_failed(**kwargs: Unpack[CallbackArgs]):
     """
     pod_failed (pod)
 
@@ -198,8 +202,8 @@ def pod_failed(**kwargs):
 @kopf.timer('', 'v1', 'pods',
             interval=12*3600,
             labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-            when=kopf.any_([is_succeeded, is_failed]))
-def cleanup_pod(**kwargs):
+            when=kopf.any_([is_succeeded, is_failed]))  # type: ignore
+def cleanup_pod(**kwargs: Unpack[CallbackArgs]):
     """
     cleanup_pod (pod)
 
@@ -223,11 +227,11 @@ def cleanup_pod(**kwargs):
 
 @kopf.on.resume('kawaja.net', 'v1', 'oaatgroups')
 @kopf.on.update('kawaja.net', 'v1', 'oaatgroups')
-@kopf.on.create('kawaja.net', 'v1', 'oaatgroups')
+@kopf.on.create('kawaja.net', 'v1', 'oaatgroups')  # type: ignore
 @kopf.timer('kawaja.net', 'v1', 'oaatgroups',
             initial_delay=90, interval=300,
-            annotations={'kawaja.net/operator-status': kopf.ABSENT})
-def oaat_action(**kwargs):
+            annotations={'kawaja.net/operator-status': kopf.ABSENT})  # type: ignore
+def oaat_action(**kwargs: Unpack[CallbackArgs]):
     """
     oaat_action (oaatgroup)
 
@@ -255,7 +259,7 @@ def oaat_action(**kwargs):
         return oaatgroup.handle_processing_complete(exc)
 
 
-@kopf.on.login()
-def login(**kwargs):
+@kopf.on.login()  # type: ignore
+def login(**kwargs: CallbackArgs):
     """Kopf login."""
-    return kopf.login_via_pykube(**kwargs)
+    return kopf.login_via_pykube(**kwargs)  # type: ignore

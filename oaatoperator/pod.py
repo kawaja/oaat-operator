@@ -22,7 +22,7 @@ class PodOverseer(Overseer):
         super().__init__(**kwargs)
         self.phase = kwargs['status'].get('phase', '')
         self.my_pykube_objtype = pykube.Pod
-        self.exitcode = None
+        self.exitcode = -1
         self.finished_at = None
 
     # TODO: currently only supports a single container (searches for the

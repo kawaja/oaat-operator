@@ -8,23 +8,26 @@ from __future__ import annotations
 import datetime
 import kopf
 import pykube
+from typing import Any, Optional
+from oaatoperator.oaatgroup import OaatGroup
+from oaatoperator.types import CallbackArgs
 from oaatoperator.utility import date_from_isostr
 from oaatoperator.common import ProcessingComplete
 
 
 class OaatItem:
-    def __init__(self, group: dict, item_name: str) -> None:
+    def __init__(self, group: OaatGroup, item_name: str) -> None:
         self.name = item_name
         self.group = group
         self._status = (group.get('status', {}).get('items', {}).get(self.name, {}))
 
-    def status(self, key: str, default: str = None) -> str:
+    def status(self, key: str, default: Optional[str] = None) -> str:
         """Get the status of an item. """
         return (self._status.get(key, default))
 
     def status_date(self,
                     key: str,
-                    default: str = None) -> datetime.datetime:
+                    default: Optional[str] = None) -> datetime.datetime:
         """Get the status of a specific item, returned as a datetime."""
         print(f'key: {key}, default: {default}, _status: {self._status}, date: {self._status.get(key,default)}')
         return date_from_isostr(self._status.get(key, default))
@@ -36,9 +39,9 @@ class OaatItem:
         return self.status_date('last_failure')
 
     def numfails(self) -> int:
-        return self.status('failure_count', 0)
+        return int(self.status('failure_count', '0'))
 
-    def run(self) -> dict:
+    def run(self) -> pykube.Pod:
         """
         run
 
@@ -89,14 +92,14 @@ class OaatItem:
         try:
             pod.create()
         except pykube.exceptions.KubernetesError as exc:
-            self.parent.mark_item_failed(self.name)
+            self.group.mark_item_failed(self.name)
             raise ProcessingComplete(
                 error=f'could not create pod {doc}: {exc}',
                 message=f'error creating pod for {self.name}')
         return pod
 
 class OaatItems:
-    def __init__(self, group: oaatoperator.OaatGroup, obj: dict) -> None:
+    def __init__(self, group: OaatGroup, obj: dict[str, Any]) -> None:
         if not isinstance(obj, dict):
             print(f'obj: {obj}')
             raise TypeError(f'obj should be dict, not {type(obj)}={obj}')
@@ -113,7 +116,7 @@ class OaatItems:
             for item_name in self.obj.get('spec', {}).get('oaatItems', [])
         ]
 
-    def run(self) -> dict:
+    def run(self) -> None:
         pass
 
     def __len__(self) -> int:

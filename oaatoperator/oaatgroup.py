@@ -3,11 +3,15 @@ oaatgroup.py
 
 Overseer object for managing OaatGroup objects.
 """
+from __future__ import annotations
 from random import randrange
 import datetime
+from typing_extensions import Unpack
+import logging
 import pykube
-from typing import Any
+from typing import Any, Optional, TypedDict, cast
 import oaatoperator.utility
+from oaatoperator.types import CallbackArgs
 from oaatoperator.common import (InternalError, ProcessingComplete,
                                  KubeOaatGroup)
 from oaatoperator.oaattype import OaatType
@@ -36,20 +40,21 @@ class OaatGroupOverseer(Overseer):
 
     Initialise with the kwargs for a OaatGroup kopf handler.
     """
-    def __init__(self, parent, **kwargs) -> None:
+    def __init__(self, parent: OaatGroup, **kwargs: Unpack[CallbackArgs]) -> None:
         super().__init__(**kwargs)
         self.my_pykube_objtype = KubeOaatGroup
         self.obj = kwargs
         self.parent = parent
         self.spec = kwargs.get('spec', {})
         self.body = kwargs.get('body')
+        self.patch = kwargs.get('patch')
         self.freq = oaatoperator.utility.parse_duration(
             self.spec.get('frequency', '1h'))
-        self.oaattypename = self.spec.get('oaatType')
+        self.oaattypename = str(self.spec.get('oaatType'))
         self.oaattype = OaatType(name=self.oaattypename)
         self.cool_off = oaatoperator.utility.parse_duration(
-            self.spec.get('failureCoolOff'))
-        self.items = OaatItems(group=parent, obj=self.obj)
+            str(self.spec.get('failureCoolOff')))
+        self.items = OaatItems(group=parent, obj=cast(dict[str, Any], self.obj))
 
     # TODO: if the oldest item keeps failing, consider running
     # other items which are ready to run
@@ -221,7 +226,7 @@ class OaatGroupOverseer(Overseer):
         if status_annotation:
             self.set_annotation(status_annotation, 'active')
         if count_annotation:
-            self.set_annotation(count_annotation, value=len(self.items))
+            self.set_annotation(count_annotation, value=str(len(self.items)))
 
     def verify_running(self) -> None:
         self.verify_state()
@@ -276,10 +281,10 @@ class OaatGroupOverseer(Overseer):
         found_rogue = 0
         self.debug(f'searching for rogue pods.')
         self.debug(f'  current={self.get_status("pod")}')
-        candidate_pods = (
+        candidate_pods: pykube.query.Query = (
             pykube.Pod
             .objects(self.api)
-            .filter(namespace=self.namespace)
+            .filter(namespace=self.namespace)   # type: ignore (pykube needs Optional[str] for namespace)
             .filter(selector={'app': 'oaat-operator'})
         )
         for pod in candidate_pods.iterator():
@@ -330,7 +335,7 @@ class OaatGroupOverseer(Overseer):
         try:
             pod = pykube.Pod.objects(
                 self.api,
-                namespace=self.namespace).get_by_name(curpod).obj
+                namespace=self.namespace).get_by_name(curpod).obj   # type: ignore (pykube needs Optional[str] for namespace)
         except pykube.exceptions.ObjectDoesNotExist:
             self.info(f'pod {curpod} missing/deleted, cleaning up')
             self.set_status('currently_running')
@@ -365,8 +370,8 @@ class OaatGroupOverseer(Overseer):
     def _set_item_status(self,
                          item_name: str,
                          key: str,
-                         value: str = None) -> None:
-        patch = (self.patch
+                         value: Optional[str] = None) -> None:
+        patch: dict = (self.patch
                  .setdefault('status', {})
                  .setdefault('items', {})
                  .setdefault(item_name, {}))
@@ -387,34 +392,40 @@ class OaatGroupOverseer(Overseer):
             error=f'unknown oaat type {self.oaattypename}')
 
 
+class OaatGroupArgs(TypedDict):
+    kopf_object: Optional[CallbackArgs]
+    kube_object_name: Optional[str]
+
 class OaatGroup:
     """
     OaatGroup
 
     Composite object for KOPF and Kubernetes handling
     """
-    api: pykube.HTTPClient = None
-    kopf_object: dict = None
-    kube_object: dict = None
-    items: OaatItems = None
+    api: pykube.HTTPClient
+    kopf_object: OaatGroupOverseer
+    kube_object: KubeOaatGroup
+    logger: logging.Logger
+    items: OaatItems
     passthrough_names: list = [
         i for i in dir(OaatGroupOverseer) if i[0] != '_'
     ] + ["name"]
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self,
+                 kopf_object: Optional[CallbackArgs] = None,
+                 kube_object_name: Optional[str] = None,
+                 logger: Optional[logging.Logger] = None) -> None:
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         kube_object_name = None
 
-        if 'kopf_object' in kwargs:
-            kopf_object = kwargs.get('kopf_object')
-            self.kopf_object = OaatGroupOverseer(self, **kopf_object)
-            self.items = OaatItems(group=self, obj=kopf_object)
+        if 'kopf_object' is not None:
+            self.kopf_object = OaatGroupOverseer(self, **cast(CallbackArgs, kopf_object))
+            self.items = OaatItems(group=self, obj=cast(dict[str, Any], kopf_object))
             kube_object_name = self.kopf_object.name
 
         # override kopf object
-        if 'kube_object_name' in kwargs:
-            kube_object_name = kwargs.get('kube_object_name')
-            self.logger = kwargs.get('logger')
+        if 'kube_object_name' is not None:
+            self.logger = cast(logging.Logger, logger)
             if self.logger is None:
                 raise InternalError(
                     'must supply logger= parameter to '
@@ -431,11 +442,11 @@ class OaatGroup:
                 f'get_kube_object returned string: {self.kube_object}')
         if self.items is None:
             self.logger.info(f'kube_object: {self.kube_object}')
-            self.items = OaatItems(group=self, obj=self.kube_object.obj)
+            self.items = OaatItems(group=self, obj=cast(dict[str, Any], self.kube_object.obj))
 
-    def namespace(self) -> str:
+    def namespace(self) -> Optional[str]:
         if self.kopf_object:
-            return self.kopf_object.namespace
+            return self.kopf_object.namespace   # type: ignore (pykube needs Optional[str] for namespace)
         if self.kube_object:
             return self.kube_object.metadata.get('namespace')
         return None
@@ -445,10 +456,9 @@ class OaatGroup:
 
         try:
             return (KubeOaatGroup.objects(
-                self.api, namespace=namespace).get_by_name(name))
+                self.api, namespace=namespace).get_by_name(name))   # type: ignore (pykube needs Optional[str] for namespace)
         except pykube.exceptions.ObjectDoesNotExist as exc:
-            self.message = f'cannot find Object {self.name}: {exc}'
-            return None
+            raise RuntimeError(f'cannot find Object {name}: {exc}')
 
     def __getattr__(self, name) -> Any:
         if name in self.passthrough_names:
@@ -462,10 +472,9 @@ class OaatGroup:
 
     def mark_item_failed(self,
                          item_name: str,
-                         finished_at: datetime.datetime = None,
+                         finished_at: Optional[datetime.datetime] = None,
                          exit_code: int = -1) -> bool:
         """Mark an item as failed."""
-
         item = self.items.get(item_name)
         current_last_failure = item.status_date('last_failure')
         if not finished_at:
@@ -477,7 +486,7 @@ class OaatGroup:
 
         if finished_at > current_last_failure:
             failure_count = item.numfails()
-            self.set_item_status(item_name, 'failure_count', failure_count + 1)
+            self.set_item_status(item_name, 'failure_count', str(failure_count + 1))
             self.set_item_status(item_name, 'last_failure',
                                  finished_at.isoformat())
 
@@ -499,7 +508,7 @@ class OaatGroup:
 
     def mark_item_success(self,
                           item_name: str,
-                          finished_at: datetime.datetime = None) -> bool:
+                          finished_at: Optional[datetime.datetime] = None) -> bool:
         """Mark an item as succeeded."""
 
         item = self.items.get(item_name)
@@ -512,7 +521,7 @@ class OaatGroup:
                 'datetime.datetime object')
 
         if finished_at > current_last_success:
-            self.set_item_status(item_name, 'failure_count', 0)
+            self.set_item_status(item_name, 'failure_count', '0')
             self.set_item_status(item_name, 'last_success',
                                  finished_at.isoformat())
 
@@ -533,7 +542,7 @@ class OaatGroup:
     def set_item_status(self,
                         item_name: str,
                         key: str,
-                        value: str = None) -> None:
+                        value: Optional[str] = None) -> None:
         if self.kopf_object is None:
             self.kube_object.patch(
                 {'status': {

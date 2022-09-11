@@ -3,6 +3,7 @@ oaattype.py
 
 Class for managing OaatType kubernetes objects.
 """
+from typing import Optional
 import pykube
 from oaatoperator.common import ProcessingComplete, KubeOaatType
 
@@ -13,14 +14,14 @@ class OaatType:
 
     Manager for OaatType objects.
     """
-    def __init__(self, name: str, namespace: str = None) -> None:
+    def __init__(self, name: str, namespace: Optional[str] = None) -> None:
         self.name = name
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         self.namespace = namespace
         self.obj = self.get_oaattype()
         self.valid = bool(self.obj)
 
-    def get_oaattype(self) -> KubeOaatType:
+    def get_oaattype(self) -> Optional[KubeOaatType]:
         """Retrieve the OaatType object."""
         if self.name is None:
             return None
@@ -28,7 +29,7 @@ class OaatType:
         try:
             return (
                 KubeOaatType
-                .objects(self.api, namespace=self.namespace)
+                .objects(self.api, namespace=self.namespace)  # type: ignore
                 .get_by_name(self.name)
                 .obj)
         except pykube.exceptions.ObjectDoesNotExist as exc:

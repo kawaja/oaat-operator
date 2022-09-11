@@ -3,7 +3,7 @@ utility.py
 
 Various stand-alone utility functions.
 """
-from typing import Any
+from typing import Any, Optional
 import datetime
 import re
 import sys
@@ -26,7 +26,7 @@ if not DURMATCH:
     raise SyntaxError('DURMATCH invalid regular expression')
 
 
-def parse_time(inputtime: dict) -> datetime.time:
+def parse_time(inputtime: dict) -> datetime.timedelta:
     """
     From a dict which contains a 'time' attribute and an optional 'tz'
     attribute, return a timedelta object which represents the time from
@@ -79,7 +79,7 @@ class TimeWindow:
         return False
 
 
-def parse_duration(duration: str) -> datetime.timedelta:
+def parse_duration(duration: str) -> Optional[datetime.timedelta]:
     """Calculate timedelta from a duration string."""
     if duration is None:
         return None
