@@ -50,13 +50,9 @@ def configure(settings: kopf.OperatorSettings, **_) -> None:
           file=sys.stderr)
 
 
-@kopf.timer('kawaja.net',
-            'v1',
-            'oaatgroups',
-            initial_delay=90,
-            interval=60,
-            annotations={'kawaja.net/operator-status':
-                         'active'})  # type: ignore
+@kopf.timer('kawaja.net', 'v1', 'oaatgroups',  # type: ignore
+            initial_delay=90, interval=60,
+            annotations={'kawaja.net/operator-status': 'active'})
 def oaat_timer(**kwargs: Unpack[CallbackArgs]):
     """
     oaat_timer (oaatgroup)
