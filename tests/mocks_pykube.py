@@ -10,14 +10,14 @@ from copy import deepcopy
 
 @dataclasses.dataclass(frozen=True, eq=False, order=False)
 class LoginMocks:
-    pykube_in_cluster: Mock = None
-    pykube_from_file: Mock = None
+    pykube_in_cluster: Mock
+    pykube_from_file: Mock
 
 
 @dataclasses.dataclass(frozen=True, eq=False, order=False)
 class KubeOaatTypeMocks:
-    pykube_in_cluster: Mock = None
-    pykube_from_file: Mock = None
+    pykube_in_cluster: Mock
+    pykube_from_file: Mock
 
 
 @pytest.fixture()
@@ -106,3 +106,20 @@ def object_setUp(ktype, input_spec):
     ensure_kubeobj_deleted(ktype, name)
     print(f'[object_setUp] deleted {name} ({ktype})')
     yield None
+
+class KubeObject:
+    def __init__(self, ktype, input_spec):
+        self.spec = deepcopy(input_spec)
+        self.type = ktype
+        self.name = self.spec.get('metadata', {}).get('name')
+        if self.name is None:
+            raise ValueError(f'kube object {ktype} is missing name')
+    def __enter__(self):
+        kobj = ensure_kubeobj_deleted(self.type, self.name)
+        kobj = ensure_kubeobj_exists(self.type, self.spec, self.name)
+        return kobj
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        print(f'[object_setUp] about to delete {self.name} ({self.type})')
+        ensure_kubeobj_deleted(self.type, self.name)
+        print(f'[object_setUp] deleted {self.name} ({self.type})')

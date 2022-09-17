@@ -16,16 +16,15 @@ class OaatType:
     """
     def __init__(self, name: str, namespace: Optional[str] = None) -> None:
         self.name = name
-        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         self.namespace = namespace
+        if name is None:
+            raise ProcessingComplete(message='OaatType invalid',
+                                     error=f'cannot find OaatType {self.name}')
+        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         self.obj = self.get_oaattype()
-        self.valid = bool(self.obj)
 
-    def get_oaattype(self) -> Optional[KubeOaatType]:
+    def get_oaattype(self) -> dict:
         """Retrieve the OaatType object."""
-        if self.name is None:
-            return None
-
         try:
             return (
                 KubeOaatType
@@ -41,9 +40,6 @@ class OaatType:
 
     def podspec(self) -> dict:
         """Retrieve Pod specification from this OaatType."""
-        if not self.valid:
-            raise ProcessingComplete(message='OaatType invalid',
-                                     error=f'cannot find OaatType {self.name}')
         msg = 'error in OaatType definition'
         spec = self.obj.get('spec')
         if spec is None:
