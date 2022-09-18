@@ -69,14 +69,12 @@ class TestData:
         },
         'status': {},
     }
-    kot_podspec = {
+    kot_typespec = {
         'type': 'pod',
         'podspec': {
             'container': {
-                'name':
-                'test',
-                'image':
-                'busybox',
+                'name': 'test',
+                'image': 'busybox',
                 'command': ['sh', '-x', '-c'],
                 'args': [
                     'echo "OAAT_ITEM=%%oaat_item%%"\n'
@@ -86,10 +84,10 @@ class TestData:
             }
         }
     }
-    kot_mock = new_mock(KubeOaatType, kot_podspec)
+    kot_mock = new_mock(KubeOaatType, kot_typespec)
 
-    kot_notype_spec = {**kot_header, 'spec': {**delkey(kot_podspec, 'type')}}
-    kot_spec = {**kot_header, 'spec': {**kot_podspec}}
+    kot_notype_spec = {**kot_header, 'spec': {**delkey(kot_typespec, 'type')}}
+    kot_spec = {**kot_header, 'spec': {**kot_typespec}}
     kot_nospec_spec = {**kot_header}
     kot_nonepodspec_spec = {
         **kot_header, 'spec': {
@@ -114,7 +112,7 @@ class TestData:
             }
         }
     }
-    kot_restartPolicy_spec = deepcopy(kot_spec)  # TODO: unclear why deepcopy needed when this is only used to create a kubernetes object
+    kot_restartPolicy_spec = deepcopy(kot_spec)
     kot_restartPolicy_spec['spec']['podspec']['restartPolicy'] = 'Always'
 
     # KubeOaatGroup variants
