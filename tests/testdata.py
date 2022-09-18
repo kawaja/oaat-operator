@@ -2,8 +2,24 @@ import unittest
 from copy import deepcopy
 import oaatoperator.utility
 import logging
+import unittest.mock
+
+from oaatoperator.common import KubeOaatGroup, KubeOaatType
+
+
+def new_mock(mock_type, mock_attrs):
+    attrs = deepcopy(mock_attrs)
+    mock = unittest.mock.Mock(mock_type)
+    mock.configure_mock(**attrs)
+    return mock
+
+
+def delkey(indict, key_to_del):
+    return {key: val for (key, val) in indict.items() if key != key_to_del}
+
 
 class TestData:
+
     @classmethod
     def setup_kwargs(cls, input_obj):
         obj = deepcopy(input_obj)
@@ -34,13 +50,16 @@ class TestData:
             'memo': {},
             'event': {},
             'reason': '',
-            'old': {}, 'new': {}, 'diff': {}
+            'old': {},
+            'new': {},
+            'diff': {}
         }
 
     failure_time = oaatoperator.utility.now()
     success_time = oaatoperator.utility.now()
 
-    kot = {
+    # KubeOaatType
+    kot_header = {
         'apiVersion': 'kawaja.net/v1',
         'kind': 'OaatType',
         'metadata': {
@@ -49,24 +68,57 @@ class TestData:
             'annotations': {}
         },
         'status': {},
-        'spec': {
-            'type': 'pod',
-            'podspec': {
-                'container': {
-                    'name': 'test',
-                    'image': 'busybox',
-                    'command': ['sh', '-x', '-c'],
-                    'args': [
-                        'echo "OAAT_ITEM=%%oaat_item%%"\n'
-                        'sleep $(shuf -i 10-180 -n 1)\n'
-                        'exit $(shuf -i 0-1 -n 1)\n'
-                    ],
-                }
+    }
+    kot_podspec = {
+        'type': 'pod',
+        'podspec': {
+            'container': {
+                'name':
+                'test',
+                'image':
+                'busybox',
+                'command': ['sh', '-x', '-c'],
+                'args': [
+                    'echo "OAAT_ITEM=%%oaat_item%%"\n'
+                    'sleep $(shuf -i 10-180 -n 1)\n'
+                    'exit $(shuf -i 0-1 -n 1)\n'
+                ],
             }
         }
     }
+    kot_mock = new_mock(KubeOaatType, kot_podspec)
 
-    kog_empty = {
+    kot_notype_spec = {**kot_header, 'spec': {**delkey(kot_podspec, 'type')}}
+    kot_spec = {**kot_header, 'spec': {**kot_podspec}}
+    kot_nospec_spec = {**kot_header}
+    kot_nonepodspec_spec = {
+        **kot_header, 'spec': {
+            'type': 'pod',
+            'podspec': None
+        }
+    }
+    kot_nopodspec_spec = {**kot_header, 'spec': {'type': 'pod'}}
+    kot_nocontainer_spec = {
+        **kot_header, 'spec': {
+            'type': 'pod',
+            'podspec': {
+                'something': 1
+            }
+        }
+    }
+    kot_containers_spec = {
+        **kot_header, 'spec': {
+            'type': 'pod',
+            'podspec': {
+                'containers': 1
+            }
+        }
+    }
+    kot_restartPolicy_spec = deepcopy(kot_spec)  # TODO: unclear why deepcopy needed when this is only used to create a kubernetes object
+    kot_restartPolicy_spec['spec']['podspec']['restartPolicy'] = 'Always'
+
+    # KubeOaatGroup variants
+    attrs = {
         'apiVersion': 'kawaja.net/v1',
         'kind': 'OaatGroup',
         'metadata': {
@@ -81,35 +133,41 @@ class TestData:
             'oaatItems': []
         }
     }
+    kog_empty = new_mock(KubeOaatGroup, attrs)
 
-    kog_nofreq = deepcopy(kog_empty)
-    del kog_nofreq['spec']['frequency']
-    kog_notype = deepcopy(kog_empty)
-    del kog_notype['spec']['oaatType']
-    kog_noitems = deepcopy(kog_empty)
-    del kog_noitems['spec']['oaatItems']
-    kog_emptyspec = deepcopy(kog_empty)
-    kog_emptyspec['spec'] = {}
-    kog = deepcopy(kog_empty)
-    kog['spec']['oaatItems'] = ['item1']
-    kog5 = deepcopy(kog_empty)
-    kog5['spec']['oaatItems'] = ['item1', 'item2', 'item3', 'item4', 'item5']
-    kog_previous_fail = deepcopy(kog)
+    kog_notype_mock = new_mock(KubeOaatGroup, attrs)
+    del kog_notype_mock.spec['oaatType']
+
+    kog_noitems_mock = new_mock(KubeOaatGroup, attrs)
+    del kog_noitems_mock.spec['oaatItems']
+
+    kog_emptyspec_mock = new_mock(KubeOaatGroup, attrs)
+    kog_emptyspec_mock.spec = {}
+
+    kog_mock = new_mock(KubeOaatGroup, attrs)
+    kog_mock.spec['oaatItems'] = ['item1']
+
+    kog5_mock = new_mock(KubeOaatGroup, attrs)
+    kog5_mock.spec['oaatItems'] = ['item1', 'item2', 'item3', 'item4', 'item5']
+
     failure_count = 1
-    kog_previous_fail['status']['items'] = {
+    kog_previous_fail_mock = new_mock(KubeOaatGroup, attrs)
+    kog_previous_fail_mock.status['items'] = {
         'item1': {
             'failure_count': failure_count,
             'last_failure': failure_time.isoformat()
         }
     }
-    kog_previous_success = deepcopy(kog)
-    kog_previous_success['status']['items'] = {
+
+    kog_previous_success_mock = new_mock(KubeOaatGroup, attrs)
+    kog_previous_success_mock.status['items'] = {
         'item1': {
             'failure_count': 0,
             'last_success': success_time.isoformat()
         }
     }
 
+    # POD specifications for passing to pykube.Pod()
     contspec = {
         'name': 'test',
         'image': 'busybox',
@@ -141,4 +199,3 @@ class TestData:
     del pod_spec_noapp_or_parent['metadata']['labels']['app']
     del pod_spec_noapp_or_parent['metadata']['labels']['parent-name']
     pod_spec_noapp['metadata']['generateName'] = 'oaat-noapp-or-parent-'
-
