@@ -11,17 +11,11 @@ import unittest
 
 from tests.mocks_pykube import object_setUp
 from tests.testdata import TestData
-from tests.utility import ExtendedTestCase
+from tests.utility import ExtendedTestCase, get_env
 from oaatoperator.oaatitem import OaatItem, OaatItems
 from oaatoperator.oaatgroup import OaatGroupOverseer
 from oaatoperator.oaattype import OaatType
 from oaatoperator.common import (KubeOaatGroup, KubeOaatType, ProcessingComplete)
-
-
-def get_env(env_array, env_var):
-    for env in env_array:
-        if env.get('name') == env_var:
-            return env.get('value')
 
 
 class OaatItemTests(unittest.TestCase):

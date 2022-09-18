@@ -3,7 +3,10 @@ pod.py
 
 Overseer object for managing Pod objects.
 """
+import datetime
 import pykube
+from typing import Optional
+
 from oaatoperator.utility import date_from_isostr
 from oaatoperator.oaatgroup import OaatGroup
 from oaatoperator.common import ProcessingComplete
@@ -18,19 +21,19 @@ class PodOverseer(Overseer):
 
     Initialise with the kwargs for a Pod kopf handler.
     """
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.phase = kwargs['status'].get('phase', '')
         self.my_pykube_objtype = pykube.Pod
         self.exitcode = -1
-        self.finished_at = None
+        self.finished_at : Optional[datetime.datetime]
 
     # TODO: currently only supports a single container (searches for the
     # first container with a 'terminated' status). To support
     # multiple containers, we need some logic around whether a particular
     # container needs to complete succesfully or all containers do.
     def _retrieve_terminated(self) -> None:
-        if self.exitcode is not None:
+        if self.exitcode != -1:
             return
         containerstatuses = self.get_status('containerStatuses', [])
         for containerstatus in containerstatuses:
