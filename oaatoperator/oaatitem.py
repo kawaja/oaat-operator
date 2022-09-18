@@ -9,17 +9,16 @@ import datetime
 import kopf
 import pykube
 from typing import Any, Optional
-from oaatoperator.oaatgroup import OaatGroup
-from oaatoperator.types import CallbackArgs
+import oaatgroup
 from oaatoperator.utility import date_from_isostr
 from oaatoperator.common import ProcessingComplete
 
 
 class OaatItem:
-    def __init__(self, group: OaatGroup, item_name: str) -> None:
+    def __init__(self, group: oaatgroup.OaatGroup, item_name: str) -> None:
         self.name = item_name
         self.group = group
-        self._status = (group.get('status', {}).get('items', {}).get(self.name, {}))
+        self._status = (group.status.get('items', {}).get(self.name, {}))
 
     def status(self, key: str, default: Optional[str] = None) -> str:
         """Get the status of an item. """
@@ -99,7 +98,7 @@ class OaatItem:
         return pod
 
 class OaatItems:
-    def __init__(self, group: OaatGroup, obj: dict[str, Any]) -> None:
+    def __init__(self, group: oaatgroup.OaatGroup, obj: dict[str, Any]) -> None:
         if not isinstance(obj, dict):
             print(f'obj: {obj}')
             raise TypeError(f'obj should be dict, not {type(obj)}={obj}')
@@ -116,8 +115,8 @@ class OaatItems:
             for item_name in self.obj.get('spec', {}).get('oaatItems', [])
         ]
 
-    def run(self) -> None:
-        pass
+#    def run(self) -> None:
+#        pass
 
     def __len__(self) -> int:
         return len(self.obj.get('spec', {}).get('oaatItems', []))

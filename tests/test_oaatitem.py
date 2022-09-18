@@ -6,11 +6,12 @@ from copy import deepcopy
 # on how they handle non-test in-module importing
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../oaatoperator")
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 import unittest
 
 from tests.mocks_pykube import object_setUp
 from tests.testdata import TestData
+from tests.utility import ExtendedTestCase
 from oaatoperator.oaatitem import OaatItem, OaatItems
 from oaatoperator.oaatgroup import OaatGroupOverseer
 from oaatoperator.oaattype import OaatType
@@ -112,3 +113,77 @@ class RunItemTests(unittest.TestCase):
         self.assertEqual(
             get_env(pod['spec']['containers'][0]['env'], 'second'),
             'abcitem1def')
+
+
+class TestOaatItems(ExtendedTestCase):
+    @patch('oaatoperator.oaatgroup.OaatGroup')
+    def test_create(self, og_mock):
+        ois = OaatItems(og_mock, {})
+        self.assertEqual(ois.obj, {})
+        self.assertEqual(ois.group, og_mock)
+
+    @patch('oaatoperator.oaatgroup.OaatGroup')
+    def test_nondict(self, og_mock):
+        with self.assertRaisesRegex(TypeError , 'obj should be dict, not <class \'str\'>=string'):
+            ois = OaatItems(og_mock, 'string')  # type: ignore
+
+    @patch('oaatoperator.oaatgroup.OaatGroup')
+    def test_get_kubeobj(self, og_mock):
+        og_mock.obj = TestData.kog5_mock
+        og_mock.status = TestData.kog5_mock.status
+        ois = OaatItems(group=og_mock, obj=TestData.kog5_mock.obj)
+        self.assertEqual(ois.obj, TestData.kog5_mock.obj)
+        self.assertEqual(ois.group, og_mock)
+        i = ois.get('item1')
+        self.assertIsInstance(i, OaatItem)
+        self.assertEqual(i.name, 'item1')
+        self.assertEqual(i.status('podphase', 'test'), 'test')
+
+    @patch('oaatoperator.oaatgroup.OaatGroup')
+    def test_get_kopfobj(self, og_mock):
+        og_mock.obj = TestData.kog5_mock
+        og_mock.status = TestData.kog5_mock.status
+        kopfobj = TestData.setup_kwargs(TestData.kog5_mock.obj)
+        ois = OaatItems(group=og_mock, obj=kopfobj)
+        self.assertEqual(ois.obj, kopfobj)
+        self.assertEqual(ois.group, og_mock)
+        i = ois.get('item1')
+        self.assertIsInstance(i, OaatItem)
+        self.assertEqual(i.name, 'item1')
+        self.assertEqual(i.status('podphase', 'test'), 'test')
+
+    @patch('oaatoperator.oaatgroup.OaatGroup')
+    def test_list_kubeobj(self, og_mock):
+        og_mock.obj = TestData.kog5_mock
+        ois = OaatItems(group=og_mock, obj=TestData.kog5_mock.obj)
+        self.assertEqual(ois.obj, TestData.kog5_mock.obj)
+        self.assertEqual(ois.group, og_mock)
+        items = ois.list()
+        self.assertIsInstance(items, list)
+
+    @patch('oaatoperator.oaatgroup.OaatGroup')
+    def test_list_kopfobj(self, og_mock):
+        og_mock.obj = TestData.kog5_mock
+        kopfobj = TestData.setup_kwargs(TestData.kog5_mock.obj)
+        ois = OaatItems(group=og_mock, obj=kopfobj)
+        self.assertEqual(ois.obj, kopfobj)
+        self.assertEqual(ois.group, og_mock)
+        items = ois.list()
+        self.assertIsInstance(items, list)
+
+    @patch('oaatoperator.oaatgroup.OaatGroup')
+    def test_len_kubeobj(self, og_mock):
+        og_mock.obj = TestData.kog5_mock
+        ois = OaatItems(group=og_mock, obj=TestData.kog5_mock.obj)
+        self.assertEqual(ois.obj, TestData.kog5_mock.obj)
+        self.assertEqual(ois.group, og_mock)
+        self.assertEqual(len(ois), 5)
+
+    @patch('oaatoperator.oaatgroup.OaatGroup')
+    def test_len_kopfobj(self, og_mock):
+        og_mock.obj = TestData.kog5_mock
+        kopfobj = TestData.setup_kwargs(TestData.kog5_mock.obj)
+        ois = OaatItems(group=og_mock, obj=kopfobj)
+        self.assertEqual(ois.obj, kopfobj)
+        self.assertEqual(ois.group, og_mock)
+        self.assertEqual(len(ois), 5)
