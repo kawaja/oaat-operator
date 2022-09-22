@@ -32,7 +32,7 @@ class BasicTests(unittest.TestCase):
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         return super().setUp()
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_create_none(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             og = OaatGroup(kopf_object=cast(
@@ -40,7 +40,7 @@ class BasicTests(unittest.TestCase):
         self.assertIsInstance(og, OaatGroup)
         self.assertEqual(og.freq, datetime.timedelta(seconds=60))
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_get_kubeobj(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             og = OaatGroup(kopf_object=cast(
@@ -94,7 +94,7 @@ class FindJobTests(unittest.TestCase):
     #     self.assertIsInstance(ogo.oaattype, OaatType)
     #     return ogo
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_noitems(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_empty_attrs):
             og = OaatGroup(kopf_object=cast(
@@ -103,7 +103,7 @@ class FindJobTests(unittest.TestCase):
                                         'error in OaatGroup definition'):
                 og.find_job_to_run()
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_oneitem_noprevious_run(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             og = OaatGroup(kopf_object=cast(
@@ -111,7 +111,7 @@ class FindJobTests(unittest.TestCase):
             job = og.find_job_to_run()
         self.assertEqual(job.name, 'item1')
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_oneitem_success_within_freq(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             og = OaatGroup(kopf_object=cast(
@@ -126,7 +126,7 @@ class FindJobTests(unittest.TestCase):
                                         'not time to run next item'):
                 og.find_job_to_run()
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_oneitem_success_outside_freq(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             og = OaatGroup(kopf_object=cast(
@@ -144,7 +144,7 @@ class FindJobTests(unittest.TestCase):
             job = og.find_job_to_run()
             self.assertEqual(job.name, 'item1')
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_oneitem_failure_within_freq_no_cooloff(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             og = OaatGroup(kopf_object=cast(
@@ -159,7 +159,7 @@ class FindJobTests(unittest.TestCase):
             self.assertEqual(job.name, 'item1')
 
     # inside frequency and cooloff => not valid (cooloff)
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_oneitem_failure_within_freq_within_cooloff(self, _):
         kog = deepcopy(TestData.kog_attrs)
         kog['spec']['failureCoolOff'] = '5m'
@@ -188,7 +188,7 @@ class FindJobTests(unittest.TestCase):
                 'item1 cool_off.*not expired since last failure')
 
     # inside frequency but outside cooloff => valid job
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_oneitem_failure_within_freq_outside_cooloff(self, _):
         kog = deepcopy(TestData.kog_attrs)
         kog['spec']['failureCoolOff'] = '1m'
@@ -211,7 +211,7 @@ class FindJobTests(unittest.TestCase):
             self.assertEqual(job.name, 'item1')
 
     # outside frequency but inside cooloff => not valid (cooloff)
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_oneitem_failure_outside_freq_within_cooloff(self, _):
         kog = deepcopy(TestData.kog_attrs)
         kog['spec']['failureCoolOff'] = '10m'
@@ -234,7 +234,7 @@ class FindJobTests(unittest.TestCase):
                 og.find_job_to_run()
 
     # outside both frequency and cooloff => valid job
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_oneitem_failure_outside_freq_outside_cooloff(self, _):
         kog = deepcopy(TestData.kog_attrs)
         kog['spec']['failureCoolOff'] = '5m'
@@ -256,7 +256,7 @@ class FindJobTests(unittest.TestCase):
             self.assertEqual(job.name, 'item1')
 
     # should mock randrange to validate this
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_5_noprevious_run(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog5_attrs):
             og = OaatGroup(kopf_object=cast(
@@ -264,7 +264,7 @@ class FindJobTests(unittest.TestCase):
             job = og.find_job_to_run()
             self.assertIn(job.name, ('item1', 'item2', 'item3', 'item4', 'item5'))
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_5_single_oldest(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog5_attrs):
             og = OaatGroup(kopf_object=cast(
@@ -284,7 +284,7 @@ class FindJobTests(unittest.TestCase):
             job = og.find_job_to_run()
             self.assertEqual(job.name, 'item3')
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_5_single_oldest_failure(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog5_attrs):
             og = OaatGroup(kopf_object=cast(
@@ -306,7 +306,7 @@ class FindJobTests(unittest.TestCase):
             job = og.find_job_to_run()
             self.assertEqual(job.name, 'item4')
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_5_single_multiple_failure(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog5_attrs):
             og = OaatGroup(kopf_object=cast(
@@ -351,7 +351,7 @@ class ValidateTests(unittest.TestCase):
     #     self.assertIsInstance(ogo.kopf_object.oaattype, OaatType)
     #     return ogo
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_validate_items_none(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_empty_attrs):
             og = OaatGroup(kopf_object=cast(
@@ -359,7 +359,7 @@ class ValidateTests(unittest.TestCase):
             with self.assertRaisesRegex(ProcessingComplete, 'no items found.*'):
                 og.validate_items()
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_validate_items_none_annotation(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_empty_attrs):
             og = OaatGroup(kopf_object=cast(
@@ -375,7 +375,7 @@ class ValidateTests(unittest.TestCase):
                 og.kopf_object.patch['metadata']['annotations'].get(  # type: ignore
                     'kawaja.net/test-items'), None)
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_validate_items_one_annotation(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             og = OaatGroup(kopf_object=cast(
@@ -390,7 +390,7 @@ class ValidateTests(unittest.TestCase):
                 og.kopf_object.patch['metadata']['annotations'].get(  # type: ignore
                     'kawaja.net/test-items'), '1')
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_verify_state_pod_cr(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             kw = TestData.setup_kwargs(TestData.kog_attrs)
@@ -399,7 +399,7 @@ class ValidateTests(unittest.TestCase):
             og = OaatGroup(kopf_object=cast(CallbackArgs, kw))
             self.assertIsNone(og.verify_state())
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_verify_is_pod_expected(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             kw = TestData.setup_kwargs(TestData.kog_attrs)
@@ -408,7 +408,7 @@ class ValidateTests(unittest.TestCase):
             og = OaatGroup(kopf_object=cast(CallbackArgs, kw))
             self.assertTrue(og.is_pod_expected())
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_verify_is_pod_expected_negative(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             kw = TestData.setup_kwargs(TestData.kog_attrs)
@@ -417,7 +417,7 @@ class ValidateTests(unittest.TestCase):
             og = OaatGroup(kopf_object=cast(CallbackArgs, kw))
             self.assertFalse(og.is_pod_expected())
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_verify_expected_pod(self, _):
         pod1 = pykube.Pod(self.api, TestData.pod_spec)
         pod1.create()
@@ -437,7 +437,7 @@ class ValidateTests(unittest.TestCase):
         pod1.update()
         pod1.delete()
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_verify_expected_pod_negative(self, _):
         pod1 = pykube.Pod(self.api, TestData.pod_spec)
         pod1.create()
@@ -456,7 +456,7 @@ class ValidateTests(unittest.TestCase):
         pod1.update()
         pod1.delete()
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_delete_rogue_none(self, _):
         pod1 = pykube.Pod(self.api, TestData.pod_spec)
         pod1.create()
@@ -474,7 +474,7 @@ class ValidateTests(unittest.TestCase):
         pod1.update()
         pod1.delete()
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_delete_rogue_skip_unrelated(self, _):
         pod1 = pykube.Pod(self.api, TestData.pod_spec)
         pod2 = pykube.Pod(self.api, TestData.pod_spec_noapp)
@@ -501,7 +501,7 @@ class ValidateTests(unittest.TestCase):
         pod1.delete()
         pod2.delete()
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_delete_rogue(self, _):
         pod1 = pykube.Pod(self.api, TestData.pod_spec)
         pod2 = pykube.Pod(self.api, TestData.pod_spec)
@@ -529,7 +529,7 @@ class ValidateTests(unittest.TestCase):
         pod1.delete()
         pod2.delete()
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_verify_state_nopod_nocr(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             kw = TestData.setup_kwargs(TestData.kog_attrs)
@@ -538,7 +538,7 @@ class ValidateTests(unittest.TestCase):
             kw.setdefault('status', {})['currently_running'] = None
             self.assertIsNone(og.verify_state())
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_verify_state_pod_nocr(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             kw = TestData.setup_kwargs(TestData.kog_attrs)
@@ -548,7 +548,7 @@ class ValidateTests(unittest.TestCase):
             with self.assertRaisesRegex(ProcessingComplete, 'internal error'):
                 og.verify_state()
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_verify_state_nopod_cr(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             kw = TestData.setup_kwargs(TestData.kog_attrs)
@@ -600,7 +600,7 @@ class OaatGroupTests(unittest.TestCase):
                                     'OaatGroup must be called with either.*'):
             OaatGroup()
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_no_kopf(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             og = OaatGroup(kube_object_name='test-kog', logger=MagicMock())
@@ -645,7 +645,7 @@ class OaatGroupTests(unittest.TestCase):
                     'attempt to retrieve get_kubeobj outside of kopf'):
                 og.get_kubeobj('state', 'value')
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_create_with_kubeobj(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             og = OaatGroup(kube_object_name='test-kog', logger=MagicMock())
@@ -654,7 +654,7 @@ class OaatGroupTests(unittest.TestCase):
             self.assertEqual(og.kube_object.name, TestData.kog_attrs['metadata']['name'])
             self.assertEqual(og.namespace(), 'default')
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_create_with_kubeobj_no_logger(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             with self.assertRaisesRegex(
@@ -662,7 +662,7 @@ class OaatGroupTests(unittest.TestCase):
                     'must supply logger= parameter .*kube_object_name'):
                 og = OaatGroup(kube_object_name='test-kog')
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_create_with_kopfobj(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             kw = TestData.setup_kwargs(TestData.kog_attrs)
@@ -672,7 +672,7 @@ class OaatGroupTests(unittest.TestCase):
             self.assertEqual(og.kopf_object.name, TestData.kog_attrs['metadata']['name'])  # type: ignore
             self.assertEqual(og.namespace(), 'default')
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_mark_failed_invalid_finished_at(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_previous_fail_attrs):
             kw = TestData.setup_kwargs(TestData.kog_previous_fail_attrs)
@@ -684,7 +684,7 @@ class OaatGroupTests(unittest.TestCase):
                     'item1',
                     finished_at='hello')  # type: ignore
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_mark_item_failed_new_failure(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_previous_fail_attrs):
             kw = TestData.setup_kwargs(TestData.kog_previous_fail_attrs)
@@ -695,7 +695,7 @@ class OaatGroupTests(unittest.TestCase):
                     finished_at=(TestData.failure_time +
                                 datetime.timedelta(hours=2))))
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_mark_item_failed_old_failure(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_previous_fail_attrs):
             kw = TestData.setup_kwargs(TestData.kog_previous_fail_attrs)
@@ -706,7 +706,7 @@ class OaatGroupTests(unittest.TestCase):
                     finished_at=(TestData.failure_time -
                                 datetime.timedelta(hours=2))))
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     @patch('oaatoperator.utility.now')
     def test_mark_item_failed_no_date_provided(self, now, _):
         now.return_value = (TestData.failure_time +
@@ -716,7 +716,7 @@ class OaatGroupTests(unittest.TestCase):
             og = OaatGroup(kopf_object=cast(CallbackArgs, kw))
             self.assertTrue(og.mark_item_failed('item1'))
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_mark_success_invalid_finished_at(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_previous_success_attrs):
             kw = TestData.setup_kwargs(TestData.kog_previous_success_attrs)
@@ -728,7 +728,7 @@ class OaatGroupTests(unittest.TestCase):
                     'item1',
                     finished_at='hello')  # type: ignore
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_mark_item_success_new_success(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_previous_success_attrs):
             kw = TestData.setup_kwargs(TestData.kog_previous_success_attrs)
@@ -739,7 +739,7 @@ class OaatGroupTests(unittest.TestCase):
                     finished_at=(TestData.success_time +
                                 datetime.timedelta(hours=2))))
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_mark_item_success_old_success(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_previous_success_attrs):
             kw = TestData.setup_kwargs(TestData.kog_previous_success_attrs)
@@ -750,7 +750,7 @@ class OaatGroupTests(unittest.TestCase):
                     finished_at=(TestData.success_time -
                                 datetime.timedelta(hours=2))))
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     @patch('oaatoperator.utility.now')
     def test_mark_item_success_no_date_provided(self, now, _):
         now.return_value = (TestData.success_time +
@@ -760,7 +760,7 @@ class OaatGroupTests(unittest.TestCase):
             og = OaatGroup(kopf_object=cast(CallbackArgs, kw))
             self.assertTrue(og.mark_item_success('item1'))
 
-    @patch('oaattype.OaatType', autospec=True, obj=TestData.kot_mock)
+    @patch('oaatoperator.oaatgroup.OaatType', autospec=True, obj=TestData.kot_mock)
     def test_find_job_oneitem_noprevious_run(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             kw = TestData.setup_kwargs(TestData.kog_attrs)

@@ -9,7 +9,7 @@ import datetime
 from typing_extensions import Unpack
 import logging
 import pykube
-from typing import Any, Optional, TypedDict, cast
+from typing import Any, Optional, TypedDict, Type, cast
 
 # local imports
 import oaatoperator.utility
@@ -49,7 +49,7 @@ class OaatGroupOverseer(Overseer):
 
     def __init__(self, parent: OaatGroup, **kwargs: Unpack[types.CallbackArgs]) -> None:
         super().__init__(**kwargs)
-        self.my_pykube_objtype = KubeOaatGroup
+        self.my_pykube_objtype : Type[pykube.objects.APIObject] = KubeOaatGroup
         self.obj = kwargs
         self.parent = parent
         self.freq = oaatoperator.utility.parse_duration(
