@@ -2,15 +2,18 @@ import unittest
 from copy import deepcopy
 import oaatoperator.utility
 import logging
-import unittest.mock
+import pykube
+
+from unittest.mock import MagicMock, Mock
 
 from oaatoperator.common import KubeOaatGroup, KubeOaatType
+from oaatoperator.oaattype import OaatType
 
 
 def new_mock(mock_type, mock_attrs):
     attrs = deepcopy(mock_attrs)
-    mock = unittest.mock.Mock(mock_type)
-    mock.configure_mock(**attrs)
+    mock = Mock(mock_type)
+    mock.configure_mock(**attrs, obj=attrs)
     return mock
 
 
@@ -19,6 +22,14 @@ def delkey(indict, key_to_del):
 
 
 class TestData:
+    new_mock = new_mock
+
+    @classmethod
+    def add_og_mock_attributes(cls, og_mock):
+        og_mock.oaattype = MagicMock(spec=OaatType)
+        og_mock.status = {}
+        og_mock.name = ''
+        og_mock.api = MagicMock(spec=pykube.HTTPClient)
 
     @classmethod
     def setup_kwargs(cls, input_obj):
@@ -26,7 +37,7 @@ class TestData:
         body = {
             'spec': obj['spec'],
             'metadata': {
-                'namespace': 'default',
+                'namespace': obj.get('metadata', {}).get('namespace', 'default'),
                 'name': obj.get('metadata', {}).get('name', 'unknown'),
                 'uid': 'uid',
                 'labels': obj.get('metadata', {}).get('labels', {}),
@@ -45,7 +56,7 @@ class TestData:
             'uid': body.get('metadata', {}).get('uid'),
             'labels': body.get('metadata', {}).get('labels', {}),
             'annotations': body.get('metadata', {}).get('annotations', {}),
-            'logger': unittest.mock.MagicMock(spec=logging.Logger),
+            'logger': MagicMock(spec=logging.Logger),
             'patch': {},
             'memo': {},
             'event': {},
@@ -57,8 +68,62 @@ class TestData:
 
     failure_time = oaatoperator.utility.now()
     success_time = oaatoperator.utility.now()
+    
+    # Pod
+    kp_spec = {
+        'apiVersion': 'v1',
+        'kind': 'Pod',
+        'metadata': {
+            'name': 'test-kp',
+            'labels': {'parent-name': 'test-kog', 'oaat-name': 'item'}
+        },
+        'status': {
+            'phase': 'Running'
+        },
+        'spec': {
+            'containers': [
+                {
+                    'name': 'test',
+                    'image': 'busybox',
+                    'command': ['sh', '-x', '-c'],
+                    'args': [
+                        'echo "OAAT_ITEM=%%oaat_item%%"\n'
+                        'sleep $(shuf -i 10-180 -n 1)\n'
+                        'exit $(shuf -i 0-1 -n 1)\n'
+                    ],
+                }
+            ]
+        }
+    }
 
-    # KubeOaatType
+    kp_failure = deepcopy(kp_spec)
+    kp_failure['status'] = {
+        'phase': 'Failed',
+        'containerStatuses': [{
+            'state': {
+                'terminated': {
+                    'exitCode': 5,
+                    'finishedAt': failure_time.isoformat()
+                }
+            }
+        }]
+    }
+
+    kp_success = deepcopy(kp_spec)
+    kp_success['status'] = {
+        'phase': 'Completed',
+        'containerStatuses': [{
+            'state': {
+                'terminated': {
+                    'exitCode': 0,
+                    'finishedAt': success_time.isoformat()
+                }
+            }
+        }]
+    }
+
+
+    # KubeOaatType variants
     kot_header = {
         'apiVersion': 'kawaja.net/v1',
         'kind': 'OaatType',
@@ -116,7 +181,7 @@ class TestData:
     kot_restartPolicy_spec['spec']['podspec']['restartPolicy'] = 'Always'
 
     # KubeOaatGroup variants
-    attrs = {
+    kog_empty_attrs = {
         'apiVersion': 'kawaja.net/v1',
         'kind': 'OaatGroup',
         'metadata': {
@@ -131,39 +196,46 @@ class TestData:
             'oaatItems': []
         }
     }
-    kog_empty = new_mock(KubeOaatGroup, attrs)
+    kog_empty_mock = new_mock(KubeOaatGroup, kog_empty_attrs)
 
-    kog_notype_mock = new_mock(KubeOaatGroup, attrs)
-    del kog_notype_mock.spec['oaatType']
+    kog_notype_attrs = deepcopy(kog_empty_attrs)
+    del kog_notype_attrs['spec']['oaatType']
+    kog_notype_mock = new_mock(KubeOaatGroup, kog_notype_attrs)
 
-    kog_noitems_mock = new_mock(KubeOaatGroup, attrs)
-    del kog_noitems_mock.spec['oaatItems']
+    kog_noitems_attrs = deepcopy(kog_empty_attrs)
+    del kog_noitems_attrs['spec']['oaatItems']
+    kog_noitems_mock = new_mock(KubeOaatGroup, kog_noitems_attrs)
 
-    kog_emptyspec_mock = new_mock(KubeOaatGroup, attrs)
-    kog_emptyspec_mock.spec = {}
+    kog_emptyspec_attrs = deepcopy(kog_empty_attrs)
+    kog_emptyspec_attrs['spec'] = {}
+    kog_emptyspec_mock = new_mock(KubeOaatGroup, kog_emptyspec_attrs)
 
-    kog_mock = new_mock(KubeOaatGroup, attrs)
-    kog_mock.spec['oaatItems'] = ['item1']
+    kog_attrs = deepcopy(kog_empty_attrs)
+    kog_attrs['spec']['oaatItems'] = ['item1']
+    kog_mock = new_mock(KubeOaatGroup, kog_attrs)
 
-    kog5_mock = new_mock(KubeOaatGroup, attrs)
-    kog5_mock.spec['oaatItems'] = ['item1', 'item2', 'item3', 'item4', 'item5']
+    kog5_attrs = deepcopy(kog_empty_attrs)
+    kog5_attrs['spec']['oaatItems'] = ['item1', 'item2', 'item3', 'item4', 'item5']
+    kog5_mock = new_mock(KubeOaatGroup, kog5_attrs)
 
     failure_count = 1
-    kog_previous_fail_mock = new_mock(KubeOaatGroup, attrs)
-    kog_previous_fail_mock.status['items'] = {
+    kog_previous_fail_attrs = deepcopy(kog_empty_attrs)
+    kog_previous_fail_attrs['status']['items'] = {
         'item1': {
             'failure_count': failure_count,
             'last_failure': failure_time.isoformat()
         }
     }
+    kog_previous_fail_mock = new_mock(KubeOaatGroup, kog_previous_fail_attrs)
 
-    kog_previous_success_mock = new_mock(KubeOaatGroup, attrs)
-    kog_previous_success_mock.status['items'] = {
+    kog_previous_success_attrs = deepcopy(kog_empty_attrs)
+    kog_previous_success_attrs['status']['items'] = {
         'item1': {
             'failure_count': 0,
             'last_success': success_time.isoformat()
         }
     }
+    kog_previous_success_mock = new_mock(KubeOaatGroup, kog_previous_success_attrs)
 
     # POD specifications for passing to pykube.Pod()
     contspec = {

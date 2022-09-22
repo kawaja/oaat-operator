@@ -82,9 +82,9 @@ class StatusTests(unittest.TestCase):
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         return super().setUp()
 
-    @patch('oaatoperator.pod.OaatGroup', spec=True)
+    @patch('oaatoperator.pod.OaatGroup', autospec=True)
     def test_success(self, og_mock):
-        og_mock.kopf_object = TestData.setup_kwargs(TestData.kog_empty_mock.obj)
+        og_mock.kopf_object = TestData.setup_kwargs(TestData.kog_empty_attrs)
         op = TestData.setup_kwargs(TestData.kp_success)
         p = PodOverseer(**op)
         self.assertIsInstance(p, PodOverseer)
@@ -95,9 +95,9 @@ class StatusTests(unittest.TestCase):
             call(op['labels']['oaat-name'],
                  finished_at=TestData.success_time))
 
-    @patch('oaatoperator.pod.OaatGroup', spec=True)
+    @patch('oaatoperator.pod.OaatGroup', autospec=True)
     def test_failure(self, og_mock):
-        og_mock.kopf_object = TestData.setup_kwargs(TestData.kog_previous_success_mock.obj)
+        og_mock.kopf_object = TestData.setup_kwargs(TestData.kog_previous_success_attrs)
         op = TestData.setup_kwargs(TestData.kp_failure)
         p = PodOverseer(**op)
         exit_code = (op['status']['containerStatuses'][0]['state']
@@ -113,9 +113,9 @@ class StatusTests(unittest.TestCase):
                  finished_at=TestData.failure_time,
                  exit_code=exit_code))
 
-    @patch('oaatoperator.pod.OaatGroup', spec=True)
+    @patch('oaatoperator.pod.OaatGroup', autospec=True)
     def test_success_old(self, og_mock):
-        og_mock.kopf_object = TestData.setup_kwargs(TestData.kog_previous_success_mock.obj)
+        og_mock.kopf_object = TestData.setup_kwargs(TestData.kog_previous_success_attrs)
         og_instance_mock = og_mock.return_value
         og_instance_mock.mark_item_success.return_value = False
         op = TestData.setup_kwargs(TestData.kp_success)
@@ -139,9 +139,9 @@ class StatusTests(unittest.TestCase):
         # insure finished_at is not changed
         self.assertEqual(p.finished_at, newFA)
 
-    @patch('oaatoperator.pod.OaatGroup', spec=True)
+    @patch('oaatoperator.pod.OaatGroup', autospec=True)
     def test_failure_old(self, og_mock):
-        og_mock.kopf_object = TestData.setup_kwargs(TestData.kog_previous_fail_mock.obj)
+        og_mock.kopf_object = TestData.setup_kwargs(TestData.kog_previous_fail_attrs)
         og_instance_mock = og_mock.return_value
         og_instance_mock.mark_item_failed.return_value = False
         op = TestData.setup_kwargs(TestData.kp_failure)
@@ -160,9 +160,9 @@ class StatusTests(unittest.TestCase):
                  exit_code=op['status']['containerStatuses'][0]['state']
                  ['terminated']['exitCode']))
 
-    @patch('oaatoperator.pod.OaatGroup', spec=True)
+    @patch('oaatoperator.pod.OaatGroup', autospec=True)
     def test_update_phase(self, og_mock):
-        og_mock.kopf_object = TestData.setup_kwargs(TestData.kog_empty_mock.obj)
+        og_mock.kopf_object = TestData.setup_kwargs(TestData.kog_empty_attrs)
         op = TestData.setup_kwargs(TestData.kp_spec)
         p = PodOverseer(**op)
         self.assertIsInstance(p, PodOverseer)

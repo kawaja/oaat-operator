@@ -14,8 +14,8 @@ class OaatType:
 
     Manager for OaatType objects.
     """
-    def __init__(self, name: str, namespace: Optional[str] = None) -> None:
-        self.name = name
+    def __init__(self, name: Optional[str], namespace: Optional[str] = None) -> None:
+        self.name = str(name)
         self.namespace = namespace
         if name is None:
             raise ProcessingComplete(message='OaatType invalid',

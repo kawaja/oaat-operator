@@ -10,13 +10,14 @@ from typing_extensions import Unpack
 import logging
 import pykube
 from typing import Any, Optional, TypedDict, cast
+
+# local imports
 import oaatoperator.utility
-from oaatoperator.types import CallbackArgs
-from oaatoperator.common import (InternalError, ProcessingComplete,
-                                 KubeOaatGroup)
-from oaatoperator.oaattype import OaatType
-from oaatoperator.oaatitem import OaatItems
-from oaatoperator.overseer import Overseer
+import oaatoperator.types as types
+import oaatitem
+import oaattype
+import overseer
+from oaatoperator.common import (InternalError, ProcessingComplete, KubeOaatGroup)
 
 
 # TODO: I'm not convinced about this composite object. It's essentially
@@ -32,7 +33,7 @@ from oaatoperator.overseer import Overseer
 # future non-POD run mechanisms (e.g. Job)
 
 
-class OaatGroupOverseer(Overseer):
+class OaatGroupOverseer(overseer.Overseer):
     """
     OaatGroupOverseer
 
@@ -40,21 +41,23 @@ class OaatGroupOverseer(Overseer):
 
     Initialise with the kwargs for a OaatGroup kopf handler.
     """
-    def __init__(self, parent: OaatGroup, **kwargs: Unpack[CallbackArgs]) -> None:
+    # these are needed to populate the OaatGroup passthrough_names, so
+    # OaatGroup.<attribute> works
+    freq : Optional[datetime.timedelta] = None
+    oaattype : Optional[oaattype.OaatType] = None
+    status : Optional[dict[str, Any]] = None
+
+    def __init__(self, parent: OaatGroup, **kwargs: Unpack[types.CallbackArgs]) -> None:
         super().__init__(**kwargs)
         self.my_pykube_objtype = KubeOaatGroup
         self.obj = kwargs
         self.parent = parent
-        self.spec = kwargs.get('spec', {})
-        self.body = kwargs.get('body')
-        self.patch = kwargs.get('patch')
         self.freq = oaatoperator.utility.parse_duration(
             self.spec.get('frequency', '1h'))
-        self.oaattypename = str(self.spec.get('oaatType'))
-        self.oaattype = OaatType(name=self.oaattypename)
+        self.oaattypename = self.spec.get('oaatType')
+        self.oaattype = oaattype.OaatType(name=self.oaattypename)
         self.cool_off = oaatoperator.utility.parse_duration(
             str(self.spec.get('failureCoolOff')))
-        self.items = OaatItems(group=parent, obj=cast(dict[str, Any], self.obj))
 
     # TODO: if the oldest item keeps failing, consider running
     # other items which are ready to run
@@ -87,7 +90,7 @@ class OaatGroupOverseer(Overseer):
         now = oaatoperator.utility.now()
 
         # Phase One: Choose valid item candidates
-        oaat_items = self.items.list()
+        oaat_items = self.parent.items.list()
         item_status = {item.name: 'candidate' for item in oaat_items}
 
         if not oaat_items:
@@ -212,7 +215,7 @@ class OaatGroupOverseer(Overseer):
 
         Ensure there are oaatItems to process.
         """
-        if not len(self.items):
+        if not len(self.parent.items):
             if status_annotation:
                 self.set_annotation(status_annotation, 'missingItems')
             raise ProcessingComplete(
@@ -226,7 +229,7 @@ class OaatGroupOverseer(Overseer):
         if status_annotation:
             self.set_annotation(status_annotation, 'active')
         if count_annotation:
-            self.set_annotation(count_annotation, value=str(len(self.items)))
+            self.set_annotation(count_annotation, value=str(len(self.parent.items)))
 
     def verify_running(self) -> None:
         self.verify_state()
@@ -350,7 +353,7 @@ class OaatGroupOverseer(Overseer):
         podphase = pod.get('status', {}).get('phase', 'unknown')
         self.info(f'verified that pod {curpod} exists '
                   f'(phase={podphase})')
-        recorded_phase = self.items.get(curitem_name).status('podphase', 'unknown')
+        recorded_phase = self.parent.items.get(curitem_name).status('podphase', 'unknown')
 
         # if there is a mismatch in phase, then the pod phase handlers
         # have not yet picked it up and updated the oaatgroup phase.
@@ -377,23 +380,23 @@ class OaatGroupOverseer(Overseer):
                  .setdefault(item_name, {}))
         patch[key] = value
 
-    def validate_oaat_type(self) -> None:
-        """
-        validate_oaat_type
+    # def validate_oaat_type(self) -> None:
+    #     """
+    #     validate_oaat_type
 
-        Ensure the group refers to an appropriate OaatType object.
-        """
-        if self.oaattype.valid:
-            self.info('found valid oaat type')
-            return None
-        self.set_annotation('operator-status', 'missingOaatType')
-        raise ProcessingComplete(
-            message='error in OaatGroup definition',
-            error=f'unknown oaat type {self.oaattypename}')
+    #     Ensure the group refers to an appropriate OaatType object.
+    #     """
+    #     if self.oaattype is not None:
+    #         self.info('found valid oaat type')
+    #         return None
+    #     self.set_annotation('operator-status', 'missingOaatType')
+    #     raise ProcessingComplete(
+    #         message='error in OaatGroup definition',
+    #         error=f'unknown oaat type {self.oaattypename}')
 
 
 class OaatGroupArgs(TypedDict):
-    kopf_object: Optional[CallbackArgs]
+    kopf_object: Optional[types.CallbackArgs]
     kube_object_name: Optional[str]
 
 class OaatGroup:
@@ -403,28 +406,33 @@ class OaatGroup:
     Composite object for KOPF and Kubernetes handling
     """
     api: pykube.HTTPClient
-    kopf_object: OaatGroupOverseer
+    kopf_object: Optional[OaatGroupOverseer]
     kube_object: KubeOaatGroup
     logger: logging.Logger
-    items: OaatItems
+    status: dict
+    items: oaatitem.OaatItems
     passthrough_names: list = [
         i for i in dir(OaatGroupOverseer) if i[0] != '_'
     ] + ["name"]
 
     def __init__(self,
-                 kopf_object: Optional[CallbackArgs] = None,
+                 kopf_object: Optional[types.CallbackArgs] = None,
                  kube_object_name: Optional[str] = None,
+                 kube_object_namespace: str = 'default',
                  logger: Optional[logging.Logger] = None) -> None:
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
-        kube_object_name = None
 
-        if 'kopf_object' is not None:
-            self.kopf_object = OaatGroupOverseer(self, **cast(CallbackArgs, kopf_object))
-            self.items = OaatItems(group=self, obj=cast(dict[str, Any], kopf_object))
-            kube_object_name = self.kopf_object.name
+        # kopf object supplied
+        if kopf_object is not None:
+            self.kopf_object = OaatGroupOverseer(
+                self, **cast(types.CallbackArgs, kopf_object))
+            self.items = oaatitem.OaatItems(group=self,
+                                            obj=cast(dict[str, Any],
+                                                     kopf_object))
+            return
 
-        # override kopf object
-        if 'kube_object_name' is not None:
+        # kube object name supplied
+        if kube_object_name is not None:
             self.logger = cast(logging.Logger, logger)
             if self.logger is None:
                 raise InternalError(
@@ -432,38 +440,43 @@ class OaatGroup:
                     f'{self.__class__.__name__} when using kube_object_name'
                 )
 
+        # neither kopf object nor kube name supplied
         if kube_object_name is None:
             raise InternalError(
                 f'{self.__class__.__name__} must be called with either a '
                 'kopf_object= kopf context or a kube_object_name= name')
-        self.kube_object = self.get_kube_object(kube_object_name)
-        if isinstance(self.kube_object, str):
-            raise TypeError(
-                f'get_kube_object returned string: {self.kube_object}')
-        if self.items is None:
-            self.logger.info(f'kube_object: {self.kube_object}')
-            self.items = OaatItems(group=self, obj=cast(dict[str, Any], self.kube_object.obj))
+
+        # retrieve kube object if we're provided a name
+        # TODO: refactor to use self.group.get_kubeobj()
+        self.kopf_object = None
+        self.kube_object = self.get_kube_object(kube_object_name,
+                                                kube_object_namespace)
+        self.logger.debug(f'kube_object: {self.kube_object}')
+        self.items = oaatitem.OaatItems(group=self,
+                                        obj=cast(dict[str, Any],
+                                                    self.kube_object.obj))
+        self.status = self.kube_object.obj.get('status', {})
 
     def namespace(self) -> Optional[str]:
         if self.kopf_object:
             return self.kopf_object.namespace   # type: ignore (pykube needs Optional[str] for namespace)
         if self.kube_object:
             return self.kube_object.metadata.get('namespace')
-        return None
 
-    def get_kube_object(self, name: str) -> KubeOaatGroup:
-        namespace = self.namespace()
-
+    def get_kube_object(self, name: str, namespace: str) -> KubeOaatGroup:
         try:
             return (KubeOaatGroup.objects(
                 self.api, namespace=namespace).get_by_name(name))   # type: ignore (pykube needs Optional[str] for namespace)
         except pykube.exceptions.ObjectDoesNotExist as exc:
             raise RuntimeError(f'cannot find Object {name}: {exc}')
 
+    # expose kopf object data as attributes of the OaatGroup object
+    # TODO: what if there is no kopf object? Shouldn't we get the data
+    # from the kube object?
     def __getattr__(self, name) -> Any:
         if name in self.passthrough_names:
             if self.kopf_object is None:
-                raise InternalError(f'attempt to run {name} outside of kopf')
+                raise InternalError(f'attempt to retrieve {name} outside of kopf')
             return getattr(self.kopf_object, name)
         else:
             raise AttributeError(
@@ -491,17 +504,15 @@ class OaatGroup:
                                  finished_at.isoformat())
 
             # TODO: if via kopf, will this get overwritten by handler exit?
-            self.kube_object.patch({
-                'status': {
-                    'currently_running': None,
-                    'pod': None,
-                    'oaat_timer': {
-                        'message':
-                        f'item {item_name} failed with exit '
-                        f'code {exit_code}'
-                    },
-                    'state': 'idle',
-                }
+            self.set_group_status({
+                'currently_running': None,
+                'pod': None,
+                'oaat_timer': {
+                    'message':
+                    f'item {item_name} failed with exit '
+                    f'code {exit_code}'
+                },
+                'state': 'idle',
             })
             return True
         return False
@@ -526,15 +537,13 @@ class OaatGroup:
                                  finished_at.isoformat())
 
             # TODO: if via kopf, will this get overwritten by handler exit?
-            self.kube_object.patch({
-                'status': {
-                    'currently_running': None,
-                    'pod': None,
-                    'oaat_timer': {
-                        'message': f'item {item_name} completed '
-                    },
-                    'state': 'idle',
-                }
+            self.set_group_status({
+                'currently_running': None,
+                'pod': None,
+                'oaat_timer': {
+                    'message': f'item {item_name} completed '
+                },
+                'state': 'idle',
             })
             return True
         return False
@@ -547,10 +556,14 @@ class OaatGroup:
             self.kube_object.patch(
                 {'status': {
                     'items': {
-                        item_name: {
-                            key: value
-                        }
+                        item_name: { key: value }
                     }
                 }})
         else:
             self.kopf_object._set_item_status(item_name, key, value)
+
+    def set_group_status(self, values: dict[str, Any]) -> None:
+        if self.kopf_object is None:
+            self.kube_object.patch({'status': values})
+        else:
+            self.kopf_object.set_object_status(values)

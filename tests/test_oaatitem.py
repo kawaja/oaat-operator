@@ -18,13 +18,6 @@ from oaatoperator.oaattype import OaatType
 from oaatoperator.common import (KubeOaatGroup, KubeOaatType, ProcessingComplete)
 
 
-def add_og_mock_attributes(og_mock):
-    og_mock.oaattype = MagicMock(spec=OaatType)
-    og_mock.status = {}
-    og_mock.name = ''
-    og_mock.api = MagicMock(spec=pykube.HTTPClient)
-
-
 class OaatItemTests(unittest.TestCase):
     def test_create(self):
         oi = OaatItem(TestData.kog_emptyspec_mock, 'item1')
@@ -49,7 +42,7 @@ class RunItemTests(unittest.TestCase):
     @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
     @patch('pykube.Pod')
     def test_sunny(self, pod_mock, og_mock, kopf_adopt_mock):
-        add_og_mock_attributes(og_mock)
+        TestData.add_og_mock_attributes(og_mock)
         og_mock.oaattype.podspec.return_value = deepcopy(
             TestData.kot_typespec.get('podspec', {}))
         oi = OaatItem(og_mock, 'item1')
@@ -65,7 +58,7 @@ class RunItemTests(unittest.TestCase):
     @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
     @patch('pykube.Pod')
     def test_podfail(self, pod_mock, og_mock, kopf_adopt_mock):
-        add_og_mock_attributes(og_mock)
+        TestData.add_og_mock_attributes(og_mock)
         og_mock.oaattype.podspec.return_value = deepcopy(
             TestData.kot_typespec.get('podspec', {}))
         pod_instance_mock = pod_mock.return_value
@@ -82,7 +75,7 @@ class RunItemTests(unittest.TestCase):
     @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
     @patch('pykube.Pod')
     def test_substitute(self, pod_mock, og_mock, kopf_adopt_mock):
-        add_og_mock_attributes(og_mock)
+        TestData.add_og_mock_attributes(og_mock)
         kot_substitutions_podspec = deepcopy(
             TestData.kot_typespec.get('podspec', {}))
         kot_substitutions_podspec['container']['command'] = [
@@ -159,7 +152,7 @@ class TestOaatItems(ExtendedTestCase):
 
     @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
     def test_list_kubeobj(self, og_mock):
-        add_og_mock_attributes(og_mock)
+        TestData.add_og_mock_attributes(og_mock)
         og_mock.obj = TestData.kog5_mock
         ois = OaatItems(group=og_mock, obj=TestData.kog5_mock.obj)
         self.assertEqual(ois.obj, TestData.kog5_mock.obj)
@@ -169,7 +162,7 @@ class TestOaatItems(ExtendedTestCase):
 
     @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
     def test_list_kopfobj(self, og_mock):
-        add_og_mock_attributes(og_mock)
+        TestData.add_og_mock_attributes(og_mock)
         og_mock.obj = TestData.kog5_mock
         kopfobj = TestData.setup_kwargs(TestData.kog5_mock.obj)
         ois = OaatItems(group=og_mock, obj=kopfobj)

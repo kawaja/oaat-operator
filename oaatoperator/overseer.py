@@ -25,9 +25,9 @@ class Overseer:
         self.patch = kwargs.get('patch')
         self.status = kwargs.get('status')
         self.logger : logging.Logger = kwargs.get('logger')
+        self.body = kwargs.get('body')
         self.meta = kwargs.get('meta')
-        self.spec = kwargs.get('spec')
-        self.spec = kwargs.get('patch')
+        self.spec = kwargs.get('spec', {})
         self.namespace = kwargs.get('namespace')
         self.my_pykube_objtype = None
         # this list should contain all elements of kwargs used in this class,
@@ -63,10 +63,16 @@ class Overseer:
         """Get a value from the "status" of the overseen object."""
         return self.status.get(state, default)
 
-    def set_status(self, state: str, value: str|None = None) -> None:
+    def set_status(self, state: str, value: Optional[str] = None) -> None:
         """Set a field in the "status" of the overseen object."""
-        self.patch.setdefault('status', {})
-        self.patch['status'][state] = value
+        if value is not None:
+            self.patch.setdefault('status', {})
+            self.patch['status'][state] = value
+
+    def set_object_status(self, value: Optional[dict[str, Any]] = None) -> None:
+        """Set the entire status section of the overseen object."""
+        if value is not None:
+            self.patch['status'] = value
 
     def get_label(self, label: str, default: str|None = None) -> str:
         """Get a label from the overseen object."""

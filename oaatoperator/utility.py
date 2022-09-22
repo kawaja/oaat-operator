@@ -136,17 +136,3 @@ def now_iso() -> str:
 def my_name() -> str:
     """Return the name of the calling function."""
     return sys._getframe(1).f_code.co_name
-
-
-class ExtendedTestCase(unittest.TestCase):
-    def assertHasAttr(self, obj, intendedAttr):
-        testBool = hasattr(obj, intendedAttr)
-
-        # python >=3.8 only
-        self.assertTrue(testBool, msg=f'obj lacking an attribute. {obj=}, {intendedAttr=}')
-
-    def assertNotHaveAttr(self, obj, intendedAttr):
-        testBool = hasattr(obj, intendedAttr)
-
-        # python >=3.8 only
-        self.assertFalse(testBool, msg=f'obj has attribute it shouldn\'t. {obj=}, {intendedAttr=}')
