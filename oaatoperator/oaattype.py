@@ -3,8 +3,10 @@ oaattype.py
 
 Class for managing OaatType kubernetes objects.
 """
+from __future__ import annotations
 from typing import Optional
 import pykube
+
 from oaatoperator.common import ProcessingComplete, KubeOaatType
 
 

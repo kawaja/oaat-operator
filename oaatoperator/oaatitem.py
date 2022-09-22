@@ -8,14 +8,19 @@ from __future__ import annotations
 import datetime
 import kopf
 import pykube
-from typing import Any, Optional
-import oaatgroup
+from typing import Any, Optional, TYPE_CHECKING
+
 from oaatoperator.utility import date_from_isostr
 from oaatoperator.common import ProcessingComplete
 
 
+if TYPE_CHECKING:
+    from oaatoperator.oaatgroup import OaatGroup
+
 class OaatItem:
-    def __init__(self, group: oaatgroup.OaatGroup, item_name: str) -> None:
+    name : str
+    group : OaatGroup
+    def __init__(self, group: OaatGroup, item_name: str) -> None:
         self.name = item_name
         self.group = group
         self._status = (group.status.get('items', {}).get(self.name, {}))
@@ -98,7 +103,7 @@ class OaatItem:
         return pod
 
 class OaatItems:
-    def __init__(self, group: oaatgroup.OaatGroup, obj: dict[str, Any]) -> None:
+    def __init__(self, group: OaatGroup, obj: dict[str, Any]) -> None:
         if not isinstance(obj, dict):
             print(f'obj: {obj}')
             raise TypeError(f'obj should be dict, not {type(obj)}={obj}')

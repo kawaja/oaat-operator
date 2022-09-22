@@ -1,9 +1,8 @@
-import logging
 import sys
-from typing import ParamSpec
+import logging
 from typing_extensions import Unpack
 import kopf
-from kopf._core.intents.callbacks import ActivityFn
+
 import oaatoperator
 from oaatoperator.types import CallbackArgs
 from oaatoperator.utility import now_iso, my_name

@@ -14,9 +14,9 @@ from typing import Any, Optional, TypedDict, cast
 # local imports
 import oaatoperator.utility
 import oaatoperator.types as types
-import oaatitem
-import oaattype
-import overseer
+from oaatoperator.oaatitem import OaatItems
+from oaatoperator.oaattype import OaatType
+from oaatoperator.overseer import Overseer
 from oaatoperator.common import (InternalError, ProcessingComplete, KubeOaatGroup)
 
 
@@ -33,7 +33,7 @@ from oaatoperator.common import (InternalError, ProcessingComplete, KubeOaatGrou
 # future non-POD run mechanisms (e.g. Job)
 
 
-class OaatGroupOverseer(overseer.Overseer):
+class OaatGroupOverseer(Overseer):
     """
     OaatGroupOverseer
 
@@ -44,7 +44,7 @@ class OaatGroupOverseer(overseer.Overseer):
     # these are needed to populate the OaatGroup passthrough_names, so
     # OaatGroup.<attribute> works
     freq : Optional[datetime.timedelta] = None
-    oaattype : Optional[oaattype.OaatType] = None
+    oaattype : Optional[OaatType] = None
     status : Optional[dict[str, Any]] = None
 
     def __init__(self, parent: OaatGroup, **kwargs: Unpack[types.CallbackArgs]) -> None:
@@ -55,7 +55,7 @@ class OaatGroupOverseer(overseer.Overseer):
         self.freq = oaatoperator.utility.parse_duration(
             self.spec.get('frequency', '1h'))
         self.oaattypename = self.spec.get('oaatType')
-        self.oaattype = oaattype.OaatType(name=self.oaattypename)
+        self.oaattype = OaatType(name=self.oaattypename)
         self.cool_off = oaatoperator.utility.parse_duration(
             str(self.spec.get('failureCoolOff')))
 
@@ -410,7 +410,7 @@ class OaatGroup:
     kube_object: KubeOaatGroup
     logger: logging.Logger
     status: dict
-    items: oaatitem.OaatItems
+    items: OaatItems
     passthrough_names: list = [
         i for i in dir(OaatGroupOverseer) if i[0] != '_'
     ] + ["name"]
@@ -426,9 +426,8 @@ class OaatGroup:
         if kopf_object is not None:
             self.kopf_object = OaatGroupOverseer(
                 self, **cast(types.CallbackArgs, kopf_object))
-            self.items = oaatitem.OaatItems(group=self,
-                                            obj=cast(dict[str, Any],
-                                                     kopf_object))
+            self.items = OaatItems(group=self,
+                                   obj=cast(dict[str, Any], kopf_object))
             return
 
         # kube object name supplied
@@ -452,9 +451,8 @@ class OaatGroup:
         self.kube_object = self.get_kube_object(kube_object_name,
                                                 kube_object_namespace)
         self.logger.debug(f'kube_object: {self.kube_object}')
-        self.items = oaatitem.OaatItems(group=self,
-                                        obj=cast(dict[str, Any],
-                                                    self.kube_object.obj))
+        self.items = OaatItems(group=self,
+                               obj=cast(dict[str, Any], self.kube_object.obj))
         self.status = self.kube_object.obj.get('status', {})
 
     def namespace(self) -> Optional[str]:

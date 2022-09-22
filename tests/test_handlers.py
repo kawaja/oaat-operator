@@ -1,11 +1,25 @@
-from oaatoperator.common import ProcessingComplete
+from __future__ import annotations
+from multiprocessing.dummy import Process
+import sys
+import os
+from typing import cast
+from copy import deepcopy
+import logging
+import pykube
+import kopf
+from kopf._cogs.structs import credentials
+# enable importing of oaatoperator modules without placing constraints
+# on how they handle non-test in-module importing
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../oaatoperator")
+
 import unittest
 from unittest.mock import patch, MagicMock
-from copy import deepcopy
-import kopf
-import pykube
-import logging
-from kopf._cogs.structs import credentials
+
+from tests.testdata import TestData
+
+from oaatoperator.types import CallbackArgs
+from oaatoperator.common import ProcessingComplete
+from oaatoperator.oaatitem import OaatItem
 import oaatoperator.oaatgroup
 import oaatoperator.handlers
 
@@ -13,29 +27,6 @@ status_running = {'status': {'phase': 'Running'}}
 status_pending = {'status': {'phase': 'Pending'}}
 status_failed = {'status': {'phase': 'Failed'}}
 status_succeeded = {'status': {'phase': 'Succeeded'}}
-
-
-class TestData:
-    body = {}
-    kw = {
-        'body': body,
-        'spec': body.get('spec', {}),
-        'meta': body.get('metadata', {}),
-        'status': body.get('status', {}),
-        'namespace': body.get('metadata', {}).get('namespace', 'default'),
-        'name': body.get('metadata', {}).get('name'),
-        'uid': body.get('metadata', {}).get('uid'),
-        'labels': body.get('metadata', {}).get('labels', {}),
-        'annotations': body.get('metadata', {}).get('annotations', {}),
-        'logger': unittest.mock.MagicMock(spec=logging.Logger),
-        'patch': {},
-        'memo': {},
-        'event': {},
-        'reason': '',
-        'old': {},
-        'new': {},
-        'diff': {}
-    }
 
 
 class TestHelpers(unittest.TestCase):
@@ -61,7 +52,7 @@ class TestHelpers(unittest.TestCase):
         self.assertTrue(f(**status_succeeded))
 
     def test_configure(self):
-        oaatoperator.handlers.configure(settings=kopf.OperatorSettings())
+        oaatoperator.handlers.configure(settings=kopf.OperatorSettings())  # type: ignore
 
     @patch('pykube.KubeConfig')
     def test_login(self, kc):
@@ -73,7 +64,7 @@ class TestHelpers(unittest.TestCase):
             None, 'server', 'insecure'
         ]
         kw = {'logger': MagicMock()}
-        l: credentials.ConnectionInfo = oaatoperator.handlers.login(**kw)
+        l: credentials.ConnectionInfo = oaatoperator.handlers.login(**kw)  # type: ignore
         self.assertIsInstance(l, credentials.ConnectionInfo)
         self.assertEqual(l.server, 'server')
         self.assertEqual(l.username, 'username')
@@ -87,44 +78,44 @@ class TestHelpers(unittest.TestCase):
 class TestHandlerOaatAction(unittest.TestCase):
     @patch('oaatoperator.handlers.OaatGroup')
     def test_oaat_action_sunny(self, og):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         ogi = og.return_value
         ogi.validate_oaat_type.side_effect = [None]
         ogi.validate_items.side_effect = [None]
-        oaatoperator.handlers.oaat_action(**kw)
+        oaatoperator.handlers.oaat_action(**kw)  # type: ignore
         result = ogi.handle_processing_complete.call_args[0][0].ret
         self.assertEqual(result.get('message'), 'validated')
 
     @patch('oaatoperator.handlers.OaatGroup')
     def test_oaat_action_oaatgroup_error(self, og):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         og.side_effect = [
             ProcessingComplete(message='ogmessage', error='ogerror')
         ]
-        result = oaatoperator.handlers.oaat_action(**kw)
+        result = oaatoperator.handlers.oaat_action(**kw)  # type: ignore
         self.assertEqual(result.get('message'), 'Error: ogerror')
 
     @patch('oaatoperator.handlers.OaatGroup')
     def test_oaat_action_validate_oaat_type_error(self, og):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         ogi = og.return_value
         ogi.validate_oaat_type.side_effect = [
             ProcessingComplete(message='ogmessage')
         ]
         ogi.validate_items.side_effect = [None]
-        oaatoperator.handlers.oaat_action(**kw)
+        oaatoperator.handlers.oaat_action(**kw)  # type: ignore
         result = ogi.handle_processing_complete.call_args[0][0].ret
         self.assertEqual(result.get('message'), 'ogmessage')
 
     @patch('oaatoperator.handlers.OaatGroup')
     def test_oaat_action_validate_items_error(self, og):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         ogi = og.return_value
         ogi.validate_oaat_type.side_effect = [None]
         ogi.validate_items.side_effect = [
             ProcessingComplete(message='ogmessage')
         ]
-        oaatoperator.handlers.oaat_action(**kw)
+        oaatoperator.handlers.oaat_action(**kw)  # type: ignore
         result = ogi.handle_processing_complete.call_args[0][0].ret
         self.assertEqual(result.get('message'), 'ogmessage')
 
@@ -132,32 +123,32 @@ class TestHandlerOaatAction(unittest.TestCase):
 class TestHandlerCleanupPod(unittest.TestCase):
     @patch('oaatoperator.handlers.PodOverseer')
     def test_cleanup_pod_sunny(self, p):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         pi = p.return_value
         pi.info.side_effect = [None]
         pi.delete.side_effect = [None]
-        oaatoperator.handlers.cleanup_pod(**kw)
+        oaatoperator.handlers.cleanup_pod(**kw)  # type: ignore
         result = pi.handle_processing_complete.call_args[0][0].ret
         self.assertEqual(result.get('message'), '[cleanup_pod] deleted')
 
     @patch('oaatoperator.handlers.PodOverseer')
     def test_cleanup_pod_pod_error(self, p):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         p.side_effect = [
             ProcessingComplete(message='pmessage', error='perror')
         ]
-        result = oaatoperator.handlers.cleanup_pod(**kw)
+        result = oaatoperator.handlers.cleanup_pod(**kw)  # type: ignore
         self.assertEqual(result.get('message'), 'Error: perror')
 
     @patch('oaatoperator.handlers.PodOverseer')
     def test_cleanup_pod_delete_error(self, p):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         pi = p.return_value
         pi.info.side_effect = [None]
         pi.delete.side_effect = [
             ProcessingComplete(message='pmessage', error='perror')
         ]
-        oaatoperator.handlers.cleanup_pod(**kw)
+        oaatoperator.handlers.cleanup_pod(**kw)  # type: ignore
         result = pi.handle_processing_complete.call_args[0][0].ret
         self.assertEqual(result.get('message'), 'pmessage')
         self.assertEqual(result.get('error'), 'perror')
@@ -166,96 +157,96 @@ class TestHandlerCleanupPod(unittest.TestCase):
 class TestHandlerPodStatus(unittest.TestCase):
     @patch('oaatoperator.handlers.PodOverseer')
     def test_pod_failed_sunny(self, p):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         pi = p.return_value
         pi.info.side_effect = [None]
         pi.update_failure_status.side_effect = [
             ProcessingComplete(message='item failed message',
                                error='item failed error')
         ]
-        oaatoperator.handlers.pod_failed(**kw)
+        oaatoperator.handlers.pod_failed(**kw)  # type: ignore
         result = pi.handle_processing_complete.call_args[0][0].ret
         self.assertEqual(result.get('message'), 'item failed message')
         self.assertEqual(result.get('error'), 'item failed error')
 
     @patch('oaatoperator.handlers.PodOverseer')
     def test_pod_failed_pod_error(self, p):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         p.side_effect = [
             ProcessingComplete(message='pmessage', error='perror')
         ]
-        result = oaatoperator.handlers.pod_failed(**kw)
+        result = oaatoperator.handlers.pod_failed(**kw)  # type: ignore
         self.assertEqual(result.get('message'), 'Error: perror')
 
     @patch('oaatoperator.handlers.PodOverseer')
     def test_pod_failed_failed(self, p):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         pi = p.return_value
         pi.info.side_effect = [None]
-        result = oaatoperator.handlers.pod_failed(**kw)
+        result = oaatoperator.handlers.pod_failed(**kw)  # type: ignore
         self.assertEqual(result.get('message'),
                          '[pod_failed] should never happen')
 
     @patch('oaatoperator.handlers.PodOverseer')
     def test_pod_succeeded_sunny(self, p):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         pi = p.return_value
         pi.info.side_effect = [None]
         pi.update_success_status.side_effect = [
             ProcessingComplete(message='item succeeded message',
                                error='item succeeded error')
         ]
-        oaatoperator.handlers.pod_succeeded(**kw)
+        oaatoperator.handlers.pod_succeeded(**kw)  # type: ignore
         result = pi.handle_processing_complete.call_args[0][0].ret
         self.assertEqual(result.get('message'), 'item succeeded message')
         self.assertEqual(result.get('error'), 'item succeeded error')
 
     @patch('oaatoperator.handlers.PodOverseer')
     def test_pod_succeeded_pod_error(self, p):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         p.side_effect = [
             ProcessingComplete(message='pmessage', error='perror')
         ]
-        result = oaatoperator.handlers.pod_succeeded(**kw)
+        result = oaatoperator.handlers.pod_succeeded(**kw)  # type: ignore
         self.assertEqual(result.get('message'), 'Error: perror')
 
     @patch('oaatoperator.handlers.PodOverseer')
     def test_pod_succeeded_failed(self, p):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         pi = p.return_value
         pi.info.side_effect = [None]
-        result = oaatoperator.handlers.pod_succeeded(**kw)
+        result = oaatoperator.handlers.pod_succeeded(**kw)  # type: ignore
         self.assertEqual(result.get('message'),
                          '[pod_succeeded] should never happen')
 
     @patch('oaatoperator.handlers.PodOverseer')
     def test_pod_phasechange_sunny(self, p):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         pi = p.return_value
         pi.info.side_effect = [None]
         pi.update_phase.side_effect = [
             ProcessingComplete(message='item phasechange message')
         ]
-        oaatoperator.handlers.pod_phasechange(**kw)
+        oaatoperator.handlers.pod_phasechange(**kw)  # type: ignore
         result = pi.handle_processing_complete.call_args[0][0].ret
         self.assertEqual(result.get('message'), 'item phasechange message')
 
     @patch('oaatoperator.handlers.PodOverseer')
     def test_pod_phasechange_pod_error(self, p):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         p.side_effect = [
             ProcessingComplete(message='pmessage', error='perror')
         ]
-        result = oaatoperator.handlers.pod_phasechange(**kw)
+        result = oaatoperator.handlers.pod_phasechange(**kw)  # type: ignore
         self.assertEqual(result.get('message'), 'Error: perror')
 
     @patch('oaatoperator.handlers.PodOverseer')
     def test_pod_phasechange_failed(self, p):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         pi = p.return_value
         pi.info.side_effect = [None]
         pi.update_phase.side_effect = [None]
-        result = oaatoperator.handlers.pod_phasechange(**kw)
+        result = oaatoperator.handlers.pod_phasechange(**kw)  # type: ignore
         self.assertEqual(result.get('message'),
                          '[pod_phasechange] should never happen')
 
@@ -268,111 +259,105 @@ class TestHandlerOaatTimer(unittest.TestCase):
         self.og = patcher.start()
         self.ogi = self.og.return_value
         self.ogi.info = MagicMock()
-        self.ogi.get_status = MagicMock()
-        self.ogi.get_status.side_effect = [5]
-        self.ogi.validate_items = MagicMock()
-        self.ogi.validate_items.side_effect = [None]
-        self.ogi.verify_state = MagicMock()
-        self.ogi.verify_state.side_effect = [None]
-        self.ogi.delete_rogue_pods = MagicMock()
-        self.ogi.delete_rogue_pods.side_effect = [None]
-        self.ogi.is_pod_expected = MagicMock()
-        self.ogi.is_pod_expected.side_effect = [None]
-        self.ogi.verify_expected_pod_is_running = MagicMock()
-        self.ogi.verify_expected_pod_is_running.side_effect = [
+        self.ogi.debug = MagicMock()
+        self.ogi.get_status = MagicMock(side_effect=[5])
+        self.ogi.validate_items = MagicMock(side_effect=[None])
+        self.ogi.verify_running = MagicMock(side_effect=[None])
+        self.ogi.verify_state = MagicMock(side_effect=[None])
+        self.ogi.delete_rogue_pods = MagicMock(side_effect=[None])
+        self.ogi.is_pod_expected = MagicMock(side_effect=[True])
+        self.ogi.verify_expected_pod_is_running = MagicMock(side_effect=[
             ProcessingComplete(
                 message='pod xxx exists and is in state Running')
-        ]
-        self.ogi.find_job_to_run = MagicMock()
-        self.ogi.find_job_to_run.side_effect = [None]
-        self.ogi.set_status = MagicMock()
-        self.ogi.set_status.side_effect = None
-        self.pi = MagicMock(pykube.Pod).return_value
+        ])
+        self.ogi.find_job_to_run = MagicMock(spec=OaatItem)
+        item = self.ogi.find_job_to_run.return_value
+        item.name='item'  # name is special
+        self.ogi.set_status = MagicMock(side_effect=None)
+        self.pi = MagicMock(spec_set=pykube.Pod).return_value
         self.pi.metadata.return_value = {'name': 'podname'}
-        self.ogi.run_item = MagicMock()
-        self.ogi.run_item.side_effect = [self.pi]
-        self.ogi.handle_processing_complete = MagicMock()
+        self.ogi.handle_processing_complete = MagicMock(return_value=None)
         return super().setUp()
 
     def test_oaat_timer_sunny(self):
-        kw = deepcopy(TestData.kw)
-        oaatoperator.handlers.oaat_timer(**kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
+        oaatoperator.handlers.oaat_timer(**kw)  # type: ignore
         result = self.ogi.handle_processing_complete.call_args[0][0].ret
         self.assertEqual(self.ogi.validate_items.call_count, 1)
-        self.assertEqual(
-            self.ogi.verify_expected_pod_is_running.call_count, 0)
-        self.assertEqual(self.ogi.is_pod_expected.call_count, 1)
+        self.assertEqual(self.ogi.verify_running.call_count, 1)
         self.assertEqual(self.ogi.find_job_to_run.call_count, 1)
-        self.assertEqual(self.ogi.run_item.call_count, 1)
-        self.assertEqual(result.get('message'), 'started item None')
+        self.assertEqual(
+            self.ogi.find_job_to_run.return_value.run.call_count, 1)
+        self.assertEqual(result.get('message'), 'started item item')
 
     def test_oaat_timer_paused(self):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         kw['body'].setdefault('metadata',
                               {}).setdefault('annotations',
                                              {})['pause_new_jobs'] = 'yes'
         kw['meta'].setdefault('annotations', {})['pause_new_jobs'] = 'yes'
         kw['annotations']['pause_new_jobs'] = 'yes'
-        oaatoperator.handlers.oaat_timer(**kw)
+        oaatoperator.handlers.oaat_timer(**kw)  # type: ignore
         result = self.ogi.handle_processing_complete.call_args[0][0].ret
         self.assertEqual(self.ogi.validate_items.call_count, 1)
-        self.assertEqual(
-            self.ogi.verify_expected_pod_is_running.call_count, 0)
-        self.assertEqual(self.ogi.is_pod_expected.call_count, 1)
+        self.assertEqual(self.ogi.verify_running.call_count, 1)
         self.assertEqual(self.ogi.find_job_to_run.call_count, 1)
-        self.assertEqual(self.ogi.run_item.call_count, 0)
+        self.assertEqual(
+            self.ogi.find_job_to_run.return_value.run.call_count, 0)
         self.assertEqual(result.get('message'),
                          'paused via pause_new_jobs annotation')
 
     def test_oaat_timer_items_issue(self):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         self.ogi.validate_items.side_effect = [
             ProcessingComplete(message='ogmessage', error='ogerror')
         ]
-        oaatoperator.handlers.oaat_timer(**kw)
+        oaatoperator.handlers.oaat_timer(**kw)  # type: ignore
         result = self.ogi.handle_processing_complete.call_args[0][0].ret
         self.assertEqual(self.ogi.validate_items.call_count, 1)
-        self.assertEqual(
-            self.ogi.verify_expected_pod_is_running.call_count, 0)
-        self.assertEqual(self.ogi.is_pod_expected.call_count, 0)
+        self.assertEqual(self.ogi.verify_running.call_count, 0)
         self.assertEqual(self.ogi.find_job_to_run.call_count, 0)
-        self.assertEqual(self.ogi.run_item.call_count, 0)
+        self.assertEqual(
+            self.ogi.find_job_to_run.return_value.run.call_count, 0)
         self.assertEqual(result.get('message'), 'ogmessage')
         self.assertEqual(result.get('error'), 'ogerror')
 
     def test_oaat_timer_oaatgroup_error(self):
-        kw = deepcopy(TestData.kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
         self.og.side_effect = [
             ProcessingComplete(message='ogmessage', error='ogerror')
         ]
-        result = oaatoperator.handlers.oaat_timer(**kw)
+        result = oaatoperator.handlers.oaat_timer(**kw)  # type: ignore
         self.assertEqual(result.get('message'), 'Error: ogerror')
 
     def test_oaat_timer_expected_pod_found_bad_running_function(self):
-        kw = deepcopy(TestData.kw)
-        self.ogi.is_pod_expected.side_effect = [True]
-        self.ogi.verify_expected_pod_is_running.side_effect = [None]
-        result = oaatoperator.handlers.oaat_timer(**kw)
-        self.assertEqual(self.ogi.validate_items.call_count, 1)
-        self.assertEqual(
-            self.ogi.verify_expected_pod_is_running.call_count, 1)
-        self.assertEqual(self.ogi.is_pod_expected.call_count, 1)
-        self.assertEqual(self.ogi.find_job_to_run.call_count, 0)
-        self.assertEqual(self.ogi.run_item.call_count, 0)
-        self.assertRegex(result.get('message'),
-                         'verify_expected.*should never happen')
-
-    def test_oaat_timer_expected_pod_found(self):
-        kw = deepcopy(TestData.kw)
-        self.ogi.is_pod_expected.side_effect = [True]
-        oaatoperator.handlers.oaat_timer(**kw)
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
+        self.ogi.verify_running.side_effect = [
+            ProcessingComplete(message='item item failed during validation',
+                               info='Cleaned up missing/deleted item')
+        ]
+        oaatoperator.handlers.oaat_timer(**kw)  # type: ignore
         result = self.ogi.handle_processing_complete.call_args[0][0].ret
         self.assertEqual(self.ogi.validate_items.call_count, 1)
-        self.assertEqual(
-            self.ogi.verify_expected_pod_is_running.call_count, 1)
-        self.assertEqual(self.ogi.is_pod_expected.call_count, 1)
+        self.assertEqual(self.ogi.verify_running.call_count, 1)
         self.assertEqual(self.ogi.find_job_to_run.call_count, 0)
-        self.assertEqual(self.ogi.run_item.call_count, 0)
+        self.assertEqual(
+            self.ogi.find_job_to_run.return_value.run.call_count, 0)
+        self.assertRegex(result.get('message'),
+                         'item item failed during validation')
+
+    def test_oaat_timer_expected_pod_found(self):
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
+        self.ogi.verify_running.side_effect = [
+            ProcessingComplete(message='pod xxx exists and is in state Running')
+        ]
+        oaatoperator.handlers.oaat_timer(**kw)  # type: ignore
+        result = self.ogi.handle_processing_complete.call_args[0][0].ret
+        self.assertEqual(self.ogi.validate_items.call_count, 1)
+        self.assertEqual(self.ogi.verify_running.call_count, 1)
+        self.assertEqual(self.ogi.find_job_to_run.call_count, 0)
+        self.assertEqual(
+            self.ogi.find_job_to_run.return_value.run.call_count, 0)
         self.assertRegex(result.get('message'),
                          'pod xxx exists and is in state Running')
 
