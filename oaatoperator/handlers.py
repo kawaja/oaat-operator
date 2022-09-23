@@ -4,7 +4,7 @@ from typing_extensions import Unpack
 import kopf
 
 import oaatoperator
-from oaatoperator.types import CallbackArgs
+from oaatoperator.py_types import CallbackArgs
 from oaatoperator.utility import now_iso, my_name
 from oaatoperator.common import ProcessingComplete
 from oaatoperator.oaatgroup import OaatGroup

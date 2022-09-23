@@ -13,7 +13,7 @@ from typing import Any, Optional, TypedDict, Type, cast
 
 # local imports
 import oaatoperator.utility
-import oaatoperator.types as types
+import oaatoperator.py_types as py_types
 from oaatoperator.oaatitem import OaatItems
 from oaatoperator.oaattype import OaatType
 from oaatoperator.overseer import Overseer
@@ -49,7 +49,7 @@ class OaatGroupOverseer(Overseer):
     status: Optional[dict[str, Any]] = None
 
     def __init__(self, parent: OaatGroup,
-                 **kwargs: Unpack[types.CallbackArgs]) -> None:
+                 **kwargs: Unpack[py_types.CallbackArgs]) -> None:
         super().__init__(**kwargs)
         self.my_pykube_objtype: Type[pykube.objects.APIObject] = KubeOaatGroup
         self.obj = kwargs
@@ -404,7 +404,7 @@ class OaatGroupOverseer(Overseer):
 
 
 class OaatGroupArgs(TypedDict):
-    kopf_object: Optional[types.CallbackArgs]
+    kopf_object: Optional[py_types.CallbackArgs]
     kube_object_name: Optional[str]
 
 
@@ -425,7 +425,7 @@ class OaatGroup:
     ] + ["name"]
 
     def __init__(self,
-                 kopf_object: Optional[types.CallbackArgs] = None,
+                 kopf_object: Optional[py_types.CallbackArgs] = None,
                  kube_object_name: Optional[str] = None,
                  kube_object_namespace: str = 'default',
                  logger: Optional[logging.Logger] = None) -> None:
@@ -434,7 +434,7 @@ class OaatGroup:
         # kopf object supplied
         if kopf_object is not None:
             self.kopf_object = OaatGroupOverseer(
-                self, **cast(types.CallbackArgs, kopf_object))
+                self, **cast(py_types.CallbackArgs, kopf_object))
             self.items = OaatItems(group=self,
                                    obj=cast(dict[str, Any], kopf_object))
             return

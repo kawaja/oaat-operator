@@ -5,7 +5,6 @@ from pykube import Pod
 
 from oaatoperator.common import ProcessingComplete
 from oaatoperator.overseer import Overseer
-from oaatoperator.types import CallbackArgs
 
 
 @kopf.on.create('pods')  # type: ignore
@@ -85,7 +84,7 @@ def create_action(**kwargs):
         )
     except ProcessingComplete as exc:
         pc = pov.handle_processing_complete(exc)
-        assert(pc is not None)
+        assert pc is not None
         assert (
             pc.get('message') == 'retmessage'
             ), exc

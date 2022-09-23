@@ -1,27 +1,24 @@
 from __future__ import annotations
-from multiprocessing.dummy import Process
 import sys
 import os
-from typing import cast
-from copy import deepcopy
-import logging
 import pykube
 import kopf
 from kopf._cogs.structs import credentials
-# enable importing of oaatoperator modules without placing constraints
-# on how they handle non-test in-module importing
-sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../oaatoperator")
 
 import unittest
 from unittest.mock import patch, MagicMock
 
-from tests.testdata import TestData
+# enable importing of oaatoperator modules without placing constraints
+# on how they handle non-test in-module importing
+sys.path.append(
+    os.path.dirname(os.path.realpath(__file__)) + "/../oaatoperator")
 
-from oaatoperator.types import CallbackArgs
-from oaatoperator.common import ProcessingComplete
-from oaatoperator.oaatitem import OaatItem
-import oaatoperator.oaatgroup
-import oaatoperator.handlers
+from tests.testdata import TestData  # noqa: E402
+
+from oaatoperator.common import ProcessingComplete  # noqa: E402
+from oaatoperator.oaatitem import OaatItem  # noqa: E402
+import oaatoperator.oaatgroup  # noqa: E402
+import oaatoperator.handlers  # noqa: E402
 
 status_running = {'status': {'phase': 'Running'}}
 status_pending = {'status': {'phase': 'Pending'}}
@@ -52,7 +49,8 @@ class TestHelpers(unittest.TestCase):
         self.assertTrue(f(**status_succeeded))
 
     def test_configure(self):
-        oaatoperator.handlers.configure(settings=kopf.OperatorSettings())  # type: ignore
+        oaatoperator.handlers.configure(
+            settings=kopf.OperatorSettings())  # type: ignore
 
     @patch('pykube.KubeConfig')
     def test_login(self, kc):
@@ -64,7 +62,8 @@ class TestHelpers(unittest.TestCase):
             None, 'server', 'insecure'
         ]
         kw = {'logger': MagicMock()}
-        l: credentials.ConnectionInfo = oaatoperator.handlers.login(**kw)  # type: ignore
+        l: credentials.ConnectionInfo = (
+            oaatoperator.handlers.login(**kw))  # type: ignore
         self.assertIsInstance(l, credentials.ConnectionInfo)
         self.assertEqual(l.server, 'server')
         self.assertEqual(l.username, 'username')
@@ -272,7 +271,7 @@ class TestHandlerOaatTimer(unittest.TestCase):
         ])
         self.ogi.find_job_to_run = MagicMock(spec=OaatItem)
         item = self.ogi.find_job_to_run.return_value
-        item.name='item'  # name is special
+        item.name = 'item'  # name is special
         self.ogi.set_status = MagicMock(side_effect=None)
         self.pi = MagicMock(spec_set=pykube.Pod).return_value
         self.pi.metadata.return_value = {'name': 'podname'}
@@ -349,7 +348,8 @@ class TestHandlerOaatTimer(unittest.TestCase):
     def test_oaat_timer_expected_pod_found(self):
         kw = TestData.setup_kwargs(TestData.kog_attrs)
         self.ogi.verify_running.side_effect = [
-            ProcessingComplete(message='pod xxx exists and is in state Running')
+            ProcessingComplete(
+                message='pod xxx exists and is in state Running')
         ]
         oaatoperator.handlers.oaat_timer(**kw)  # type: ignore
         result = self.ogi.handle_processing_complete.call_args[0][0].ret

@@ -7,7 +7,7 @@ from typing_extensions import Unpack
 import pykube
 from typing import Any, Optional, Type
 from oaatoperator.common import ProcessingComplete
-from oaatoperator.types import CallbackArgs
+from oaatoperator.py_types import CallbackArgs
 import logging
 
 

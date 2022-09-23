@@ -18,7 +18,7 @@ from tests.mocks_pykube import KubeObject, KubeObjectPod  # noqa: E402
 from tests.testdata import TestData  # noqa: E402
 
 from oaatoperator.oaatgroup import OaatGroup, OaatGroupOverseer  # noqa: E402
-from oaatoperator.types import CallbackArgs  # noqa: E402
+from oaatoperator.py_types import CallbackArgs  # noqa: E402
 from oaatoperator.common import (InternalError, KubeOaatGroup,  # noqa: E402
                                  ProcessingComplete)
 import oaatoperator.utility  # noqa: E402
