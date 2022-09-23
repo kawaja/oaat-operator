@@ -15,7 +15,6 @@ from pykube.query import Query
 
 class BasicTests(unittest.TestCase):
     def setUp(self):
-        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         return super().setUp()
 
     def tearDown(self):

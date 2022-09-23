@@ -34,7 +34,6 @@ class OaatItemTests(unittest.TestCase):
 
 class RunItemTests(unittest.TestCase):
     def setUp(self):
-        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         return super().setUp()
 
 

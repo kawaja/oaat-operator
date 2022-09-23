@@ -2,7 +2,6 @@ import sys
 import os
 import datetime
 import copy
-import pykube
 from pykube import Pod
 # enable importing of oaatoperator modules without placing constraints
 # on how they handle non-test in-module importing
@@ -56,7 +55,6 @@ class OldTestData:
 
 class BasicTests(unittest.TestCase):
     def setUp(self):
-        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         return super().setUp()
 
     def test_create(self):
@@ -79,7 +77,6 @@ class BasicTests(unittest.TestCase):
 
 class StatusTests(unittest.TestCase):
     def setUp(self):
-        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         return super().setUp()
 
     @patch('oaatoperator.pod.OaatGroup', autospec=True)
