@@ -4,7 +4,6 @@ types.py
 Types used for type validation.
 """
 from typing import Any, TypedDict, Optional, Union
-from mypy_extensions import KwArg, NamedArg, DefaultNamedArg
 from kopf._cogs.structs import bodies, references, patches, diffs
 import datetime
 import logging
