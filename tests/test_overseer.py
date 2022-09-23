@@ -42,10 +42,19 @@ class BasicTests(unittest.TestCase):
                 'tests/operator_overseer.py']) as runner:
             pod.create()
             time.sleep(1)
-            pod.reload()
-            annotations1 = deepcopy(pod.annotations)
-            pod.annotations['readytodelete'] = 'true'
-            pod.update()
+            annotations1 = {}
+            retry = True
+            while retry:
+                pod.reload()
+                annotations1 = deepcopy(pod.annotations)
+                pod.annotations['readytodelete'] = 'true'
+                try:
+                    pod.update()
+                except pykube.exceptions.HTTPError as exc:
+                    if exc.code != 409:
+                        raise
+                else:
+                    retry = False
             time.sleep(3)
             try:
                 pod.reload()

@@ -93,6 +93,7 @@ class OaatItem:
         kopf.adopt(doc)
         pod = pykube.Pod(self.group.api, doc)
 
+        # TODO: add retry logic to handle 409?
         try:
             pod.create()
         except pykube.exceptions.KubernetesError as exc:

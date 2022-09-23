@@ -117,6 +117,7 @@ class Overseer:
             self.debug(f'removed annotation {annotation} from {self.name}')
 
     def delete(self) -> None:
+        # TODO: add retry logic to handle 409?
         myobj = self.get_kubeobj('delete it')
         try:
             myobj.delete(propagation_policy='Background')
