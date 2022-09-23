@@ -53,6 +53,7 @@ class BasicTests(unittest.TestCase):
                 except pykube.exceptions.HTTPError as exc:
                     if exc.code != 409:
                         raise
+                    print(f'received HTTP error code 409, retrying')
                 else:
                     retry = False
             time.sleep(3)
