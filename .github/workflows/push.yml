@@ -2,7 +2,6 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ master ]
   pull_request:
     branches: [ master ]
 
@@ -83,6 +82,18 @@ jobs:
       shell: bash
       run: |
         echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+    - name: Check for Master branch (set tag=dev)
+      id: devtag
+      if: ${{ github.ref_name == 'master' }}
+      shell: bash
+      run: |
+        echo "::set-output name=devtag::dev"
+    - name: Check for non-Master branch (set tag=<branchname>)
+      id: nondevtag
+      if: ${{ github.ref_name != 'master' }}
+      shell: bash
+      run: |
+        echo "::set-output name=devtag::"${{ github.ref_name }}
     - name: Embed Data/Git SHA details
       run: |
         VER=$(grep oaat-operator version.txt | sed -e 's/.*=//' -e 's/\s//g')
@@ -95,4 +106,4 @@ jobs:
         context: .
         file: build/Dockerfile
         push: true
-        tags: ghcr.io/${{github.repository}}:${{ steps.vars.outputs.sha_short }},ghcr.io/${{github.repository}}:dev
+        tags: ghcr.io/${{github.repository}}:${{steps.vars.outputs.sha_short}},ghcr.io/${{github.repository}}:${{steps.vars.outputs.devtag}}
