@@ -74,11 +74,11 @@ class Overseer:
         if value is not None:
             self.patch['status'] = value
 
-    def get_label(self, label: str, default: str|None = None) -> str:
+    def get_label(self, label: str, default: Optional[str] = None) -> str:
         """Get a label from the overseen object."""
         return self.meta.get('labels', {}).get(label, default)
 
-    def get_kubeobj(self, reason: str|None = None) -> pykube.objects.APIObject:
+    def get_kubeobj(self, reason: Optional[str] = None) -> pykube.objects.APIObject:
         """Get the kube object for the overseen object."""
         namespace = self.namespace if self.namespace else pykube.all
         if self.my_pykube_objtype is None:
@@ -96,7 +96,7 @@ class Overseer:
                       f': {exc}',
                 message=f'cannot retrieve "{self.name}" object')
 
-    def set_annotation(self, annotation: str, value: str|None = None) -> None:
+    def set_annotation(self, annotation: str, value: Optional[str] = None) -> None:
         """
         Set or Remove an annotation on the overseen object.
 
