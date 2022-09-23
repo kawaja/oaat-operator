@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9]
+        python-version: [3.9, 3.10]
+        k8s-version: [v1.23, v1.24]
     steps:
     - name: Check out code
       uses: actions/checkout@v2
@@ -36,7 +37,7 @@ jobs:
     - name: Setup k3s
       uses: nolar/setup-k3d-k3s@v1
       with:
-        version: v1.19
+        version: ${{ matrix.k8s-version }}
     - name: Test k3s
       run: kubectl get nodes
     - name: Configure k3s
@@ -82,18 +83,14 @@ jobs:
       shell: bash
       run: |
         echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
-    - name: Check for Master branch (set tag=dev)
+    - name: Check branch to set dev tag
       id: devtag
-      if: ${{ github.ref_name == 'master' }}
       shell: bash
       run: |
-        echo "::set-output name=devtag::dev"
-    - name: Check for non-Master branch (set tag=<branchname>)
-      id: nondevtag
-      if: ${{ github.ref_name != 'master' }}
-      shell: bash
-      run: |
-        echo "::set-output name=devtag::"${{ github.ref_name }}
+        if [ '${{ github.ref_name }}' == 'master' ]; then
+          echo "::set-output name=devtag::dev"
+        else
+          echo "::set-output name=devtag::${{ github.ref_name }}"
     - name: Embed Data/Git SHA details
       run: |
         VER=$(grep oaat-operator version.txt | sed -e 's/.*=//' -e 's/\s//g')
@@ -106,4 +103,4 @@ jobs:
         context: .
         file: build/Dockerfile
         push: true
-        tags: ghcr.io/${{github.repository}}:${{steps.vars.outputs.sha_short}},ghcr.io/${{github.repository}}:${{steps.vars.outputs.devtag}}
+        tags: ghcr.io/${{github.repository}}:${{steps.vars.outputs.sha_short}},ghcr.io/${{github.repository}}:${{steps.devtag.outputs.devtag}}
