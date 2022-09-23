@@ -2,25 +2,24 @@ import sys
 import os
 import pykube
 from copy import deepcopy
-# enable importing of oaatoperator modules without placing constraints
-# on how they handle non-test in-module importing
-sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../oaatoperator")
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import unittest
 
-from tests.mocks_pykube import object_setUp
-from tests.testdata import TestData
-from tests.utility import ExtendedTestCase, get_env
-from oaatoperator.oaatitem import OaatItem, OaatItems
-from oaatoperator.oaatgroup import OaatGroupOverseer
-from oaatoperator.oaattype import OaatType
-from oaatoperator.common import (KubeOaatGroup, KubeOaatType, ProcessingComplete)
+# enable importing of oaatoperator modules without placing constraints
+# on how they handle non-test in-module importing
+sys.path.append(
+    os.path.dirname(os.path.realpath(__file__)) + "/../oaatoperator")
+
+from tests.testdata import TestData  # noqa: E402
+from tests.utility import ExtendedTestCase, get_env  # noqa: E402
+from oaatoperator.oaatitem import OaatItem, OaatItems  # noqa: E402
+from oaatoperator.common import ProcessingComplete  # noqa: E402
 
 
 class OaatItemTests(unittest.TestCase):
     def test_create(self):
-        oi = OaatItem(TestData.kog_emptyspec_mock, 'item1')
+        OaatItem(TestData.kog_emptyspec_mock, 'item1')
 
     def test_success(self):
         oi = OaatItem(TestData.kog_previous_success_mock, 'item1')
@@ -35,7 +34,6 @@ class OaatItemTests(unittest.TestCase):
 class RunItemTests(unittest.TestCase):
     def setUp(self):
         return super().setUp()
-
 
     @patch('kopf.adopt')
     @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
@@ -121,8 +119,9 @@ class TestOaatItems(ExtendedTestCase):
 
     @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
     def test_nondict(self, og_mock):
-        with self.assertRaisesRegex(TypeError , 'obj should be dict, not <class \'str\'>=string'):
-            ois = OaatItems(og_mock, 'string')  # type: ignore
+        with self.assertRaisesRegex(
+                TypeError, 'obj should be dict, not <class \'str\'>=string'):
+            OaatItems(og_mock, 'string')  # type: ignore
 
     @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
     def test_get_kubeobj(self, og_mock):

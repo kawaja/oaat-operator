@@ -1,8 +1,6 @@
 import unittest
-from unittest.mock import patch
-from copy import deepcopy
 
-from tests.mocks_pykube import KubeObject, object_setUp, ensure_kubeobj_deleted
+from tests.mocks_pykube import KubeObject, ensure_kubeobj_deleted
 from tests.testdata import TestData
 from oaatoperator.oaattype import OaatType
 from oaatoperator.common import KubeOaatType, ProcessingComplete
@@ -48,14 +46,16 @@ class BasicTests(unittest.TestCase):
             ot = OaatType('test-kot')
             with self.assertRaises(ProcessingComplete) as exc:
                 ot.podspec()
-            self.assertEqual(exc.exception.ret['error'], 'spec.podspec is missing')
+            self.assertEqual(exc.exception.ret['error'],
+                             'spec.podspec is missing')
 
     def test_podspec_nopodspec(self):
         with KubeObject(KubeOaatType, TestData.kot_nopodspec_spec):
             ot = OaatType('test-kot')
             with self.assertRaises(ProcessingComplete) as exc:
                 ot.podspec()
-            self.assertEqual(exc.exception.ret['error'], 'spec.podspec is missing')
+            self.assertEqual(exc.exception.ret['error'],
+                             'spec.podspec is missing')
 
     def test_podspec_nocontainer(self):
         with KubeObject(KubeOaatType, TestData.kot_nocontainer_spec):
@@ -63,7 +63,7 @@ class BasicTests(unittest.TestCase):
             with self.assertRaises(ProcessingComplete) as exc:
                 ot.podspec()
             self.assertEqual(exc.exception.ret['error'],
-                            'spec.podspec.container is missing')
+                             'spec.podspec.container is missing')
 
     def test_podspec_containers(self):
         with KubeObject(KubeOaatType, TestData.kot_containers_spec):
@@ -71,7 +71,7 @@ class BasicTests(unittest.TestCase):
             with self.assertRaises(ProcessingComplete) as exc:
                 ot.podspec()
             self.assertRegex(exc.exception.ret['error'],
-                            'currently only support a single container.*')
+                             'currently only support a single container.*')
 
     def test_podspec_restartPolicy(self):
         with KubeObject(KubeOaatType, TestData.kot_restartPolicy_spec):
@@ -79,14 +79,15 @@ class BasicTests(unittest.TestCase):
             with self.assertRaises(ProcessingComplete) as exc:
                 ot.podspec()
             self.assertRegex(exc.exception.ret['error'],
-                            '.*you cannot specify a restartPolicy')
+                             '.*you cannot specify a restartPolicy')
 
     def test_podspec_without_type(self):
         with KubeObject(KubeOaatType, TestData.kot_notype_spec):
             ot = OaatType('test-kot')
             with self.assertRaises(ProcessingComplete) as exc:
                 ot.podspec()
-            self.assertEqual(exc.exception.ret['error'], 'spec.type must be "pod"')
+            self.assertEqual(exc.exception.ret['error'],
+                             'spec.type must be "pod"')
 
     def test_podspec(self):
         with KubeObject(KubeOaatType, TestData.kot_spec):

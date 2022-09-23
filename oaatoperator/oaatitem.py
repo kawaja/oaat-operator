@@ -17,9 +17,8 @@ from oaatoperator.common import ProcessingComplete
 if TYPE_CHECKING:
     from oaatoperator.oaatgroup import OaatGroup
 
+
 class OaatItem:
-    name : str
-    group : OaatGroup
     def __init__(self, group: OaatGroup, item_name: str) -> None:
         self.name = item_name
         self.group = group
@@ -33,7 +32,10 @@ class OaatItem:
                     key: str,
                     default: Optional[str] = None) -> datetime.datetime:
         """Get the status of a specific item, returned as a datetime."""
-        print(f'key: {key}, default: {default}, _status: {self._status}, date: {self._status.get(key,default)}')
+        print(
+            f'key: {key}, default: {default}, _status: {self._status}, '
+            f'date: {self._status.get(key,default)}'
+        )
         return date_from_isostr(self._status.get(key, default))
 
     def success(self) -> datetime.datetime:
@@ -102,6 +104,7 @@ class OaatItem:
                 error=f'could not create pod {doc}: {exc}',
                 message=f'error creating pod for {self.name}')
         return pod
+
 
 class OaatItems:
     def __init__(self, group: OaatGroup, obj: dict[str, Any]) -> None:

@@ -16,7 +16,10 @@ class OaatType:
 
     Manager for OaatType objects.
     """
-    def __init__(self, name: Optional[str], namespace: Optional[str] = None) -> None:
+
+    def __init__(self,
+                 name: Optional[str],
+                 namespace: Optional[str] = None) -> None:
         self.name = str(name)
         self.namespace = namespace
         if name is None:

@@ -165,8 +165,7 @@ will not succeed.
   within the specified pod.
 * The list of items is currently fixed, specified in the OaatGroup.
 * Item pods can only have a single container.
-* Only tested on Kubernetes 1.18 and 1.19 (to be extended in the
-  CI pipeline once test coverage is over 90%).
+* Only tested on Kubernetes 1.23 and 1.24
 
 ## Roadmap
 
@@ -185,7 +184,6 @@ will not succeed.
 * Schema validation ([#8](https://github.com/kawaja/oaat-operator#8)) – currently
   uses some spot checks of certain critical fields; instead, use json-schema
   to validate the CRD objects against a schema.
-* Complete unit test suite ([#9](https://github.com/kawaja/oaat-operator#9))
 
 ## History
 

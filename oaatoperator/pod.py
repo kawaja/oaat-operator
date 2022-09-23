@@ -26,7 +26,7 @@ class PodOverseer(Overseer):
         self.phase = kwargs['status'].get('phase', '')
         self.my_pykube_objtype = pykube.Pod
         self.exitcode = -1
-        self.finished_at : Optional[datetime.datetime]
+        self.finished_at: Optional[datetime.datetime]
 
     # TODO: currently only supports a single container (searches for the
     # first container with a 'terminated' status). To support

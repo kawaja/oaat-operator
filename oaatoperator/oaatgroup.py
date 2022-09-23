@@ -17,7 +17,8 @@ import oaatoperator.types as types
 from oaatoperator.oaatitem import OaatItems
 from oaatoperator.oaattype import OaatType
 from oaatoperator.overseer import Overseer
-from oaatoperator.common import (InternalError, ProcessingComplete, KubeOaatGroup)
+from oaatoperator.common import (InternalError, ProcessingComplete,
+                                 KubeOaatGroup)
 
 
 # TODO: I'm not convinced about this composite object. It's essentially
@@ -43,13 +44,14 @@ class OaatGroupOverseer(Overseer):
     """
     # these are needed to populate the OaatGroup passthrough_names, so
     # OaatGroup.<attribute> works
-    freq : Optional[datetime.timedelta] = None
-    oaattype : Optional[OaatType] = None
-    status : Optional[dict[str, Any]] = None
+    freq: Optional[datetime.timedelta] = None
+    oaattype: Optional[OaatType] = None
+    status: Optional[dict[str, Any]] = None
 
-    def __init__(self, parent: OaatGroup, **kwargs: Unpack[types.CallbackArgs]) -> None:
+    def __init__(self, parent: OaatGroup,
+                 **kwargs: Unpack[types.CallbackArgs]) -> None:
         super().__init__(**kwargs)
-        self.my_pykube_objtype : Type[pykube.objects.APIObject] = KubeOaatGroup
+        self.my_pykube_objtype: Type[pykube.objects.APIObject] = KubeOaatGroup
         self.obj = kwargs
         self.parent = parent
         self.freq = oaatoperator.utility.parse_duration(
@@ -121,11 +123,12 @@ class OaatGroupOverseer(Overseer):
         # Filter out items which have failed within the cool off period
         if self.cool_off is not None:
             for item in oaat_items:
-                self.debug(f'testing {item.name} - '
-                           f'now: {now}, '
-                           f'failure: {item.failure()}, '
-                           f'cool_off: {self.cool_off}, '
-                           f'cooling off?: {now < item.failure() + self.cool_off}')
+                self.debug(
+                    f'testing {item.name} - '
+                    f'now: {now}, '
+                    f'failure: {item.failure()}, '
+                    f'cool_off: {self.cool_off}, '
+                    f'cooling off?: {now < item.failure() + self.cool_off}')
                 if now < item.failure() + self.cool_off:
                     candidates.remove(item)
                     item_status[item.name] = (
@@ -229,7 +232,8 @@ class OaatGroupOverseer(Overseer):
         if status_annotation:
             self.set_annotation(status_annotation, 'active')
         if count_annotation:
-            self.set_annotation(count_annotation, value=str(len(self.parent.items)))
+            self.set_annotation(count_annotation,
+                                value=str(len(self.parent.items)))
 
     def verify_running(self) -> None:
         self.verify_state()
@@ -282,12 +286,13 @@ class OaatGroupOverseer(Overseer):
                 f'currently_running: {self.get_status("currently_running")}')
             return
         found_rogue = 0
-        self.debug(f'searching for rogue pods.')
+        self.debug('searching for rogue pods.')
         self.debug(f'  current={self.get_status("pod")}')
+        # (pykube needs Optional[str] for namespace)
         candidate_pods: pykube.query.Query = (
             pykube.Pod
             .objects(self.api)
-            .filter(namespace=self.namespace)   # type: ignore (pykube needs Optional[str] for namespace)
+            .filter(namespace=self.namespace)   # type: ignore
             .filter(selector={'app': 'oaat-operator'})
         )
         for pod in candidate_pods.iterator():
@@ -336,9 +341,11 @@ class OaatGroupOverseer(Overseer):
         curpod = self.get_status('pod')
         curitem_name = self.get_status('currently_running')
         try:
+            # (pykube needs Optional[str] for namespace)
             pod = pykube.Pod.objects(
                 self.api,
-                namespace=self.namespace).get_by_name(curpod).obj   # type: ignore (pykube needs Optional[str] for namespace)
+                namespace=self.namespace).get_by_name(  # type: ignore
+                    curpod).obj
         except pykube.exceptions.ObjectDoesNotExist:
             self.info(f'pod {curpod} missing/deleted, cleaning up')
             self.set_status('currently_running')
@@ -353,7 +360,8 @@ class OaatGroupOverseer(Overseer):
         podphase = pod.get('status', {}).get('phase', 'unknown')
         self.info(f'verified that pod {curpod} exists '
                   f'(phase={podphase})')
-        recorded_phase = self.parent.items.get(curitem_name).status('podphase', 'unknown')
+        recorded_phase = self.parent.items.get(curitem_name).status(
+            'podphase', 'unknown')
 
         # if there is a mismatch in phase, then the pod phase handlers
         # have not yet picked it up and updated the oaatgroup phase.
@@ -375,9 +383,9 @@ class OaatGroupOverseer(Overseer):
                          key: str,
                          value: Optional[str] = None) -> None:
         patch: dict = (self.patch
-                 .setdefault('status', {})
-                 .setdefault('items', {})
-                 .setdefault(item_name, {}))
+                       .setdefault('status', {})
+                       .setdefault('items', {})
+                       .setdefault(item_name, {}))
         patch[key] = value
 
     # def validate_oaat_type(self) -> None:
@@ -398,6 +406,7 @@ class OaatGroupOverseer(Overseer):
 class OaatGroupArgs(TypedDict):
     kopf_object: Optional[types.CallbackArgs]
     kube_object_name: Optional[str]
+
 
 class OaatGroup:
     """
@@ -457,14 +466,17 @@ class OaatGroup:
 
     def namespace(self) -> Optional[str]:
         if self.kopf_object:
-            return self.kopf_object.namespace   # type: ignore (pykube needs Optional[str] for namespace)
+            # (pykube needs Optional[str] for namespace)
+            return self.kopf_object.namespace   # type: ignore
         if self.kube_object:
             return self.kube_object.metadata.get('namespace')
 
     def get_kube_object(self, name: str, namespace: str) -> KubeOaatGroup:
         try:
+            # (pykube needs Optional[str] for namespace)
             return (KubeOaatGroup.objects(
-                self.api, namespace=namespace).get_by_name(name))   # type: ignore (pykube needs Optional[str] for namespace)
+                self.api,
+                namespace=namespace).get_by_name(name))  # type: ignore
         except pykube.exceptions.ObjectDoesNotExist as exc:
             raise RuntimeError(f'cannot find Object {name}: {exc}')
 
@@ -474,7 +486,8 @@ class OaatGroup:
     def __getattr__(self, name) -> Any:
         if name in self.passthrough_names:
             if self.kopf_object is None:
-                raise InternalError(f'attempt to retrieve {name} outside of kopf')
+                raise InternalError(
+                    f'attempt to retrieve {name} outside of kopf')
             return getattr(self.kopf_object, name)
         else:
             raise AttributeError(
@@ -497,7 +510,8 @@ class OaatGroup:
 
         if finished_at > current_last_failure:
             failure_count = item.numfails()
-            self.set_item_status(item_name, 'failure_count', str(failure_count + 1))
+            self.set_item_status(item_name, 'failure_count',
+                                 str(failure_count + 1))
             self.set_item_status(item_name, 'last_failure',
                                  finished_at.isoformat())
 
@@ -515,9 +529,10 @@ class OaatGroup:
             return True
         return False
 
-    def mark_item_success(self,
-                          item_name: str,
-                          finished_at: Optional[datetime.datetime] = None) -> bool:
+    def mark_item_success(
+            self,
+            item_name: str,
+            finished_at: Optional[datetime.datetime] = None) -> bool:
         """Mark an item as succeeded."""
 
         item = self.items.get(item_name)
@@ -554,7 +569,7 @@ class OaatGroup:
             self.kube_object.patch(
                 {'status': {
                     'items': {
-                        item_name: { key: value }
+                        item_name: {key: value}
                     }
                 }})
         else:

@@ -24,12 +24,12 @@ class Overseer:
         self.name = str(kwargs.get('name', ''))
         self.patch = kwargs.get('patch')
         self.status = kwargs.get('status')
-        self.logger : logging.Logger = kwargs.get('logger')
+        self.logger: logging.Logger = kwargs.get('logger')
         self.body = kwargs.get('body')
         self.meta = kwargs.get('meta')
         self.spec = kwargs.get('spec', {})
         self.namespace = kwargs.get('namespace')
-        self.my_pykube_objtype : Optional[Type[pykube.objects.APIObject]] = None
+        self.my_pykube_objtype: Optional[Type[pykube.objects.APIObject]] = None
         # this list should contain all elements of kwargs used in this class,
         # to avoid unpredictable behaviour if a full kwargs list is not passed
         required_kwargs = [
@@ -69,7 +69,8 @@ class Overseer:
         self.patch.setdefault('status', {})
         self.patch['status'][state] = value
 
-    def set_object_status(self, value: Optional[dict[str, Any]] = None) -> None:
+    def set_object_status(self,
+                          value: Optional[dict[str, Any]] = None) -> None:
         """Set the entire status section of the overseen object."""
         if value is not None:
             self.patch['status'] = value
@@ -78,7 +79,8 @@ class Overseer:
         """Get a label from the overseen object."""
         return self.meta.get('labels', {}).get(label, default)
 
-    def get_kubeobj(self, reason: Optional[str] = None) -> pykube.objects.APIObject:
+    def get_kubeobj(self,
+                    reason: Optional[str] = None) -> pykube.objects.APIObject:
         """Get the kube object for the overseen object."""
         namespace = self.namespace if self.namespace else pykube.all
         if self.my_pykube_objtype is None:
@@ -96,7 +98,9 @@ class Overseer:
                       f': {exc}',
                 message=f'cannot retrieve "{self.name}" object')
 
-    def set_annotation(self, annotation: str, value: Optional[str] = None) -> None:
+    def set_annotation(self,
+                       annotation: str,
+                       value: Optional[str] = None) -> None:
         """
         Set or Remove an annotation on the overseen object.
 
@@ -127,7 +131,8 @@ class Overseer:
                 error=f'cannot delete Object {self.name}: {exc}',
                 message=f'cannot delete "{self.name}" object')
 
-    def handle_processing_complete(self, exc: ProcessingComplete) -> Optional[dict]:
+    def handle_processing_complete(self,
+                                   exc: ProcessingComplete) -> Optional[dict]:
         if 'state' in exc.ret:
             self.set_status('state', exc.ret['state'])
         if 'info' in exc.ret:

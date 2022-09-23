@@ -1,4 +1,3 @@
-import unittest
 from copy import deepcopy
 import oaatoperator.utility
 import logging
@@ -37,7 +36,8 @@ class TestData:
         body = {
             'spec': obj['spec'],
             'metadata': {
-                'namespace': obj.get('metadata', {}).get('namespace', 'default'),
+                'namespace': obj.get('metadata',
+                                     {}).get('namespace', 'default'),
                 'name': obj.get('metadata', {}).get('name', 'unknown'),
                 'uid': 'uid',
                 'labels': obj.get('metadata', {}).get('labels', {}),
@@ -68,7 +68,7 @@ class TestData:
 
     failure_time = oaatoperator.utility.now()
     success_time = oaatoperator.utility.now()
-    
+
     # Pod
     kp_spec = {
         'apiVersion': 'v1',
@@ -121,7 +121,6 @@ class TestData:
             }
         }]
     }
-
 
     # KubeOaatType variants
     kot_header = {
@@ -215,7 +214,9 @@ class TestData:
     kog_mock = new_mock(KubeOaatGroup, kog_attrs)
 
     kog5_attrs = deepcopy(kog_empty_attrs)
-    kog5_attrs['spec']['oaatItems'] = ['item1', 'item2', 'item3', 'item4', 'item5']
+    kog5_attrs['spec']['oaatItems'] = [
+        'item1', 'item2', 'item3', 'item4', 'item5'
+    ]
     kog5_mock = new_mock(KubeOaatGroup, kog5_attrs)
 
     failure_count = 1
@@ -235,7 +236,8 @@ class TestData:
             'last_success': success_time.isoformat()
         }
     }
-    kog_previous_success_mock = new_mock(KubeOaatGroup, kog_previous_success_attrs)
+    kog_previous_success_mock = new_mock(KubeOaatGroup,
+                                         kog_previous_success_attrs)
 
     # POD specifications for passing to pykube.Pod()
     contspec = {

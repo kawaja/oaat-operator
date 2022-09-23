@@ -13,6 +13,7 @@ from oaatoperator.pod import PodOverseer
 # TODO: investigate whether pykube will re-connect to k8s if the session drops
 # for some reason
 
+
 def is_running(status, **_):
     """For when= function to test if a pod is running."""
     return status.get('phase') == 'Running'
@@ -49,9 +50,13 @@ def configure(settings: kopf.OperatorSettings, **_) -> None:
           file=sys.stderr)
 
 
-@kopf.timer('kawaja.net', 'v1', 'oaatgroups',
-            initial_delay=90, interval=300,
-            annotations={'kawaja.net/operator-status': 'active'})  # type: ignore
+@kopf.timer('kawaja.net',
+            'v1',
+            'oaatgroups',
+            initial_delay=90,
+            interval=300,
+            annotations={'kawaja.net/operator-status':
+                         'active'})  # type: ignore
 def oaat_timer(**kwargs: Unpack[CallbackArgs]):
     """
     oaat_timer (oaatgroup)
@@ -98,14 +103,20 @@ def oaat_timer(**kwargs: Unpack[CallbackArgs]):
 
 
 @kopf.timer('', 'v1', 'pods',
-            interval=0.5*3600,
-            labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'})  # type: ignore
+            interval=0.5 * 3600,
+            labels={
+                'parent-name': kopf.PRESENT,
+                'app': 'oaat-operator'
+            })  # type: ignore
 @kopf.on.resume('', 'v1', 'pods',
                 labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
                 when=is_running)  # type: ignore
 @kopf.on.field('', 'v1', 'pods',
                field='status.phase',
-               labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'})  # type: ignore
+               labels={
+                   'parent-name': kopf.PRESENT,
+                   'app': 'oaat-operator'
+               })  # type: ignore
 def pod_phasechange(**kwargs: Unpack[CallbackArgs]):
     """
     pod_phasechange (pod)
@@ -228,8 +239,10 @@ def cleanup_pod(**kwargs: Unpack[CallbackArgs]):
 @kopf.on.update('kawaja.net', 'v1', 'oaatgroups')
 @kopf.on.create('kawaja.net', 'v1', 'oaatgroups')  # type: ignore
 @kopf.timer('kawaja.net', 'v1', 'oaatgroups',
-            initial_delay=90, interval=300,
-            annotations={'kawaja.net/operator-status': kopf.ABSENT})  # type: ignore
+            initial_delay=90,
+            interval=300,
+            annotations={'kawaja.net/operator-status':
+                         kopf.ABSENT})  # type: ignore
 def oaat_action(**kwargs: Unpack[CallbackArgs]):
     """
     oaat_action (oaatgroup)
