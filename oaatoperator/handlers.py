@@ -262,7 +262,6 @@ def oaat_action(**kwargs: Unpack[CallbackArgs]):
     oaatgroup.info(f'[{my_name()}] {oaatgroup.name}')
 
     try:
-        oaatgroup.validate_oaat_type()
         oaatgroup.validate_items(
             status_annotation='operator-status',
             count_annotation='oaatgroup-items')

@@ -66,10 +66,9 @@ class BasicTests(unittest.TestCase):
     def test_podspec_emptyspec(self):
         with KubeObject(KubeOaatGroup, TestData.kog_emptyspec_attrs):
             with self.assertRaises(ProcessingComplete) as exc:
-                og = OaatGroup(kopf_object=cast(
+                OaatGroup(kopf_object=cast(
                     CallbackArgs,
                     TestData.setup_kwargs(TestData.kog_emptyspec_attrs)))
-                og.validate_oaat_type()
             self.assertEqual(exc.exception.ret['error'],
                              'cannot find OaatType None')
 

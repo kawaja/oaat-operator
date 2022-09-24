@@ -18,14 +18,12 @@ class BasicTests(unittest.TestCase):
     def tearDown(self):
         return super().tearDown()
 
-    #    @pytest.mark.usefixtures('login_mocks')
     def test_create_none(self):
         with self.assertRaises(ProcessingComplete) as exc:
             OaatType(None)  # type: ignore
         self.assertEqual(exc.exception.ret['error'],
                          'cannot find OaatType None')
 
-#    @pytest.mark.usefixtures('login_mocks')
     def test_invalid_object(self):
         with self.assertRaises(ProcessingComplete) as exc:
             OaatType('testname')
@@ -97,13 +95,11 @@ class BasicTests(unittest.TestCase):
 
 
 class MiniKubeTests(unittest.TestCase):
-    #    @pytest.mark.usefixtures('login_mocks')
     def test_pod_objects(self):
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         pod = pykube.Pod.objects(api)
         self.assertIsInstance(pod, Query)
 
-#    @pytest.mark.usefixtures('login_mocks')
     def test_pod_create(self):
         ensure_kubeobj_deleted(pykube.Pod, 'testpod')
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
@@ -128,13 +124,11 @@ class MiniKubeTests(unittest.TestCase):
         self.assertIsInstance(obj, pykube.Pod)
         ensure_kubeobj_deleted(pykube.Pod, 'testpod')
 
-#    @pytest.mark.usefixtures('login_mocks')
     def test_oaattype_objects(self):
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         kot = KubeOaatType.objects(api)
         self.assertIsInstance(kot, Query)
 
-#    @pytest.mark.usefixtures('login_mocks')
 # if this test fails, it could be because there is no 'oaattest'
 # OaatType loaded. try:
 #   kubectl apply -f manifests/sample-oaat-type.yaml
