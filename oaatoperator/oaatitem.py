@@ -32,10 +32,6 @@ class OaatItem:
                     key: str,
                     default: Optional[str] = None) -> datetime.datetime:
         """Get the status of a specific item, returned as a datetime."""
-        print(
-            f'key: {key}, default: {default}, _status: {self._status}, '
-            f'date: {self._status.get(key,default)}'
-        )
         return date_from_isostr(self._status.get(key, default))
 
     def success(self) -> datetime.datetime:
@@ -123,9 +119,6 @@ class OaatItems:
             OaatItem(self.group, item_name)
             for item_name in self.obj.get('spec', {}).get('oaatItems', [])
         ]
-
-#    def run(self) -> None:
-#        pass
 
     def __len__(self) -> int:
         return len(self.obj.get('spec', {}).get('oaatItems', []))

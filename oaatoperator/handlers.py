@@ -54,7 +54,7 @@ def configure(settings: kopf.OperatorSettings, **_) -> None:
             'v1',
             'oaatgroups',
             initial_delay=90,
-            interval=300,
+            interval=60,
             annotations={'kawaja.net/operator-status':
                          'active'})  # type: ignore
 def oaat_timer(**kwargs: Unpack[CallbackArgs]):
@@ -63,8 +63,7 @@ def oaat_timer(**kwargs: Unpack[CallbackArgs]):
 
     Main loop to handle oaatgroup object.
     """
-    kwargs['logger'].debug(
-        f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
+    kwargs['logger'].debug(f'[{my_name()}] reason: timer')
     try:
         oaatgroup = OaatGroup(kopf_object=kwargs)
     except ProcessingComplete as exc:
@@ -90,6 +89,7 @@ def oaat_timer(**kwargs: Unpack[CallbackArgs]):
             raise ProcessingComplete(
                 message='paused via pause_new_jobs annotation')
 
+        # TODO: use a subhandler for idempotence?
         podobj = next_item.run()
         oaatgroup.set_status('pod', podobj.metadata['name'])
 
