@@ -3,7 +3,10 @@ oaattype.py
 
 Class for managing OaatType kubernetes objects.
 """
+from __future__ import annotations
+from typing import Optional
 import pykube
+
 from oaatoperator.common import ProcessingComplete, KubeOaatType
 
 
@@ -13,22 +16,24 @@ class OaatType:
 
     Manager for OaatType objects.
     """
-    def __init__(self, name: str, namespace: str = None) -> None:
-        self.name = name
-        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+
+    def __init__(self,
+                 name: Optional[str],
+                 namespace: Optional[str] = None) -> None:
+        self.name = str(name)
         self.namespace = namespace
+        if name is None:
+            raise ProcessingComplete(message='OaatType invalid',
+                                     error=f'cannot find OaatType {self.name}')
+        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         self.obj = self.get_oaattype()
-        self.valid = bool(self.obj)
 
-    def get_oaattype(self) -> KubeOaatType:
+    def get_oaattype(self) -> dict:
         """Retrieve the OaatType object."""
-        if self.name is None:
-            return None
-
         try:
             return (
                 KubeOaatType
-                .objects(self.api, namespace=self.namespace)
+                .objects(self.api, namespace=self.namespace)  # type: ignore
                 .get_by_name(self.name)
                 .obj)
         except pykube.exceptions.ObjectDoesNotExist as exc:
@@ -40,9 +45,6 @@ class OaatType:
 
     def podspec(self) -> dict:
         """Retrieve Pod specification from this OaatType."""
-        if not self.valid:
-            raise ProcessingComplete(message='OaatType invalid',
-                                     error=f'cannot find OaatType {self.name}')
         msg = 'error in OaatType definition'
         spec = self.obj.get('spec')
         if spec is None:

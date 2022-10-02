@@ -7,8 +7,8 @@ manifestDirs:
 testDirs:
   - ./e2e
 parallel: 1
-commands:
-  - script: |
-      cd ..
-      PYTHONPATH=. kopf run --debug oaatoperator/handlers.py >> tests/operator-output.log 2>&1
-    background: true
+#commands:
+#  - script: |
+#      cd ..
+#      PYTHONPATH=. kopf run --debug oaatoperator/handlers.py >> tests/operator-output.log 2>&1
+#    background: true

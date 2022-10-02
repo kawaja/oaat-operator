@@ -1,7 +1,7 @@
 import unittest
-from copy import deepcopy
 
-from tests.mocks_pykube import object_setUp, ensure_kubeobj_deleted
+from tests.mocks_pykube import KubeObject, ensure_kubeobj_deleted
+from tests.testdata import TestData
 from oaatoperator.oaattype import OaatType
 from oaatoperator.common import KubeOaatType, ProcessingComplete
 import pykube
@@ -12,165 +12,94 @@ from pykube.query import Query
 
 
 class BasicTests(unittest.TestCase):
-    header = {
-        'apiVersion': 'kawaja.net/v1',
-        'kind': 'OaatType',
-        'metadata': {
-            'name': 'test-kot'
-        }
-    }
-
-    kot_spec = {
-        'podspec': {
-            'container': {
-                'name': 'test',
-                'image': 'busybox',
-                'command': ['sh', '-x', '-c'],
-                'args': [
-                    'echo "OAAT_ITEM={{oaat_item}}"\n'
-                    'sleep $(shuf -i 10-180 -n 1)\nexit $(shuf -i 0-1 -n 1)\n'
-                ],
-            }
-        }
-    }
-
-    kot_notype = {**header, 'spec': {**kot_spec}}
-    kot = {**header, 'spec': {**kot_spec, 'type': 'pod'}}
-    kot_nospec = {**header}
-    kot_nonepodspec = {
-        **header, 'spec': {'type': 'pod', 'podspec': None}
-    }
-    kot_nopodspec = {
-        **header, 'spec': {'type': 'pod'}
-    }
-    kot_nocontainer = {
-        **header, 'spec': {'type': 'pod', 'podspec': {'something': 1}}
-    }
-    kot_containers = {
-        **header, 'spec': {'type': 'pod', 'podspec': {'containers': 1}}
-    }
-    kot_restartPolicy = deepcopy(kot)
-    kot_restartPolicy['spec']['podspec']['restartPolicy'] = 'Always'
-
     def setUp(self):
-        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         return super().setUp()
 
     def tearDown(self):
         return super().tearDown()
 
-#    def oaattype_setUp(self, spec):
-#        ensure_kubeobj_deleted(KubeOaatType, 'test-kot')
-#        kot = KubeOaatType(self.api, spec)
-#        print(spec)
-#        kot.create()
-#        yield kot
-#        ensure_kubeobj_deleted(KubeOaatType, 'test-kot')
-#        yield None
-
-#    @pytest.mark.usefixtures('login_mocks')
     def test_create_none(self):
-        ot = OaatType(None)
-        self.assertIsInstance(ot, OaatType)
-        self.assertEqual(ot.name, None)
-        self.assertEqual(ot.get_oaattype(), None)
-
-#    @pytest.mark.usefixtures('login_mocks')
-    def test_invalid_object(self):
-        with self.assertRaises(ProcessingComplete):
-            OaatType('testname')
-
-    def test_invalid_none_podspec(self):
-        ot = OaatType(None)
         with self.assertRaises(ProcessingComplete) as exc:
-            ot.podspec()
+            OaatType(None)  # type: ignore
         self.assertEqual(exc.exception.ret['error'],
                          'cannot find OaatType None')
 
-    def test_podspec_nospec(self):
-        setup = object_setUp(KubeOaatType, BasicTests.kot_nospec)
-        next(setup)
-        ot = OaatType('test-kot')
+    def test_invalid_object(self):
         with self.assertRaises(ProcessingComplete) as exc:
-            ot.podspec()
-        self.assertEqual(exc.exception.ret['error'],
-                         'missing spec in OaatType definition')
-        next(setup)
+            OaatType('testname')
+        self.assertEqual(
+            exc.exception.ret['error'],
+            'cannot find OaatType None/testname: testname does not exist.')
+
+    def test_podspec_nospec(self):
+        with KubeObject(KubeOaatType, TestData.kot_nospec_spec):
+            ot = OaatType('test-kot')
+            with self.assertRaises(ProcessingComplete) as exc:
+                ot.podspec()
+            self.assertEqual(exc.exception.ret['error'],
+                             'missing spec in OaatType definition')
 
     def test_podspec_nonepodspec(self):
-        setup = object_setUp(KubeOaatType, BasicTests.kot_nonepodspec)
-        next(setup)
-        ot = OaatType('test-kot')
-        with self.assertRaises(ProcessingComplete) as exc:
-            ot.podspec()
-        self.assertEqual(exc.exception.ret['error'], 'spec.podspec is missing')
-        next(setup)
+        with KubeObject(KubeOaatType, TestData.kot_nonepodspec_spec):
+            ot = OaatType('test-kot')
+            with self.assertRaises(ProcessingComplete) as exc:
+                ot.podspec()
+            self.assertEqual(exc.exception.ret['error'],
+                             'spec.podspec is missing')
 
     def test_podspec_nopodspec(self):
-        setup = object_setUp(KubeOaatType, BasicTests.kot_nopodspec)
-        next(setup)
-        ot = OaatType('test-kot')
-        with self.assertRaises(ProcessingComplete) as exc:
-            ot.podspec()
-        self.assertEqual(exc.exception.ret['error'], 'spec.podspec is missing')
-        next(setup)
+        with KubeObject(KubeOaatType, TestData.kot_nopodspec_spec):
+            ot = OaatType('test-kot')
+            with self.assertRaises(ProcessingComplete) as exc:
+                ot.podspec()
+            self.assertEqual(exc.exception.ret['error'],
+                             'spec.podspec is missing')
 
     def test_podspec_nocontainer(self):
-        setup = object_setUp(KubeOaatType, BasicTests.kot_nocontainer)
-        next(setup)
-        ot = OaatType('test-kot')
-        with self.assertRaises(ProcessingComplete) as exc:
-            ot.podspec()
-        self.assertEqual(exc.exception.ret['error'],
-                         'spec.podspec.container is missing')
-        next(setup)
+        with KubeObject(KubeOaatType, TestData.kot_nocontainer_spec):
+            ot = OaatType('test-kot')
+            with self.assertRaises(ProcessingComplete) as exc:
+                ot.podspec()
+            self.assertEqual(exc.exception.ret['error'],
+                             'spec.podspec.container is missing')
 
     def test_podspec_containers(self):
-        setup = object_setUp(KubeOaatType, BasicTests.kot_containers)
-        next(setup)
-        ot = OaatType('test-kot')
-        with self.assertRaises(ProcessingComplete) as exc:
-            ot.podspec()
-        self.assertRegex(exc.exception.ret['error'],
-                         'currently only support a single container.*')
-        next(setup)
+        with KubeObject(KubeOaatType, TestData.kot_containers_spec):
+            ot = OaatType('test-kot')
+            with self.assertRaises(ProcessingComplete) as exc:
+                ot.podspec()
+            self.assertRegex(exc.exception.ret['error'],
+                             'currently only support a single container.*')
 
     def test_podspec_restartPolicy(self):
-        setup = object_setUp(KubeOaatType, BasicTests.kot_restartPolicy)
-        next(setup)
-        ot = OaatType('test-kot')
-        with self.assertRaises(ProcessingComplete) as exc:
-            ot.podspec()
-        self.assertRegex(exc.exception.ret['error'],
-                         '.*you cannot specify a restartPolicy')
-        next(setup)
+        with KubeObject(KubeOaatType, TestData.kot_restartPolicy_spec):
+            ot = OaatType('test-kot')
+            with self.assertRaises(ProcessingComplete) as exc:
+                ot.podspec()
+            self.assertRegex(exc.exception.ret['error'],
+                             '.*you cannot specify a restartPolicy')
 
     def test_podspec_without_type(self):
-        setup = object_setUp(KubeOaatType, BasicTests.kot_notype)
-        next(setup)
-        ot = OaatType('test-kot')
-        with self.assertRaises(ProcessingComplete) as exc:
-            ot.podspec()
-        self.assertEqual(exc.exception.ret['error'], 'spec.type must be "pod"')
-        next(setup)
+        with KubeObject(KubeOaatType, TestData.kot_notype_spec):
+            ot = OaatType('test-kot')
+            with self.assertRaises(ProcessingComplete) as exc:
+                ot.podspec()
+            self.assertEqual(exc.exception.ret['error'],
+                             'spec.type must be "pod"')
 
     def test_podspec(self):
-        setup = object_setUp(KubeOaatType, BasicTests.kot)
-        next(setup)
-        ot = OaatType('test-kot')
-        podspec = ot.podspec()
-        self.assertEqual(podspec['container']['name'], 'test')
-        next(setup)
+        with KubeObject(KubeOaatType, TestData.kot_spec):
+            ot = OaatType('test-kot')
+            podspec = ot.podspec()
+            self.assertEqual(podspec['container']['name'], 'test')
 
 
 class MiniKubeTests(unittest.TestCase):
-    #    @pytest.mark.usefixtures('login_mocks')
     def test_pod_objects(self):
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         pod = pykube.Pod.objects(api)
         self.assertIsInstance(pod, Query)
 
-#    @pytest.mark.usefixtures('login_mocks')
     def test_pod_create(self):
         ensure_kubeobj_deleted(pykube.Pod, 'testpod')
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
@@ -195,13 +124,11 @@ class MiniKubeTests(unittest.TestCase):
         self.assertIsInstance(obj, pykube.Pod)
         ensure_kubeobj_deleted(pykube.Pod, 'testpod')
 
-#    @pytest.mark.usefixtures('login_mocks')
     def test_oaattype_objects(self):
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         kot = KubeOaatType.objects(api)
         self.assertIsInstance(kot, Query)
 
-#    @pytest.mark.usefixtures('login_mocks')
 # if this test fails, it could be because there is no 'oaattest'
 # OaatType loaded. try:
 #   kubectl apply -f manifests/sample-oaat-type.yaml

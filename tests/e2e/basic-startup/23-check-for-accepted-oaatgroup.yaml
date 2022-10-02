@@ -2,5 +2,5 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
   - script: |
-      grep "added annotation operator-status=active to basic-startup" ../../operator-output.log
-
+      kubectl logs -l application=oaat-operator \
+        | grep "added annotation operator-status=active to basic-startup"

@@ -3,5 +3,4 @@ kind: TestStep
 name: Setup
 assert:
   - ../../common/assert-oaat-type.yaml
-error:
-  - ../../common/error-if-pods-exist.yaml
+  - ../../common/assert-operator-running.yaml

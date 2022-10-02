@@ -1,0 +1,11 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+name: TearDown
+delete:
+  - apiVersion: apps/v1
+    kind: Deployment
+    name: oaat-operator
+    labels:
+      application: oaat-operator
+error:
+  - ../../common/assert-operator-running.yaml

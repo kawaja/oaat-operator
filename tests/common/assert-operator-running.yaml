@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    application: oaat-operator
+status:
+  phase: Running

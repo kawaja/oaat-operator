@@ -3,9 +3,12 @@ overseer.py
 
 Overseer base class for Kopf object processing.
 """
+from typing_extensions import Unpack
 import pykube
-from typing import Any
+from typing import Any, Optional, Type
 from oaatoperator.common import ProcessingComplete
+from oaatoperator.py_types import CallbackArgs
+import logging
 
 
 class Overseer:
@@ -16,16 +19,17 @@ class Overseer:
 
     Inheriting class must set self.my_pykube_objtype
     """
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: Unpack[CallbackArgs]) -> None:
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
-        self.name = kwargs.get('name')
+        self.name = str(kwargs.get('name', ''))
         self.patch = kwargs.get('patch')
         self.status = kwargs.get('status')
-        self.logger = kwargs.get('logger')
+        self.logger: logging.Logger = kwargs.get('logger')
+        self.body = kwargs.get('body')
         self.meta = kwargs.get('meta')
-        self.spec = kwargs.get('spec')
+        self.spec = kwargs.get('spec', {})
         self.namespace = kwargs.get('namespace')
-        self.my_pykube_objtype = None
+        self.my_pykube_objtype: Optional[Type[pykube.objects.APIObject]] = None
         # this list should contain all elements of kwargs used in this class,
         # to avoid unpredictable behaviour if a full kwargs list is not passed
         required_kwargs = [
@@ -53,20 +57,30 @@ class Overseer:
         """Log a debug message."""
         self.logger.debug(*args)
 
-    def get_status(self, state: str, default: str = None) -> Any:
+    # TODO: check which types can actually be returned by
+    # self.status
+    def get_status(self, state: str, default: Any = None) -> Any:
         """Get a value from the "status" of the overseen object."""
         return self.status.get(state, default)
 
-    def set_status(self, state: str, value: str = None) -> None:
+    def set_status(self, state: str, value: Optional[str] = None) -> None:
         """Set a field in the "status" of the overseen object."""
+        # setting value to None will delete the state
         self.patch.setdefault('status', {})
         self.patch['status'][state] = value
 
-    def get_label(self, label: str, default: str = None) -> str:
+    def set_object_status(self,
+                          value: Optional[dict[str, Any]] = None) -> None:
+        """Set the entire status section of the overseen object."""
+        if value is not None:
+            self.patch['status'] = value
+
+    def get_label(self, label: str, default: Optional[str] = None) -> str:
         """Get a label from the overseen object."""
         return self.meta.get('labels', {}).get(label, default)
 
-    def get_kubeobj(self, reason: str = None) -> object:
+    def get_kubeobj(self,
+                    reason: Optional[str] = None) -> pykube.objects.APIObject:
         """Get the kube object for the overseen object."""
         namespace = self.namespace if self.namespace else pykube.all
         if self.my_pykube_objtype is None:
@@ -75,7 +89,7 @@ class Overseer:
         try:
             return (self
                     .my_pykube_objtype
-                    .objects(self.api, namespace=namespace)
+                    .objects(self.api, namespace=namespace)  # type: ignore
                     .get_by_name(self.name))
         except pykube.exceptions.ObjectDoesNotExist as exc:
             raise ProcessingComplete(
@@ -84,7 +98,9 @@ class Overseer:
                       f': {exc}',
                 message=f'cannot retrieve "{self.name}" object')
 
-    def set_annotation(self, annotation: str, value: str = None) -> None:
+    def set_annotation(self,
+                       annotation: str,
+                       value: Optional[str] = None) -> None:
         """
         Set or Remove an annotation on the overseen object.
 
@@ -105,6 +121,7 @@ class Overseer:
             self.debug(f'removed annotation {annotation} from {self.name}')
 
     def delete(self) -> None:
+        # TODO: add retry logic to handle 409?
         myobj = self.get_kubeobj('delete it')
         try:
             myobj.delete(propagation_policy='Background')
@@ -114,7 +131,8 @@ class Overseer:
                 error=f'cannot delete Object {self.name}: {exc}',
                 message=f'cannot delete "{self.name}" object')
 
-    def handle_processing_complete(self, exc: Exception) -> dict:
+    def handle_processing_complete(self,
+                                   exc: ProcessingComplete) -> Optional[dict]:
         if 'state' in exc.ret:
             self.set_status('state', exc.ret['state'])
         if 'info' in exc.ret:

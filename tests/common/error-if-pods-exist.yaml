@@ -1,2 +1,17 @@
-apiVersion: v1
-kind: Pod
+#apiVersion: v1
+#kind: Pod
+#metadata:
+#  labels:
+#    app: oaat-operator
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  - script: |
+      kubectl get po -owide --show-labels
+             kubectl get po -ojson | jq -r '.items | map(select(.metadata.labels.app=="oaat-operator" and .status.phase=="Running") | .metadata.name)[]'
+      PODS=$(kubectl get po -ojson | jq -r '.items | map(select(.metadata.labels.app=="oaat-operator" and .status.phase=="Running") | .metadata.name)[]'| wc -w | tr -d ' ')
+      if [ ${PODS} -ne 0 ]; then
+        echo "Expected 0 pods, but found ${PODS} instead"
+        exit 2
+      fi
+      exit 0

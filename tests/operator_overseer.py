@@ -1,16 +1,17 @@
-from oaatoperator.common import ProcessingComplete
 import time
 import re
 import kopf
 from pykube import Pod
+
+from oaatoperator.common import ProcessingComplete
 from oaatoperator.overseer import Overseer
 
 
-@kopf.on.create('pods')
+@kopf.on.create('pods')  # type: ignore
 def create_action(**kwargs):
     # [1] Overseer should raise ValueError if kwargs are not passed
     try:
-        Overseer()
+        Overseer()  # type: ignore
     except ValueError as exc:
         assert re.search('Overseer must be called with full kopf kwargs',
                          str(exc)), exc
@@ -82,8 +83,10 @@ def create_action(**kwargs):
             message='retmessage'
         )
     except ProcessingComplete as exc:
+        pc = pov.handle_processing_complete(exc)
+        assert pc is not None
         assert (
-            pov.handle_processing_complete(exc).get('message') == 'retmessage'
+            pc.get('message') == 'retmessage'
             ), exc
         kwargs['logger'].debug('[12] successful')
 
@@ -96,10 +99,10 @@ def create_action(**kwargs):
 
     pov.debug('about to complete')
 
-    return 'all overseer tests successful'
+    return {'message': 'all overseer tests successful'}
 
 
-@kopf.on.update('pods', annotations={'readytodelete': 'true'})
+@kopf.on.update('pods', annotations={'readytodelete': 'true'})  # type: ignore
 def update_action(**kwargs):
     pov = Overseer(**kwargs)
     pov.my_pykube_objtype = Pod

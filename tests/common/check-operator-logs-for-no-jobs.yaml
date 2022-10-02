@@ -2,7 +2,9 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
   - script: |
-      if grep 'not time to run next item' ../../operator-output.log; then
+      err=$(kubectl logs -l application=oaat-operator \
+        | grep 'not time to run next item')
+      if [ -n "${err}" ]; then
         exit 0
       else
         exit 3

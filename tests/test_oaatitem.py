@@ -1,255 +1,187 @@
-from unittest.mock import MagicMock  # , patch, call
+import sys
+import os
+import pykube
+from copy import deepcopy
+
+from unittest.mock import patch
 import unittest
-import datetime
 
-from oaatoperator.oaatgroup import OaatGroupOverseer
-from oaatoperator.common import KubeOaatGroup
-from oaatoperator.oaatitem import OaatItems
+# enable importing of oaatoperator modules without placing constraints
+# on how they handle non-test in-module importing
+sys.path.append(
+    os.path.dirname(os.path.realpath(__file__)) + "/../oaatoperator")
+
+from tests.testdata import TestData  # noqa: E402
+from tests.utility import ExtendedTestCase, get_env  # noqa: E402
+from oaatoperator.oaatitem import OaatItem, OaatItems  # noqa: E402
+from oaatoperator.common import ProcessingComplete  # noqa: E402
 
 
-class OaatGroupTests(unittest.TestCase):
+class OaatItemTests(unittest.TestCase):
+    def test_create(self):
+        OaatItem(TestData.kog_emptyspec_mock, 'item1')
+
+    def test_success(self):
+        oi = OaatItem(TestData.kog_previous_success_mock, 'item1')
+        self.assertEqual(oi.success(), TestData.success_time)
+
+    def test_failure(self):
+        oi = OaatItem(TestData.kog_previous_fail_mock, 'item1')
+        self.assertEqual(oi.failure(), TestData.failure_time)
+        self.assertEqual(oi.numfails(), TestData.failure_count)
+
+
+class RunItemTests(unittest.TestCase):
     def setUp(self):
-        self.dt = datetime.datetime.now(tz=datetime.timezone.utc)
-        self.og_populated = MagicMock(
-            spec=OaatGroupOverseer,
-            patch={'status': {}},
-            status={
-                'items': {
-                    'item': {
-                        'test': 5,
-                        'test_date': self.dt.isoformat()
-                    }
-                }
-            },
-            obj={
-                'patch': {
-                    'status': {}
-                },
-                'status': {
-                    'items': {
-                        'item': {
-                            'test': 5,
-                            'test_date': self.dt.isoformat()
-                        }
-                    }
-                }
-            })
+        return super().setUp()
 
-        self.og_empty = MagicMock(
-            spec=OaatGroupOverseer,
-            body={},
-            patch={'status': {}},
-            status={},
-            obj={
-                'patch': {'status': {}},
-                'status': {}
-            }
-        )
+    @patch('kopf.adopt')
+    @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
+    @patch('pykube.Pod')
+    def test_sunny(self, pod_mock, og_mock, kopf_adopt_mock):
+        TestData.add_og_mock_attributes(og_mock)
+        og_mock.oaattype.podspec.return_value = deepcopy(
+            TestData.kot_typespec.get('podspec', {}))
+        oi = OaatItem(og_mock, 'item1')
+        oi.run()
+        og_mock.oaattype.podspec.assert_called_once()
+        kopf_adopt_mock.assert_called_once()
+        pod = pod_mock.call_args.args[1]
+        self.assertEqual(pod['metadata']['labels']['oaat-name'], 'item1')
+        self.assertEqual(
+            get_env(pod['spec']['containers'][0]['env'], 'OAAT_ITEM'), 'item1')
 
-    def test_create_oaatgroup(self):
-        og = self.og_empty
-        items = OaatItems(obj=og.obj)
-        self.assertIsInstance(items, OaatItems)
-        # self.assertIsInstance(items.oaatgroup, OaatGroupOverseer)
-        self.assertIsInstance(items.obj, dict)
-        # self.assertIsNone(items.kubeobject)
+    @patch('kopf.adopt')
+    @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
+    @patch('pykube.Pod')
+    def test_podfail(self, pod_mock, og_mock, kopf_adopt_mock):
+        TestData.add_og_mock_attributes(og_mock)
+        og_mock.oaattype.podspec.return_value = deepcopy(
+            TestData.kot_typespec.get('podspec', {}))
+        pod_instance_mock = pod_mock.return_value
+        pod_instance_mock.create.side_effect = pykube.KubernetesError(
+            'test error')
+        oi = OaatItem(og_mock, 'item1')
+        with self.assertRaisesRegex(ProcessingComplete,
+                                    'error creating pod for item1'):
+            oi.run()
+        og_mock.oaattype.podspec.assert_called_once()
+        kopf_adopt_mock.assert_called_once()
 
-    def test_status_oaatgroup(self):
-        og = self.og_populated
-        items = OaatItems(obj=og.obj)
-        self.assertEqual(items.status('item', 'test'), 5)
+    @patch('kopf.adopt')
+    @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
+    @patch('pykube.Pod')
+    def test_substitute(self, pod_mock, og_mock, kopf_adopt_mock):
+        TestData.add_og_mock_attributes(og_mock)
+        kot_substitutions_podspec = deepcopy(
+            TestData.kot_typespec.get('podspec', {}))
+        kot_substitutions_podspec['container']['command'] = [
+            'a', 'b', '%%oaat_item%%', 'c'
+        ]
+        kot_substitutions_podspec['container']['args'] = [
+            'a', 'b', '%%oaat_item%%', 'c'
+        ]
+        kot_substitutions_podspec['container']['env'] = [
+            {'name': 'first', 'value': '%%oaat_item%%'},
+            {'name': 'second', 'value': 'abc%%oaat_item%%def'},
+        ]
+        og_mock.oaattype.podspec.return_value = kot_substitutions_podspec
+        oi = OaatItem(og_mock, 'item1')
+        oi.run()
+        og_mock.oaattype.podspec.assert_called_once()
+        kopf_adopt_mock.assert_called_once()
 
-    def test_status_date_oaatgroup(self):
-        og = self.og_populated
-        items = OaatItems(obj=og.obj)
-        rdt = items.status_date('item', 'test_date')
-        self.assertIsInstance(rdt, datetime.datetime)
-        self.assertEqual(rdt, self.dt)
+        pod = pod_mock.call_args.args[1]
+        self.assertEqual(pod['metadata']['labels']['oaat-name'], 'item1')
+        self.assertEqual(pod['spec']['containers'][0]['command'][0], 'a')
+        self.assertEqual(pod['spec']['containers'][0]['command'][1], 'b')
+        self.assertEqual(pod['spec']['containers'][0]['command'][2], 'item1')
+        self.assertEqual(pod['spec']['containers'][0]['command'][3], 'c')
+        self.assertEqual(pod['spec']['containers'][0]['args'][0], 'a')
+        self.assertEqual(pod['spec']['containers'][0]['args'][1], 'b')
+        self.assertEqual(pod['spec']['containers'][0]['args'][2], 'item1')
+        self.assertEqual(pod['spec']['containers'][0]['args'][3], 'c')
+        self.assertEqual(
+            get_env(pod['spec']['containers'][0]['env'], 'OAAT_ITEM'), 'item1')
+        self.assertEqual(
+            get_env(pod['spec']['containers'][0]['env'], 'first'), 'item1')
+        self.assertEqual(
+            get_env(pod['spec']['containers'][0]['env'], 'second'),
+            'abcitem1def')
 
-    def test_invalid_object(self):
+
+class TestOaatItems(ExtendedTestCase):
+    @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
+    def test_create(self, og_mock):
+        ois = OaatItems(og_mock, {})
+        self.assertEqual(ois.obj, {})
+        self.assertEqual(ois.group, og_mock)
+
+    @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
+    def test_nondict(self, og_mock):
         with self.assertRaisesRegex(
-                TypeError, 'obj should be dict, not <class \'str\'>=silly'):
-            OaatItems(obj='silly')
+                TypeError, 'obj should be dict, not <class \'str\'>=string'):
+            OaatItems(og_mock, 'string')  # type: ignore
 
-    # def test_set_status_oaatgroup(self):
-    #     og = self.og_empty
-    #     items = OaatItems(obj=og.obj)
-    #     items.set_item_status('item', 'test', 5)
-    #     self.assertEqual(ss.call_args, call(item='item', key='test',
-    #                                         value=5))
+    @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
+    def test_get_kubeobj(self, og_mock):
+        og_mock.obj = TestData.kog5_mock
+        og_mock.status = TestData.kog5_mock.status
+        ois = OaatItems(group=og_mock, obj=TestData.kog5_mock.obj)
+        self.assertEqual(ois.obj, TestData.kog5_mock.obj)
+        self.assertEqual(ois.group, og_mock)
+        i = ois.get('item1')
+        self.assertIsInstance(i, OaatItem)
+        self.assertEqual(i.name, 'item1')
+        self.assertEqual(i.status('podphase', 'test'), 'test')
 
-    # def test_set_phase_oaatgroup(self):
-    #     og = self.og_empty
-    #     items = OaatItems(obj=og.obj)
-    #     items.set_phase('item', 'Phase')
-    #     self.assertEqual(ss.call_args,
-    #                      call(item='item', key='podphase', value='Phase'))
+    @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
+    def test_get_kopfobj(self, og_mock):
+        og_mock.obj = TestData.kog5_mock
+        og_mock.status = TestData.kog5_mock.status
+        kopfobj = TestData.setup_kwargs(TestData.kog5_mock.obj)
+        ois = OaatItems(group=og_mock, obj=kopfobj)
+        self.assertEqual(ois.obj, kopfobj)
+        self.assertEqual(ois.group, og_mock)
+        i = ois.get('item1')
+        self.assertIsInstance(i, OaatItem)
+        self.assertEqual(i.name, 'item1')
+        self.assertEqual(i.status('podphase', 'test'), 'test')
 
+    @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
+    def test_list_kubeobj(self, og_mock):
+        TestData.add_og_mock_attributes(og_mock)
+        og_mock.obj = TestData.kog5_mock
+        ois = OaatItems(group=og_mock, obj=TestData.kog5_mock.obj)
+        self.assertEqual(ois.obj, TestData.kog5_mock.obj)
+        self.assertEqual(ois.group, og_mock)
+        items = ois.list()
+        self.assertIsInstance(items, list)
 
-class KubeTests(unittest.TestCase):
-    def setUp(self):
-        self.dt = datetime.datetime.now(tz=datetime.timezone.utc)
-        self.k_empty = MagicMock(
-            spec=KubeOaatGroup,
-            obj={}
-        )
-        self.k_populated = MagicMock(
-            spec=KubeOaatGroup,
-            obj={
-                'spec': {
-                    'frequency': '1d',
-                    'failureCoolOff': {
-                        'duration': '4h'
-                    },
-                    'windows': {
-                        'noStartItem': {
-                            'start': {
-                                'time': '06:00',
-                            },
-                            'end': {
-                                'time': '21:00'
-                            }
-                        },
-                    },
-                    'oaatType': 'testtype',
-                    'oaatItems': [
-                        'item1',
-                        'item2',
-                        'item3'
-                    ]
-                },
-                'status': {
-                    'items': {
-                        'item': {
-                            'test': 5,
-                            'test_date': self.dt.isoformat()
-                        }
-                    }
-                }
-            }
-        )
+    @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
+    def test_list_kopfobj(self, og_mock):
+        TestData.add_og_mock_attributes(og_mock)
+        og_mock.obj = TestData.kog5_mock
+        kopfobj = TestData.setup_kwargs(TestData.kog5_mock.obj)
+        ois = OaatItems(group=og_mock, obj=kopfobj)
+        self.assertEqual(ois.obj, kopfobj)
+        self.assertEqual(ois.group, og_mock)
+        items = ois.list()
+        self.assertIsInstance(items, list)
 
-    def test_create_kube(self):
-        k = self.k_empty
-        items = OaatItems(obj=k.obj)
-        self.assertIsInstance(items, OaatItems)
-        self.assertIsInstance(items.obj, dict)
+    @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
+    def test_len_kubeobj(self, og_mock):
+        og_mock.obj = TestData.kog5_mock
+        ois = OaatItems(group=og_mock, obj=TestData.kog5_mock.obj)
+        self.assertEqual(ois.obj, TestData.kog5_mock.obj)
+        self.assertEqual(ois.group, og_mock)
+        self.assertEqual(len(ois), 5)
 
-    def test_status_kube(self):
-        k = self.k_populated
-        items = OaatItems(obj=k.obj)
-        self.assertEqual(items.status('item', 'test'), 5)
-
-    def test_status_date_kube(self):
-        k = self.k_populated
-        items = OaatItems(obj=k.obj)
-        rdt = items.status_date('item', 'test_date')
-        self.assertIsInstance(rdt, datetime.datetime)
-        self.assertEqual(rdt, self.dt)
-
-    # def test_set_status_kube(self):
-    #     ss = MagicMock()
-    #     k = self.k_empty
-    #     items = OaatItems(obj=k.obj, set_item_status=ss)
-    #     items.set_item_status('item', 'test', 5)
-    #     # k.patch.assert_called_once_with(
-    #     # {'status': {'items': {'item': {'test': 5}}}})
-    #     self.assertEqual(ss.call_args, call(item='item', key='test',
-    #                                         value=5))
-
-    # def test_set_phase_kube(self):
-    #     ss = MagicMock()
-    #     k = self.k_empty
-    #     items = OaatItems(obj=k.obj, set_item_status=ss)
-    #     items.set_phase('item', 'Phase')
-    #     self.assertEqual(ss.call_args,
-    #                      call(item='item', key='podphase', value='Phase'))
-    #     # k.patch.assert_called_once_with(
-    #     # {'status': {'items': {'item': {'podphase': 'Phase'}}}})
-
-#     def test_mark_failed_kube_with_invalid_when(self):
-#         ss = MagicMock()
-#         k = self.k_empty
-#         items = OaatItems(obj=k.obj, set_item_status=ss)
-#         with self.assertRaises(ValueError):
-#             items.mark_failed('item', when=self.dt)
-
-#     def test_mark_failed_kube_with_when(self):
-#         ss = MagicMock()
-#         k = self.k_empty
-#         items = OaatItems(obj=k.obj, set_item_status=ss)
-#         items.mark_failed('item', when=self.dt.isoformat())
-#         self.assertEqual(ss.call_args_list[0],
-#                          call(item='item', key='failure_count', value=1))
-#         self.assertEqual(
-#             ss.call_args_list[1],
-#             call(item='item', key='last_failure', value=self.dt.isoformat()))
-# #        self.assertEqual(
-# #            k.method_calls[0],
-# #            call.patch(
-# #               {'status': {'items': {'item': {'failure_count': 1}}}}))
-# #        self.assertEqual(
-# #            k.method_calls[1],
-# #            call.patch({'status': {'items': {'item': {
-# #                'last_failure': self.dt.isoformat()
-# #            }}}}))
-
-#     @patch('oaatoperator.utility.datetime', autospec=True)
-#     def test_mark_failed_kube_without_when(self, mock_dt):
-#         ss = MagicMock()
-#         k = self.k_empty
-#         mock_dt.datetime.now.return_value = self.dt
-#         items = OaatItems(obj=k.obj, set_item_status=ss)
-#         items.mark_failed('item')
-#         self.assertEqual(ss.call_args_list[0],
-#                          call(item='item', key='failure_count', value=1))
-#         self.assertEqual(
-#             ss.call_args_list[1],
-#             call(item='item', key='last_failure', value=self.dt.isoformat()))
-
-#     def test_mark_success_self(self):
-#         ss = MagicMock()
-#         k = self.k_empty
-#         items = OaatItems(obj=k.obj, set_item_status=ss)
-#         with self.assertRaises(ValueError):
-#             items.mark_success('item', when=self.dt)
-
-#     def test_mark_success_kube_with_when(self):
-#         ss = MagicMock()
-#         k = self.k_empty
-#         items = OaatItems(obj=k.obj, set_item_status=ss)
-#         items.mark_success('item', when=self.dt.isoformat())
-#         self.assertEqual(ss.call_args_list[0],
-#                          call(item='item', key='failure_count', value=0))
-#         self.assertEqual(
-#             ss.call_args_list[1],
-#             call(item='item', key='last_success', value=self.dt.isoformat()))
-
-#     @patch('oaatoperator.utility.datetime', autospec=True)
-#     def test_mark_success_kube_without_when(self, mock_dt):
-#         ss = MagicMock()
-#         k = self.k_empty
-#         mock_dt.datetime.now.return_value = self.dt
-#         items = OaatItems(obj=k.obj, set_item_status=ss)
-#         items.mark_success('item')
-#         print(ss.call_args_list)
-#         self.assertEqual(ss.call_args_list[0],
-#                          call(item='item', key='failure_count', value=0))
-#         self.assertEqual(
-#             ss.call_args_list[1],
-#             call(item='item', key='last_success', value=self.dt.isoformat()))
-
-    def test_count(self):
-        k = self.k_populated
-        items = OaatItems(obj=k.obj)
-        self.assertEqual(len(items), 3)
-
-    def test_list(self):
-        k = self.k_populated
-        items = OaatItems(obj=k.obj)
-        self.assertEqual(items.list()[0]['name'], 'item1')
-        self.assertEqual(items.list()[1]['name'], 'item2')
-        self.assertEqual(items.list()[2]['name'], 'item3')
-        self.assertEqual(items.list()[0]['numfails'], 0)
-        self.assertEqual(items.list()[1]['numfails'], 0)
-        self.assertEqual(items.list()[2]['numfails'], 0)
+    @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
+    def test_len_kopfobj(self, og_mock):
+        og_mock.obj = TestData.kog5_mock
+        kopfobj = TestData.setup_kwargs(TestData.kog5_mock.obj)
+        ois = OaatItems(group=og_mock, obj=kopfobj)
+        self.assertEqual(ois.obj, kopfobj)
+        self.assertEqual(ois.group, og_mock)
+        self.assertEqual(len(ois), 5)
