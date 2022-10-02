@@ -8,8 +8,6 @@ import datetime
 import re
 import sys
 
-import unittest
-
 UTC = datetime.timezone.utc
 
 DURMATCH = re.compile(r'''
