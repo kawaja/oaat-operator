@@ -158,7 +158,7 @@ will not succeed.
 
 * `oaat-operator` is not intended for precise timing of item start
   times – the check for whether items are ready to run occurs every
-  30 seconds.
+  60 seconds.
 * Each item in the group will use the same pod specification
   (other than the string substitutions in the `command`, `args`
   or `env`). If you want to run different commands, this must be done
