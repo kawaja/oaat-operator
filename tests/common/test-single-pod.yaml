@@ -2,10 +2,9 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 commands:
   - script: |
-      set -x
-      kubectl get po
+      kubectl get po -owide --show-labels
              kubectl get po -ojson | jq -r '.items | map(select(.metadata.labels.app=="oaat-operator" and .status.phase=="Running") | .metadata.name)[]'
-      PODS=$(kubectl get po -ojson | jq -r '.items | map(select(.metadata.labels.app=="oaat-operator" and .status.phase=="Running") | .metadata.name)[]'| wc -w)
+      PODS=$(kubectl get po -ojson | jq -r '.items | map(select(.metadata.labels.app=="oaat-operator" and .status.phase=="Running") | .metadata.name)[]'| wc -w | tr -d ' ')
       if [ ${PODS} -ne 1 ]; then
         echo "Expected 1 pod, but found ${PODS} instead"
         exit 2

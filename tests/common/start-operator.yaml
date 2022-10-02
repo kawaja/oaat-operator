@@ -17,5 +17,5 @@ spec:
       serviceAccountName: oaat-operator-sa
       containers:
       - name: oaat-operator
-        image: ghcr.io/kawaja/oaat-operator:v0.5.7
-        imagePullPolicy: Always
+        image: '%%OPERATOR_TAG%%'
+        imagePullPolicy: Never

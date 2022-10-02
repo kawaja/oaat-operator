@@ -3,7 +3,7 @@ kind: OaatGroup
 metadata:
   name: pod-selection
 spec:
-  frequency: 1m
+  frequency: 60m
   oaatType: oaattest
   oaatItems:
     - item1
