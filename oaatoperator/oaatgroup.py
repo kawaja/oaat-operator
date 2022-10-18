@@ -238,11 +238,23 @@ class OaatGroupOverseer(Overseer):
     def verify_running(self) -> None:
         self.verify_state()
 
+        # TODO: delete_rogue_pods currently uses 'curpod' to determine
+        # if a pod is "supposed" to be running and only deletes rogue pods
+        # if that's the case. When 'curpod' is not set, it won't delete
+        # rogue pods. The problem is that 'curpod' may not be set correctly,
+        # but a valid pod is running. In this case, the valid pod is ignored,
+        # and a new pod is started (if ready). It might make more sense
+        # to remove the concept of 'curpod' and simply use the actual
+        # running pods to determine if a pod is "supposed" to be running and
+        # which one it's supposed to be. If two running pods are found,
+        # use some logic to determine which one should be deleted
+        # (perhaps the youngest?)
         self.delete_rogue_pods()
 
         # Check the currently-running job
         if self.is_pod_expected():
             self.verify_expected_pod_is_running()
+            self.debug('should not happen - pod expected, but not running')
 
     # TODO: --> OaatItem.verify() ?
     def verify_state(self) -> None:
@@ -281,7 +293,7 @@ class OaatGroupOverseer(Overseer):
     def delete_rogue_pods(self) -> None:
         curpod = self.get_status('pod')
         if not curpod:
-            self.info(f'curpod is "{curpod} (self: {self})')
+            self.debug(f'curpod is "{curpod}')
             self.debug(
                 f'currently_running: {self.get_status("currently_running")}')
             return
@@ -317,7 +329,9 @@ class OaatGroupOverseer(Overseer):
     def is_pod_expected(self) -> bool:
         curpod = self.get_status('pod')
         if curpod:
+            self.debug(f'pod {curpod} is expected to be running')
             return True
+        self.debug('pod is not expected to be running')
         return False
 
     # TODO: --> OaatItem.verify() ?
@@ -340,6 +354,7 @@ class OaatGroupOverseer(Overseer):
         """
         curpod = self.get_status('pod')
         curitem_name = self.get_status('currently_running')
+        self.debug(f'verifying pod {curpod} ({curitem_name}) is running')
         try:
             # (pykube needs Optional[str] for namespace)
             pod = pykube.Pod.objects(
