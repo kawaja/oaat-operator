@@ -71,7 +71,9 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v2
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
+      uses: docker/setup-buildx-action@v2
+      with:
+        buildkitd-flags: --debug
     - name: Login to Repo
       uses: docker/login-action@v1
       with:
@@ -100,7 +102,7 @@ jobs:
         echo "__gitsha__ = '${GITHUB_SHA::7}'" >> oaatoperator/__init__.py
         echo "__build_date__ = '$(date +%Y%m%d%H%M%S)'" >> oaatoperator/__init__.py
     - name: Build the Docker image (with :<sha> and :dev tags)
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v3
       with:
         context: .
         file: build/Dockerfile
