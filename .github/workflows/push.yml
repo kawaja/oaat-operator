@@ -87,10 +87,11 @@ jobs:
       id: devtag
       shell: bash
       run: |
-        if [ '${{ github.ref_name }}' == 'master' ]; then
+        tag=$(echo ${{ github.ref_name }} | sed -e 's/.*[^A-Za-z_.0-9-]\([A-Za-z_.0-9-]*\)$/\1/')
+        if [ "${tag}"" == 'master' ]; then
           echo "::set-output name=devtag::dev"
         else
-          echo "::set-output name=devtag::${{ github.ref_name }}"
+          echo "::set-output name=devtag::${tag}"
         fi
     - name: Embed Data/Git SHA details
       run: |

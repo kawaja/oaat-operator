@@ -138,7 +138,8 @@ class OaatGroupOverseer(Overseer):
             self.debug('remaining items, based on failure cool off: ' +
                        ', '.join([i.name for i in candidates]))
 
-        self.debug(
+        find_job_status = (
+            f'find_job last run: {now.isoformat()}'
             'item status (* = candidate):\n' +
             '\n'.join([
                 ('* ' if i in candidates else '- ') +
@@ -150,6 +151,8 @@ class OaatGroupOverseer(Overseer):
                 for i in oaat_items
             ])
         )
+        self.debug(find_job_status)
+        self.set_status('find_job', find_job_status)
 
         if not candidates:
             self.set_status('state', 'idle')
