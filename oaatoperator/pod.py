@@ -26,7 +26,7 @@ class PodOverseer(Overseer):
         self.phase = kwargs['status'].get('phase', '')
         self.my_pykube_objtype = pykube.Pod
         self.exitcode = -1
-        self.finished_at: Optional[datetime.datetime]
+        self.finished_at: Optional[datetime.datetime] = None
 
     # TODO: currently only supports a single container (searches for the
     # first container with a 'terminated' status). To support
@@ -39,9 +39,21 @@ class PodOverseer(Overseer):
         for containerstatus in containerstatuses:
             terminated = (containerstatus.get('state', {}).get('terminated'))
             if terminated:
-                self.exitcode = terminated.get('exitCode')
+                self.exitcode = terminated.get('exitCode', -1)
                 self.finished_at = date_from_isostr(
                     terminated.get('finishedAt'))
+            else:
+                self.warning(f'cannot find terminated status for {self.name}')
+        if self.finished_at is None:
+            raise ProcessingComplete(
+                error=f'unable to determine termination time for {self.name}',
+                message=f'unable to determine termination time for {self.name}'
+            )
+        if self.exitcode == -1:
+            raise ProcessingComplete(
+                error=f'unable to determine exit code for {self.name}',
+                message=f'unable to determine exit code for {self.name}'
+            )
 
     def update_failure_status(self) -> None:
         """

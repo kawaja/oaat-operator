@@ -139,7 +139,7 @@ class OaatGroupOverseer(Overseer):
                        ', '.join([i.name for i in candidates]))
 
         find_job_status = (
-            f'find_job last run: {now.isoformat()}'
+            f'find_job last run: {now.isoformat()}\n'
             'item status (* = candidate):\n' +
             '\n'.join([
                 ('* ' if i in candidates else '- ') +

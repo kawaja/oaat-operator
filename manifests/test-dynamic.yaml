@@ -5,6 +5,7 @@ metadata:
 spec:
   frequency: 5m
   oaatType: oaattest
+  oaatItemListAction:
   oaatItems:
     - item1
     - item2
