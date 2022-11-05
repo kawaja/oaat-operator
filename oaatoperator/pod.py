@@ -7,7 +7,7 @@ import datetime
 import pykube
 from typing import Optional
 
-from oaatoperator.utility import date_from_isostr
+from oaatoperator.utility import date_from_isostr, now
 from oaatoperator.oaatgroup import OaatGroup
 from oaatoperator.common import ProcessingComplete
 from oaatoperator.overseer import Overseer
@@ -49,18 +49,10 @@ class PodOverseer(Overseer):
                 f'cannot find terminated status for {self.name} '
                 f'(reason: {self.reason})'
             )
-        if self.reason is not None:
-            return
         if self.finished_at is None:
-            raise ProcessingComplete(
-                error=f'unable to determine termination time for {self.name}',
-                message=f'unable to determine termination time for {self.name}'
-            )
-        if self.exitcode == -1:
-            raise ProcessingComplete(
-                error=f'unable to determine exit code for {self.name}',
-                message=f'unable to determine exit code for {self.name}'
-            )
+            self.warning(
+                f'unable to determine termination time for {self.name}')
+            self.finished_at = now()
 
     def update_failure_status(self) -> None:
         """
