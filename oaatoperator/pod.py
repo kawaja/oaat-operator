@@ -26,6 +26,7 @@ class PodOverseer(Overseer):
         self.phase = kwargs['status'].get('phase', '')
         self.my_pykube_objtype = pykube.Pod
         self.exitcode = -1
+        self.reason: Optional[str] = None
         self.finished_at: Optional[datetime.datetime] = None
 
     # TODO: currently only supports a single container (searches for the
@@ -37,13 +38,19 @@ class PodOverseer(Overseer):
             return
         containerstatuses = self.get_status('containerStatuses', [])
         for containerstatus in containerstatuses:
+            self.reason = (containerstatus.get('state', {}).get('reason'))
             terminated = (containerstatus.get('state', {}).get('terminated'))
             if terminated:
                 self.exitcode = terminated.get('exitCode', -1)
                 self.finished_at = date_from_isostr(
                     terminated.get('finishedAt'))
-            else:
-                self.warning(f'cannot find terminated status for {self.name}')
+                return
+            self.warning(
+                f'cannot find terminated status for {self.name} '
+                f'(reason: {self.reason})'
+            )
+        if self.reason is not None:
+            return
         if self.finished_at is None:
             raise ProcessingComplete(
                 error=f'unable to determine termination time for {self.name}',
@@ -69,8 +76,10 @@ class PodOverseer(Overseer):
                 finished_at=self.finished_at,
                 exit_code=self.exitcode):
             raise ProcessingComplete(
-                error=f'item failed with exit code: {self.exitcode}',
-                message=f'item failed with exit code: {self.exitcode}')
+                error=f'item failed with exit code: {self.exitcode}, ' +
+                      f'reason: {self.reason}',
+                message=f'item failed with exit code: {self.exitcode}, ' +
+                      f'reason: {self.reason}')
         raise ProcessingComplete(
             message=f'ignoring old failed job pod={self.name}')
 
