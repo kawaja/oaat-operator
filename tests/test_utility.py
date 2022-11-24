@@ -154,6 +154,15 @@ class TimeWindowTests(unittest.TestCase):
 
 
 class ParseDurationTests(unittest.TestCase):
+    def test_failures(self):
+        self.assertIsNone(parse_duration(None))  # type: ignore
+        self.assertIsNone(parse_duration(''))
+        self.assertIsNone(parse_duration('0l'))
+        self.assertIsNone(parse_duration('none'))
+        self.assertIsNone(parse_duration('s'))
+        self.assertIsNone(parse_duration('d'))
+        self.assertIsNone(parse_duration('m'))
+
     def test_seconds_only(self):
         self.assertFalse(parse_duration('0s'))
         self.assertEqual(parse_duration('1s'), td(seconds=1))

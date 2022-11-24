@@ -106,7 +106,8 @@ class OaatItems:
     def __init__(self, group: OaatGroup, obj: dict[str, Any]) -> None:
         if not isinstance(obj, dict):
             print(f'obj: {obj}')
-            raise TypeError(f'obj should be dict, not {type(obj)}={obj}')
+            raise kopf.PermanentError(
+                f'obj should be dict, not {type(obj)}={obj}')
         self.obj = obj
         self.group = group
 
