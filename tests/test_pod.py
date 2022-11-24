@@ -171,6 +171,6 @@ class StatusTests(unittest.TestCase):
         self.assertIsInstance(p, PodOverseer)
         with self.assertRaisesRegex(
                 ProcessingComplete, f'updating phase for pod {op["name"]}: '
-                f'{op["status"]["phase"]}'):
+                f'new phase={op["status"]["phase"]}'):
             p.update_phase()
         print(og_mock.call_args_list)

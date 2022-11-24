@@ -81,6 +81,7 @@ class TestHandlerOaatAction(unittest.TestCase):
         ogi = og.return_value
         ogi.validate_items = Mock(side_effect=[None])
         ogi.handle_processing_complete = Mock(return_value={})
+        ogi.set_status = Mock(return_value=None)
         ogi.info = print
         ogi.name = 'name'
         oaatoperator.handlers.oaat_action(**kw)  # type: ignore
@@ -103,6 +104,7 @@ class TestHandlerOaatAction(unittest.TestCase):
         ogi.validate_items = Mock(
             side_effect=[ProcessingComplete(message='ogmessage')])
         ogi.handle_processing_complete = Mock(return_value={})
+        ogi.set_status = Mock(return_value=None)
         ogi.info = print
         ogi.name = 'name'
         oaatoperator.handlers.oaat_action(**kw)  # type: ignore

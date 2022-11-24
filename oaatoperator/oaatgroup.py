@@ -97,7 +97,12 @@ class OaatGroupOverseer(Overseer):
 
         # Phase One: Choose valid item candidates
         oaat_items: List[OaatItem] = self.parent.items.list()
+        longest_item = max([len(item.name) for item in oaat_items]+[1])
         item_status = {item.name: 'candidate' for item in oaat_items}
+        display_name = {
+            item.name: item.name.ljust(longest_item, ' ')
+            for item in oaat_items
+        }
 
         if not oaat_items:
             raise ProcessingComplete(
@@ -116,10 +121,10 @@ class OaatGroupOverseer(Overseer):
             if now > item.success() + self.freq:
                 candidates.append(item)
                 item_status[item.name] = (
-                    f'not successful within last freq ({self.freq})')
+                    f'not successful within last {self.freq}')
             else:
                 item_status[item.name] = (
-                    f'successful within last freq ({self.freq})')
+                    f'successful within last {self.freq}')
 
         self.debug('remaining items, based on last success & frequency: ' +
                    ', '.join([i.name for i in candidates]))
@@ -128,10 +133,8 @@ class OaatGroupOverseer(Overseer):
         if self.cool_off is not None:
             for item in oaat_items:
                 self.debug(
-                    f'testing {item.name} - '
-                    f'now: {now}, '
+                    f'testing {display_name[item.name]} - '
                     f'failure: {item.failure()}, '
-                    f'cool_off: {self.cool_off}, '
                     f'cooling off?: {now < item.failure() + self.cool_off}')
                 if now < item.failure() + self.cool_off:
                     candidates.remove(item)
@@ -147,8 +150,8 @@ class OaatGroupOverseer(Overseer):
             'item status (* = candidate):\n' +
             '\n'.join([
                 ('* ' if i in candidates else '- ') +
-                f'{i.name} ' +
-                f'{item_status[i.name]} ' +
+                f'{display_name[i.name]} ' +
+                f'{item_status[i.name]} - ' +
                 f'success={i.success().isoformat()}, ' +
                 f'failure={i.failure().isoformat()}, ' +
                 f'numfails={i.numfails()}'
@@ -373,6 +376,7 @@ class OaatGroup:
     kube_object: KubeOaatGroup
     logger: logging.Logger
     status: dict
+    memo: kopf.Memo
     items: OaatItems
     passthrough_names: list = [
         i for i in dir(OaatGroupOverseer) if i[0] != '_'
@@ -382,6 +386,7 @@ class OaatGroup:
                  kopf_object: Optional[py_types.CallbackArgs] = None,
                  kube_object_name: Optional[str] = None,
                  kube_object_namespace: str = 'default',
+                 memo: Optional[kopf.Memo] = None,
                  logger: Optional[logging.Logger] = None) -> None:
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
 
@@ -391,11 +396,18 @@ class OaatGroup:
                 self, **cast(py_types.CallbackArgs, kopf_object))
             self.items = OaatItems(group=self,
                                    obj=cast(dict[str, Any], kopf_object))
+            self.memo = kopf_object['memo']
             return
 
         # kube object name supplied
         if kube_object_name is not None:
             self.logger = cast(logging.Logger, logger)
+            if memo is None:
+                raise kopf.PermanentError(
+                    'must supply memo= parameter to '
+                    f'{self.__class__.__name__} when using kube_object_name'
+                )
+            self.memo = memo
             if self.logger is None:
                 raise kopf.PermanentError(
                     'must supply logger= parameter to '
@@ -413,7 +425,6 @@ class OaatGroup:
         self.kopf_object = None
         self.kube_object = self.get_kube_object(kube_object_name,
                                                 kube_object_namespace)
-        self.logger.debug(f'kube_object: {self.kube_object}')
         self.items = OaatItems(group=self,
                                obj=cast(dict[str, Any], self.kube_object.obj))
         self.status = self.kube_object.obj.get('status', {})
@@ -454,7 +465,6 @@ class OaatGroup:
                          exit_code: int = -1) -> bool:
         """Mark an item as failed."""
         item = self.items.get(item_name)
-        current_last_failure = item.status_date('last_failure')
         if not finished_at:
             finished_at = oaatoperator.utility.now()
         if not isinstance(finished_at, datetime.datetime):
@@ -462,7 +472,7 @@ class OaatGroup:
                 'mark_item_failed finished_at= should be '
                 'datetime.datetime object')
 
-        if finished_at > current_last_failure:
+        if finished_at > item.failure() and finished_at > item.success():
             failure_count = item.numfails()
             self.set_item_status(item_name, 'failure_count',
                                  str(failure_count + 1))
@@ -470,16 +480,16 @@ class OaatGroup:
                                  finished_at.isoformat())
 
             # TODO: if via kopf, will this get overwritten by handler exit?
-            self.set_group_status({
-                'currently_running': None,
-                'pod': None,
-                'oaat_timer': {
+            self.memo.currently_running = None
+            self.memo.pod = None
+            self.memo.state = 'idle'
+            self.set_group_status(
+                'oaat_timer',
+                {
                     'message':
-                    f'item {item_name} failed with exit '
-                    f'code {exit_code}'
+                    f'item {item_name} failed with exit code {exit_code}'
                 },
-                'state': 'idle',
-            })
+            )
             return True
         return False
 
@@ -490,7 +500,6 @@ class OaatGroup:
         """Mark an item as succeeded."""
 
         item = self.items.get(item_name)
-        current_last_success = item.success()
         if not finished_at:
             finished_at = oaatoperator.utility.now()
         if not isinstance(finished_at, datetime.datetime):
@@ -498,20 +507,17 @@ class OaatGroup:
                 'mark_item_success finished_at= should be '
                 'datetime.datetime object')
 
-        if finished_at > current_last_success:
+        if finished_at > item.failure() and finished_at > item.success():
             self.set_item_status(item_name, 'failure_count', '0')
             self.set_item_status(item_name, 'last_success',
                                  finished_at.isoformat())
 
             # TODO: if via kopf, will this get overwritten by handler exit?
-            self.set_group_status({
-                'currently_running': None,
-                'pod': None,
-                'oaat_timer': {
-                    'message': f'item {item_name} completed '
-                },
-                'state': 'idle',
-            })
+            self.memo.currently_running = None
+            self.memo.pod = None
+            self.memo.state = 'idle'
+            self.set_group_status('oaat_timer',
+                                  {'message': f'item {item_name} completed'})
             return True
         return False
 
@@ -529,8 +535,8 @@ class OaatGroup:
         else:
             self.kopf_object._set_item_status(item_name, key, value)
 
-    def set_group_status(self, values: dict[str, Any]) -> None:
+    def set_group_status(self, key: str, value: Optional[Any] = None) -> None:
         if self.kopf_object is None:
-            self.kube_object.patch({'status': values})
+            self.kube_object.patch({'status': {key: value}})
         else:
-            self.kopf_object.set_object_status(values)
+            self.kopf_object.set_status(key, value)

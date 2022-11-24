@@ -4,6 +4,7 @@ py_types.py
 Types used for type validation.
 """
 from typing import Any, TypedDict, Optional, Union
+import kopf
 from kopf._cogs.structs import bodies, references, patches, diffs
 import datetime
 import logging
@@ -31,5 +32,5 @@ class CallbackArgs(TypedDict):
     old: Optional[Union[bodies.BodyEssence, Any]]
     new: Optional[Union[bodies.BodyEssence, Any]]
     logger: logging.Logger
-    memo: Any
+    memo: kopf.Memo
     param: Any

@@ -28,6 +28,7 @@ class PodOverseer(Overseer):
         self.exitcode = -1
         self.reason: Optional[str] = None
         self.finished_at: Optional[datetime.datetime] = None
+        self.memo = kwargs['memo']
 
     # TODO: currently only supports a single container (searches for the
     # first container with a 'terminated' status). To support
@@ -63,7 +64,8 @@ class PodOverseer(Overseer):
         """
         item_name = self.get_label('oaat-name', 'unknown')
         self._retrieve_terminated()
-        if self.get_parent().mark_item_failed(
+        oaatgroup = self.get_parent()
+        if oaatgroup.mark_item_failed(
                 item_name,
                 finished_at=self.finished_at,
                 exit_code=self.exitcode):
@@ -84,7 +86,8 @@ class PodOverseer(Overseer):
         """
         item_name = self.get_label('oaat-name', 'unknown')
         self._retrieve_terminated()
-        if self.get_parent().mark_item_success(
+        oaatgroup = self.get_parent()
+        if oaatgroup.mark_item_success(
                 item_name, finished_at=self.finished_at):
             raise ProcessingComplete(message=f'item {item_name} completed')
         raise ProcessingComplete(
@@ -94,10 +97,12 @@ class PodOverseer(Overseer):
         item_name = self.get_label('oaat-name', 'unknown')
         self.get_parent().set_item_status(item_name, 'podphase', self.phase)
         raise ProcessingComplete(
-            message=f'updating phase for pod {self.name}: {self.phase}')
+            message=f'updating phase for pod {self.name}: '
+            f'new phase={self.phase}')
 
     def get_parent(self) -> OaatGroup:
         """Retrieve the Pod's parent from the parent-name label."""
         return OaatGroup(
             kube_object_name=self.meta['labels'].get('parent-name'),
+            memo=self.memo,
             logger=self.logger)
