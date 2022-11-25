@@ -540,7 +540,9 @@ class OaatGroupTests(unittest.TestCase):
            obj=TestData.kot_mock)
     def test_no_kopf(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
-            og = OaatGroup(kube_object_name='test-kog', memo=MagicMock(), logger=MagicMock())
+            og = OaatGroup(kube_object_name='test-kog',
+                           memo=MagicMock(),
+                           logger=MagicMock())
             with self.assertRaisesRegex(
                     kopf.PermanentError,
                     'attempt to retrieve find_job_to_run outside of kopf'):
@@ -593,7 +595,9 @@ class OaatGroupTests(unittest.TestCase):
            obj=TestData.kot_mock)
     def test_create_with_kubeobj(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
-            og = OaatGroup(kube_object_name='test-kog', memo=MagicMock(), logger=MagicMock())
+            og = OaatGroup(kube_object_name='test-kog',
+                           memo=MagicMock(),
+                           logger=MagicMock())
             self.assertIsInstance(og.kube_object, KubeOaatGroup)
             self.assertEqual(og.kopf_object, None)
             self.assertEqual(og.kube_object.name,
