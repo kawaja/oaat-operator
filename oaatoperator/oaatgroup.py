@@ -9,16 +9,16 @@ import datetime
 from typing_extensions import Unpack
 import logging
 import pykube
-from typing import Any, Optional, TypedDict, Type, cast
+import kopf
+from typing import Any, List, Optional, TypedDict, Type, cast
 
 # local imports
 import oaatoperator.utility
 import oaatoperator.py_types as py_types
-from oaatoperator.oaatitem import OaatItems
+from oaatoperator.oaatitem import OaatItems, OaatItem
 from oaatoperator.oaattype import OaatType
 from oaatoperator.overseer import Overseer
-from oaatoperator.common import (InternalError, ProcessingComplete,
-                                 KubeOaatGroup)
+from oaatoperator.common import ProcessingComplete, KubeOaatGroup
 
 
 # TODO: I'm not convinced about this composite object. It's essentially
@@ -44,7 +44,7 @@ class OaatGroupOverseer(Overseer):
     """
     # these are needed to populate the OaatGroup passthrough_names, so
     # OaatGroup.<attribute> works
-    freq: Optional[datetime.timedelta] = None
+    freq: datetime.timedelta = datetime.timedelta(hours=1)
     oaattype: Optional[OaatType] = None
     status: Optional[dict[str, Any]] = None
 
@@ -54,8 +54,12 @@ class OaatGroupOverseer(Overseer):
         self.my_pykube_objtype: Type[pykube.objects.APIObject] = KubeOaatGroup
         self.obj = kwargs
         self.parent = parent
-        self.freq = oaatoperator.utility.parse_duration(
-            self.spec.get('frequency', '1h'))
+        specfreq = self.spec.get('frequency', '1h')
+        freq = oaatoperator.utility.parse_duration(specfreq)
+        if freq is None:
+            raise kopf.PermanentError(
+                f'invalid frequency specification {specfreq} in {self.name}')
+        self.freq = freq
         self.oaattypename = self.spec.get('oaatType')
         self.oaattype = OaatType(name=self.oaattypename)
         self.cool_off = oaatoperator.utility.parse_duration(
@@ -64,7 +68,7 @@ class OaatGroupOverseer(Overseer):
     # TODO: if the oldest item keeps failing, consider running
     # other items which are ready to run
     # TODO: consider whether this should be a method of OaatItems()
-    def find_job_to_run(self) -> str:
+    def find_job_to_run(self) -> OaatItem:
         """
         find_job_to_run
 
@@ -92,8 +96,13 @@ class OaatGroupOverseer(Overseer):
         now = oaatoperator.utility.now()
 
         # Phase One: Choose valid item candidates
-        oaat_items = self.parent.items.list()
+        oaat_items: List[OaatItem] = self.parent.items.list()
+        longest_item = max([len(item.name) for item in oaat_items]+[1])
         item_status = {item.name: 'candidate' for item in oaat_items}
+        display_name = {
+            item.name: item.name.ljust(longest_item, ' ')
+            for item in oaat_items
+        }
 
         if not oaat_items:
             raise ProcessingComplete(
@@ -112,10 +121,10 @@ class OaatGroupOverseer(Overseer):
             if now > item.success() + self.freq:
                 candidates.append(item)
                 item_status[item.name] = (
-                    f'not successful within last freq ({self.freq})')
+                    f'not successful within last {self.freq}')
             else:
                 item_status[item.name] = (
-                    f'successful within last freq ({self.freq})')
+                    f'successful within last {self.freq}')
 
         self.debug('remaining items, based on last success & frequency: ' +
                    ', '.join([i.name for i in candidates]))
@@ -124,10 +133,8 @@ class OaatGroupOverseer(Overseer):
         if self.cool_off is not None:
             for item in oaat_items:
                 self.debug(
-                    f'testing {item.name} - '
-                    f'now: {now}, '
+                    f'testing {display_name[item.name]} - '
                     f'failure: {item.failure()}, '
-                    f'cool_off: {self.cool_off}, '
                     f'cooling off?: {now < item.failure() + self.cool_off}')
                 if now < item.failure() + self.cool_off:
                     candidates.remove(item)
@@ -143,8 +150,8 @@ class OaatGroupOverseer(Overseer):
             'item status (* = candidate):\n' +
             '\n'.join([
                 ('* ' if i in candidates else '- ') +
-                f'{i.name} ' +
-                f'{item_status[i.name]} ' +
+                f'{display_name[i.name]} ' +
+                f'{item_status[i.name]} - ' +
                 f'success={i.success().isoformat()}, ' +
                 f'failure={i.failure().isoformat()}, ' +
                 f'numfails={i.numfails()}'
@@ -238,89 +245,36 @@ class OaatGroupOverseer(Overseer):
             self.set_annotation(count_annotation,
                                 value=str(len(self.parent.items)))
 
-    def verify_running(self) -> None:
-        self.verify_state()
+    def select_survivor(self, pods: List[pykube.Pod]) -> pykube.Pod:
+        def get_start_time(pod):
+            start_time = pod.obj.get('status', {}).get('startTime', '')
+            return oaatoperator.utility.date_from_isostr(start_time)
 
-        # TODO: delete_rogue_pods currently uses 'curpod' to determine
-        # if a pod is "supposed" to be running and only deletes rogue pods
-        # if that's the case. When 'curpod' is not set, it won't delete
-        # rogue pods. The problem is that 'curpod' may not be set correctly,
-        # but a valid pod is running. In this case, the valid pod is ignored,
-        # and a new pod is started (if ready). It might make more sense
-        # to remove the concept of 'curpod' and simply use the actual
-        # running pods to determine if a pod is "supposed" to be running and
-        # which one it's supposed to be. If two running pods are found,
-        # use some logic to determine which one should be deleted
-        # (perhaps the youngest?)
-        self.delete_rogue_pods()
+        ordered_pods = sorted(pods, key=get_start_time)
+        return ordered_pods[0]
 
-        # Check the currently-running job
-        if self.is_pod_expected():
-            self.verify_expected_pod_is_running()
-            self.debug('should not happen - pod expected, but not running')
-
-    # TODO: --> OaatItem.verify() ?
-    def verify_state(self) -> None:
-        """
-        verify_state
-
-        "pod" and "currently_running" should both be None or both be
-        set. If they are out of sync, then our state is inconsistent.
-        This should only happen in unusual situations such as the
-        oaat-operator being killed while starting a pod.
-
-        TODO: currently just resets both to None, effectively ignoring
-        the result of a running pod. Ideally, we should verify the
-        status of the pod and clean up.
-        """
-        curpod = self.get_status('pod')
-        curitem = self.get_status('currently_running')
-        if curpod is None and curitem is None:
-            return None
-        if curpod is not None and curitem is not None:
-            return None
-
-        self.set_status('currently_running')
-        self.set_status('pod')
-
-        raise ProcessingComplete(
-            state='inconsistent state',
-            message='internal error',
-            error=(
-                f'inconsistent state detected. '
-                f'pod ({curpod}) is inconsistent '
-                f'with currently_running ({curitem})')
-        )
-
-    # TODO: --> OaatItem.verify() ?
-    def delete_rogue_pods(self) -> None:
-        curpod = self.get_status('pod')
-        if not curpod:
-            self.debug(f'curpod is "{curpod}')
-            self.debug(
-                f'currently_running: {self.get_status("currently_running")}')
-            return
+    def delete_non_survivor_pods(self, survivor) -> None:
         found_rogue = 0
         self.debug('searching for rogue pods.')
-        self.debug(f'  current={self.get_status("pod")}')
+        self.debug(f'  survivor={survivor.name}')
         # (pykube needs Optional[str] for namespace)
-        candidate_pods: pykube.query.Query = (
-            pykube.Pod
-            .objects(self.api)
-            .filter(namespace=self.namespace)   # type: ignore
-            .filter(selector={'app': 'oaat-operator'})
-        )
-        for pod in candidate_pods.iterator():
+        all_pods: pykube.query.Query = (
+            pykube.Pod.objects(self.api).filter(
+                namespace=self.namespace)  # type: ignore
+            .filter(selector={
+                'app': 'oaat-operator',
+                'parent-name': self.name
+            }))
+        for pod in all_pods.iterator():
             self.debug(f'  checking {pod.name}')
-            if pod.name == self.get_status('pod'):
-                continue    # skip over the active pod
-            if pod.labels.get('parent-name', '') == self.name:
-                podphase = (pod.obj['status'].get('phase', 'unknown'))
-                if podphase in ['Running', 'Pending']:
-                    pod.delete()
-                    self.warning(
-                        f'rogue pod {pod.name} found (phase={podphase})')
-                    found_rogue += 1
+            if pod.name == survivor.name:
+                continue    # skip over the surviving pod
+            podphase = (pod.obj['status'].get('phase', 'unknown'))
+            if podphase in ['Running', 'Pending']:
+                pod.delete()
+                self.warning(
+                    f'rogue pod {pod.name} found (phase={podphase})')
+                found_rogue += 1
 
         if found_rogue > 0:
             raise ProcessingComplete(
@@ -328,73 +282,72 @@ class OaatGroupOverseer(Overseer):
                 error=f'found {found_rogue} rogue pods running'
             )
 
-    # TODO: --> OaatItem.verify() ?
-    def is_pod_expected(self) -> bool:
-        curpod = self.get_status('pod')
-        if curpod:
-            self.debug(f'pod {curpod} is expected to be running')
-            return True
-        self.debug('pod is not expected to be running')
-        return False
+    def resume_running_pod(self) -> Optional[dict[str, str]]:
+        pod = self.identify_running_pod()
+        if pod is not None:
+            return {
+                'oaat-name': pod.labels.get('oaat-name', 'unknown'),
+                'pod': pod.name
+            }
+        return None
 
-    # TODO: --> OaatItem.verify() ?
-    def verify_expected_pod_is_running(self) -> None:
+    def identify_running_pod(self) -> Optional[pykube.Pod]:
+        running_pods: List[pykube.Pod] = []
+        all_pods: pykube.query.Query = (
+            pykube.Pod.objects(self.api).filter(
+                namespace=self.namespace)  # type: ignore
+            .filter(selector={
+                'app': 'oaat-operator',
+                'parent-name': self.name
+            }))
+        for pod in all_pods.iterator():
+            self.debug(f'  checking {pod.name}')
+            podphase = (pod.obj['status'].get('phase', 'unknown'))
+            if podphase in ['Running', 'Pending']:
+                running_pods.append(pod)
+
+        if len(running_pods) == 0:
+            return None
+
+        if len(running_pods) == 1:
+            return running_pods[0]
+
+        return self.select_survivor(running_pods)
+
+    def verify_running_pod(self, pod: pykube.Pod) -> None:
         """
-        verify_expected_pod_is_running
+        verify_running_pod
 
-        Verify that the pod which we expect should be running (based
-        on `oaatgroup` status `pod` and `currently_running`) is actually
-        running.
+        Verifies that the running pod is still healthy
+        """
+        phase = pod.obj.get('status', {}).get('phase', 'unknown')
+        raise ProcessingComplete(
+            message=f'Pod {pod.name} exists and is in state {phase}')
 
-        Check whether the Pod we previously started is still running. If not,
-        assume the job was killed without being processed by the
-        operator (or was never started) and clean up. Mark as failed.
+    def verify_running(self) -> None:
+        """
+        verify_running
+
+        Verifies that a valid pod is running and no
+        other (ooat-operator) pods are running. `verify_running()` does
+        the latter by selecting the oldest Pod in `Running` or `Pending` state
+        and deletes all others.
 
         Returns:
-        - ProcessingComplete exception:
-            - Cleaned up missing/deleted item
-            - Pod exists and is in state: <state>
+        - ProcessingComplete exception
+            - valid pod is running
+            - one or more rogue pods found and deleted (ensures a
+              full timer cycle is completed before attempting to
+              start a new pod)
+            - inconsistent state (value of 'curpod' and value of
+              'currently_running' are not consistent with each other)
+        - None
+            - no pods running, OK to consider starting a new pod
         """
-        curpod = self.get_status('pod')
-        curitem_name = self.get_status('currently_running')
-        self.debug(f'verifying pod {curpod} ({curitem_name}) is running')
-        try:
-            # (pykube needs Optional[str] for namespace)
-            pod = pykube.Pod.objects(
-                self.api,
-                namespace=self.namespace).get_by_name(  # type: ignore
-                    curpod).obj
-        except pykube.exceptions.ObjectDoesNotExist:
-            self.info(f'pod {curpod} missing/deleted, cleaning up')
-            self.set_status('currently_running')
-            self.set_status('pod')
-            self.set_status('state', 'missing')
-            self.parent.mark_item_failed(curitem_name)
-            self.parent.set_item_status(curitem_name, 'pod_detail')
-            raise ProcessingComplete(
-                message=f'item {curitem_name} failed during validation',
-                info='Cleaned up missing/deleted item')
-
-        podphase = pod.get('status', {}).get('phase', 'unknown')
-        self.info(f'verified that pod {curpod} exists '
-                  f'(phase={podphase})')
-        recorded_phase = self.parent.items.get(curitem_name).status(
-            'podphase', 'unknown')
-
-        # if there is a mismatch in phase, then the pod phase handlers
-        # have not yet picked it up and updated the oaatgroup phase.
-        # Note it here, but take no further action (pod_phasechange should
-        # deal with it within its interval time)
-        if podphase != recorded_phase:
-            self.info(f'mismatch in phase for pod {curpod}: '
-                      f'pod={podphase}, oaatgroup={recorded_phase}')
-
-        # valid phases are Pending, Running, Succeeded, Failed, Unknown
-        # 'started' is the phase the pods start with when created by
-        # operator.
-
-        raise ProcessingComplete(
-            message=f'Pod {curpod} exists and is in state {podphase}')
+        curpod = self.identify_running_pod()
+        if curpod is not None:
+            self.delete_non_survivor_pods(curpod)
+            self.verify_running_pod(curpod)
 
     def _set_item_status(self,
                          item_name: str,
@@ -405,20 +358,6 @@ class OaatGroupOverseer(Overseer):
                        .setdefault('items', {})
                        .setdefault(item_name, {}))
         patch[key] = value
-
-    # def validate_oaat_type(self) -> None:
-    #     """
-    #     validate_oaat_type
-
-    #     Ensure the group refers to an appropriate OaatType object.
-    #     """
-    #     if self.oaattype is not None:
-    #         self.info('found valid oaat type')
-    #         return None
-    #     self.set_annotation('operator-status', 'missingOaatType')
-    #     raise ProcessingComplete(
-    #         message='error in OaatGroup definition',
-    #         error=f'unknown oaat type {self.oaattypename}')
 
 
 class OaatGroupArgs(TypedDict):
@@ -437,6 +376,7 @@ class OaatGroup:
     kube_object: KubeOaatGroup
     logger: logging.Logger
     status: dict
+    memo: kopf.Memo
     items: OaatItems
     passthrough_names: list = [
         i for i in dir(OaatGroupOverseer) if i[0] != '_'
@@ -446,6 +386,7 @@ class OaatGroup:
                  kopf_object: Optional[py_types.CallbackArgs] = None,
                  kube_object_name: Optional[str] = None,
                  kube_object_namespace: str = 'default',
+                 memo: Optional[kopf.Memo] = None,
                  logger: Optional[logging.Logger] = None) -> None:
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
 
@@ -455,20 +396,27 @@ class OaatGroup:
                 self, **cast(py_types.CallbackArgs, kopf_object))
             self.items = OaatItems(group=self,
                                    obj=cast(dict[str, Any], kopf_object))
+            self.memo = kopf_object['memo']
             return
 
         # kube object name supplied
         if kube_object_name is not None:
             self.logger = cast(logging.Logger, logger)
+            if memo is None:
+                raise kopf.PermanentError(
+                    'must supply memo= parameter to '
+                    f'{self.__class__.__name__} when using kube_object_name'
+                )
+            self.memo = memo
             if self.logger is None:
-                raise InternalError(
+                raise kopf.PermanentError(
                     'must supply logger= parameter to '
                     f'{self.__class__.__name__} when using kube_object_name'
                 )
 
         # neither kopf object nor kube name supplied
         if kube_object_name is None:
-            raise InternalError(
+            raise kopf.PermanentError(
                 f'{self.__class__.__name__} must be called with either a '
                 'kopf_object= kopf context or a kube_object_name= name')
 
@@ -477,7 +425,6 @@ class OaatGroup:
         self.kopf_object = None
         self.kube_object = self.get_kube_object(kube_object_name,
                                                 kube_object_namespace)
-        self.logger.debug(f'kube_object: {self.kube_object}')
         self.items = OaatItems(group=self,
                                obj=cast(dict[str, Any], self.kube_object.obj))
         self.status = self.kube_object.obj.get('status', {})
@@ -496,7 +443,7 @@ class OaatGroup:
                 self.api,
                 namespace=namespace).get_by_name(name))  # type: ignore
         except pykube.exceptions.ObjectDoesNotExist as exc:
-            raise RuntimeError(f'cannot find Object {name}: {exc}')
+            raise kopf.TemporaryError(f'cannot find Object {name}: {exc}')
 
     # expose kopf object data as attributes of the OaatGroup object
     # TODO: what if there is no kopf object? Shouldn't we get the data
@@ -504,7 +451,7 @@ class OaatGroup:
     def __getattr__(self, name) -> Any:
         if name in self.passthrough_names:
             if self.kopf_object is None:
-                raise InternalError(
+                raise kopf.PermanentError(
                     f'attempt to retrieve {name} outside of kopf')
             return getattr(self.kopf_object, name)
         else:
@@ -518,7 +465,6 @@ class OaatGroup:
                          exit_code: int = -1) -> bool:
         """Mark an item as failed."""
         item = self.items.get(item_name)
-        current_last_failure = item.status_date('last_failure')
         if not finished_at:
             finished_at = oaatoperator.utility.now()
         if not isinstance(finished_at, datetime.datetime):
@@ -526,7 +472,7 @@ class OaatGroup:
                 'mark_item_failed finished_at= should be '
                 'datetime.datetime object')
 
-        if finished_at > current_last_failure:
+        if finished_at > item.failure() and finished_at > item.success():
             failure_count = item.numfails()
             self.set_item_status(item_name, 'failure_count',
                                  str(failure_count + 1))
@@ -534,16 +480,16 @@ class OaatGroup:
                                  finished_at.isoformat())
 
             # TODO: if via kopf, will this get overwritten by handler exit?
-            self.set_group_status({
-                'currently_running': None,
-                'pod': None,
-                'oaat_timer': {
+            self.memo.currently_running = None
+            self.memo.pod = None
+            self.memo.state = 'idle'
+            self.set_group_status(
+                'oaat_timer',
+                {
                     'message':
-                    f'item {item_name} failed with exit '
-                    f'code {exit_code}'
+                    f'item {item_name} failed with exit code {exit_code}'
                 },
-                'state': 'idle',
-            })
+            )
             return True
         return False
 
@@ -554,7 +500,6 @@ class OaatGroup:
         """Mark an item as succeeded."""
 
         item = self.items.get(item_name)
-        current_last_success = item.success()
         if not finished_at:
             finished_at = oaatoperator.utility.now()
         if not isinstance(finished_at, datetime.datetime):
@@ -562,20 +507,17 @@ class OaatGroup:
                 'mark_item_success finished_at= should be '
                 'datetime.datetime object')
 
-        if finished_at > current_last_success:
+        if finished_at > item.failure() and finished_at > item.success():
             self.set_item_status(item_name, 'failure_count', '0')
             self.set_item_status(item_name, 'last_success',
                                  finished_at.isoformat())
 
             # TODO: if via kopf, will this get overwritten by handler exit?
-            self.set_group_status({
-                'currently_running': None,
-                'pod': None,
-                'oaat_timer': {
-                    'message': f'item {item_name} completed '
-                },
-                'state': 'idle',
-            })
+            self.memo.currently_running = None
+            self.memo.pod = None
+            self.memo.state = 'idle'
+            self.set_group_status('oaat_timer',
+                                  {'message': f'item {item_name} completed'})
             return True
         return False
 
@@ -593,8 +535,8 @@ class OaatGroup:
         else:
             self.kopf_object._set_item_status(item_name, key, value)
 
-    def set_group_status(self, values: dict[str, Any]) -> None:
+    def set_group_status(self, key: str, value: Optional[Any] = None) -> None:
         if self.kopf_object is None:
-            self.kube_object.patch({'status': values})
+            self.kube_object.patch({'status': {key: value}})
         else:
-            self.kopf_object.set_object_status(values)
+            self.kopf_object.set_status(key, value)

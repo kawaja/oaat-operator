@@ -2,6 +2,7 @@ import sys
 import os
 import datetime
 import copy
+import kopf
 from pykube import Pod
 
 import unittest
@@ -66,7 +67,7 @@ class BasicTests(unittest.TestCase):
         self.assertIsInstance(op, PodOverseer)
 
     def test_invalid_object(self):
-        with self.assertRaises(ValueError) as exc:
+        with self.assertRaises(kopf.PermanentError) as exc:
             PodOverseer(a=1)  # type: ignore
         self.assertRegex(str(exc.exception),
                          'Overseer must be called with full kopf kwargs.*')
@@ -170,6 +171,6 @@ class StatusTests(unittest.TestCase):
         self.assertIsInstance(p, PodOverseer)
         with self.assertRaisesRegex(
                 ProcessingComplete, f'updating phase for pod {op["name"]}: '
-                f'{op["status"]["phase"]}'):
+                f'new phase={op["status"]["phase"]}'):
             p.update_phase()
         print(og_mock.call_args_list)

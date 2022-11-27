@@ -2,6 +2,7 @@ from copy import deepcopy
 import oaatoperator.utility
 import logging
 import pykube
+import kopf
 
 from unittest.mock import MagicMock, Mock
 
@@ -58,7 +59,7 @@ class TestData:
             'annotations': body.get('metadata', {}).get('annotations', {}),
             'logger': MagicMock(spec=logging.Logger),
             'patch': {},
-            'memo': {},
+            'memo': kopf.Memo(),
             'event': {},
             'reason': '',
             'old': {},

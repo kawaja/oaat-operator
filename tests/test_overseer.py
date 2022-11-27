@@ -1,7 +1,6 @@
 import unittest
 import time
 from kopf.testing import KopfRunner
-from copy import deepcopy
 
 import pykube
 import unittest.mock
@@ -42,11 +41,9 @@ class BasicTests(unittest.TestCase):
                 'tests/operator_overseer.py']) as runner:
             pod.create()
             time.sleep(1)
-            annotations1 = {}
             retry = True
             while retry:
                 pod.reload()
-                annotations1 = deepcopy(pod.annotations)
                 pod.annotations['readytodelete'] = 'true'
                 try:
                     pod.update()
@@ -62,6 +59,7 @@ class BasicTests(unittest.TestCase):
             except pykube.exceptions.HTTPError as exc:
                 self.assertRegex(str(exc), f'"{pod.name}" not found', exc)
 
+        print(f'annotations at completion: {pod.annotations}')
         self.maxDiff = None
         self.assertEqual(runner.exit_code, 0)
         self.assertIsNone(runner.exception)
@@ -81,14 +79,14 @@ class BasicTests(unittest.TestCase):
         self.assertRegex(
             runner.stdout, r'removed annotation testannotation')
         self.assertEqual(
-            annotations1.get(
+            pod.annotations.get(
                 'kawaja.net/testannotation', 'missing'),
             'missing')
         self.assertRegex(
             runner.stdout,
             r'added annotation new_annotation=annotation_value')
         self.assertEqual(
-            annotations1['kawaja.net/new_annotation'],
+            pod.annotations.get('kawaja.net/new_annotation', 'missing'),
             'annotation_value')
         self.assertRegex(runner.stdout, r'ERROR.*reterror')
         self.assertRegex(runner.stdout, r'WARNING.*retwarning')

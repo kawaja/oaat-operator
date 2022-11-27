@@ -9,10 +9,10 @@ from oaatoperator.overseer import Overseer
 
 @kopf.on.create('pods')  # type: ignore
 def create_action(**kwargs):
-    # [1] Overseer should raise ValueError if kwargs are not passed
+    # [1] Overseer should raise kopf.PermanentError if kwargs are not passed
     try:
         Overseer()  # type: ignore
-    except ValueError as exc:
+    except kopf.PermanentError as exc:
         assert re.search('Overseer must be called with full kopf kwargs',
                          str(exc)), exc
         kwargs['logger'].debug('[1] successful')

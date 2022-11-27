@@ -4,6 +4,7 @@ overseer.py
 Overseer base class for Kopf object processing.
 """
 from typing_extensions import Unpack
+import kopf
 import pykube
 from typing import Any, Optional, Type
 from oaatoperator.common import ProcessingComplete
@@ -27,6 +28,7 @@ class Overseer:
         self.logger: logging.Logger = kwargs.get('logger')
         self.body = kwargs.get('body')
         self.meta = kwargs.get('meta')
+        self.memo = kwargs.get('memo')
         self.spec = kwargs.get('spec', {})
         self.namespace = kwargs.get('namespace')
         self.my_pykube_objtype: Optional[Type[pykube.objects.APIObject]] = None
@@ -38,8 +40,8 @@ class Overseer:
         ]
 
         if None in required_kwargs:
-            raise ValueError('Overseer must be called with full kopf '
-                             f'kwargs ({required_kwargs}')
+            raise kopf.PermanentError('Overseer must be called with full kopf '
+                                      f'kwargs ({required_kwargs}')
 
     def error(self, *args) -> None:
         """Log an error."""

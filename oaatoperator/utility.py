@@ -103,7 +103,10 @@ def parse_duration(duration: str) -> Optional[datetime.timedelta]:
                 units['days'] = units.setdefault('days', 0) + val
             if unit[0] == 'w':
                 units['weeks'] = units.setdefault('weeks', 0) + val
-    return datetime.timedelta(**units)
+    if units:
+        return datetime.timedelta(**units)
+    else:
+        return None
 
 
 def date_from_isostr(datestr: str) -> datetime.datetime:

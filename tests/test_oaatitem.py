@@ -1,5 +1,6 @@
 import sys
 import os
+import kopf
 import pykube
 from copy import deepcopy
 
@@ -120,7 +121,8 @@ class TestOaatItems(ExtendedTestCase):
     @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)
     def test_nondict(self, og_mock):
         with self.assertRaisesRegex(
-                TypeError, 'obj should be dict, not <class \'str\'>=string'):
+                kopf.PermanentError,
+                'obj should be dict, not <class \'str\'>=string'):
             OaatItems(og_mock, 'string')  # type: ignore
 
     @patch('oaatoperator.oaatgroup.OaatGroup', autospec=True)

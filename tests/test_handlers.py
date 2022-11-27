@@ -81,6 +81,7 @@ class TestHandlerOaatAction(unittest.TestCase):
         ogi = og.return_value
         ogi.validate_items = Mock(side_effect=[None])
         ogi.handle_processing_complete = Mock(return_value={})
+        ogi.set_status = Mock(return_value=None)
         ogi.info = print
         ogi.name = 'name'
         oaatoperator.handlers.oaat_action(**kw)  # type: ignore
@@ -103,6 +104,7 @@ class TestHandlerOaatAction(unittest.TestCase):
         ogi.validate_items = Mock(
             side_effect=[ProcessingComplete(message='ogmessage')])
         ogi.handle_processing_complete = Mock(return_value={})
+        ogi.set_status = Mock(return_value=None)
         ogi.info = print
         ogi.name = 'name'
         oaatoperator.handlers.oaat_action(**kw)  # type: ignore
@@ -259,13 +261,11 @@ class TestHandlerOaatTimer(unittest.TestCase):
         self.ogi.get_status = MagicMock(side_effect=[5])
         self.ogi.validate_items = MagicMock(side_effect=[None])
         self.ogi.verify_running = MagicMock(side_effect=[None])
-        self.ogi.verify_state = MagicMock(side_effect=[None])
-        self.ogi.delete_rogue_pods = MagicMock(side_effect=[None])
-        self.ogi.is_pod_expected = MagicMock(side_effect=[True])
-        self.ogi.verify_expected_pod_is_running = MagicMock(side_effect=[
-            ProcessingComplete(
-                message='pod xxx exists and is in state Running')
-        ])
+        self.ogi.verify_running_pod = MagicMock(side_effect=[None])
+        self.ogi.identify_running_pod = MagicMock(side_effect=[None])
+        self.ogi.resume_running_pod = MagicMock(side_effect=[None])
+        self.ogi.delete_non_survivor_pods = MagicMock(side_effect=[None])
+        self.ogi.select_survivor = MagicMock(side_effect=[None])
         self.ogi.find_job_to_run = MagicMock(spec=OaatItem)
         item = self.ogi.find_job_to_run.return_value
         item.name = 'item'  # name is special
@@ -297,7 +297,7 @@ class TestHandlerOaatTimer(unittest.TestCase):
         result = self.ogi.handle_processing_complete.call_args[0][0].ret
         self.assertEqual(self.ogi.validate_items.call_count, 1)
         self.assertEqual(self.ogi.verify_running.call_count, 1)
-        self.assertEqual(self.ogi.find_job_to_run.call_count, 1)
+        self.assertEqual(self.ogi.find_job_to_run.call_count, 0)
         self.assertEqual(
             self.ogi.find_job_to_run.return_value.run.call_count, 0)
         self.assertEqual(result.get('message'),

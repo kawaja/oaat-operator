@@ -3,6 +3,7 @@ import os
 from copy import deepcopy
 import datetime
 import pykube
+import kopf
 from typing import cast
 
 import unittest
@@ -19,7 +20,7 @@ from tests.testdata import TestData  # noqa: E402
 
 from oaatoperator.oaatgroup import OaatGroup, OaatGroupOverseer  # noqa: E402
 from oaatoperator.py_types import CallbackArgs  # noqa: E402
-from oaatoperator.common import (InternalError, KubeOaatGroup,  # noqa: E402
+from oaatoperator.common import (KubeOaatGroup,  # noqa: E402
                                  ProcessingComplete)
 import oaatoperator.utility  # noqa: E402
 
@@ -53,14 +54,14 @@ class BasicTests(unittest.TestCase):
         self.assertEqual(kobj.name, TestData.kog_attrs['metadata']['name'])
 
     def test_invalid_object(self):
-        with self.assertRaises(ValueError) as exc:
+        with self.assertRaises(kopf.PermanentError) as exc:
             OaatGroup(kopf_object={})  # type: ignore
             self.assertRegex(
-                    str(exc.exception),
-                    'Overseer must be called with full kopf kwargs.*')
+                str(exc.exception),
+                'Overseer must be called with full kopf kwargs.*')
 
     def test_invalid_none(self):
-        with self.assertRaises(InternalError):
+        with self.assertRaises(kopf.PermanentError):
             OaatGroup(kopf_object=None)  # type: ignore
 
     def test_podspec_emptyspec(self):
@@ -71,6 +72,22 @@ class BasicTests(unittest.TestCase):
                     TestData.setup_kwargs(TestData.kog_emptyspec_attrs)))
             self.assertEqual(exc.exception.ret['error'],
                              'cannot find OaatType None')
+
+    @patch('oaatoperator.oaatgroup.OaatType',
+           autospec=True,
+           obj=TestData.kot_mock)
+    def test_podspec_nofreq(self, _):
+        kog = deepcopy(TestData.kog_attrs)
+        kog['spec']['frequency'] = 'nofreq'
+        kog_mock = TestData.new_mock(KubeOaatGroup, kog)
+        with KubeObject(KubeOaatGroup, kog):
+            with self.assertRaises(kopf.PermanentError) as exc:
+                OaatGroup(kopf_object=cast(
+                    CallbackArgs,
+                    TestData.setup_kwargs(kog_mock.obj)))
+            self.assertEqual(
+                str(exc.exception),
+                'invalid frequency specification nofreq in test-kog')
 
 
 class FindJobTests(unittest.TestCase):
@@ -404,57 +421,6 @@ class ValidateTests(unittest.TestCase):
     @patch('oaatoperator.oaatgroup.OaatType',
            autospec=True,
            obj=TestData.kot_mock)
-    def test_verify_is_pod_expected(self, _):
-        with KubeObject(KubeOaatGroup, TestData.kog_attrs):
-            kw = TestData.setup_kwargs(TestData.kog_attrs)
-            kw.setdefault('status', {})['pod'] = 'podname'
-            kw.setdefault('status', {})['currently_running'] = 'itemname'
-            og = OaatGroup(kopf_object=cast(CallbackArgs, kw))
-            self.assertTrue(og.is_pod_expected())
-
-    @patch('oaatoperator.oaatgroup.OaatType',
-           autospec=True,
-           obj=TestData.kot_mock)
-    def test_verify_is_pod_expected_negative(self, _):
-        with KubeObject(KubeOaatGroup, TestData.kog_attrs):
-            kw = TestData.setup_kwargs(TestData.kog_attrs)
-            kw.setdefault('status', {})['pod'] = None
-            kw.setdefault('status', {})['currently_running'] = None
-            og = OaatGroup(kopf_object=cast(CallbackArgs, kw))
-            self.assertFalse(og.is_pod_expected())
-
-    @patch('oaatoperator.oaatgroup.OaatType',
-           autospec=True,
-           obj=TestData.kot_mock)
-    def test_verify_expected_pod(self, _):
-        with KubeObjectPod(TestData.pod_spec) as pod1:
-            with KubeObject(KubeOaatGroup, TestData.kog_attrs):
-                kw = TestData.setup_kwargs(TestData.kog_attrs)
-                kw.setdefault('status', {})['pod'] = pod1.name
-                kw.setdefault('status', {})['currently_running'] = 'itemname'
-                og = OaatGroup(kopf_object=cast(CallbackArgs, kw))
-                self.assertEqual(og.get_status('pod'), pod1.name)
-                with self.assertRaisesRegex(ProcessingComplete,
-                                            'Pod.*exists and is in state'):
-                    og.verify_expected_pod_is_running()
-
-    @patch('oaatoperator.oaatgroup.OaatType',
-           autospec=True,
-           obj=TestData.kot_mock)
-    def test_verify_expected_pod_negative(self, _):
-        with KubeObjectPod(TestData.pod_spec) as pod1:
-            with KubeObject(KubeOaatGroup, TestData.kog_attrs):
-                kw = TestData.setup_kwargs(TestData.kog_attrs)
-                kw.setdefault('status', {})['pod'] = f'not-{pod1.name}'
-                kw.setdefault('status', {})['currently_running'] = 'itemname'
-                og = OaatGroup(kopf_object=cast(CallbackArgs, kw))
-                with self.assertRaisesRegex(ProcessingComplete,
-                                            'item.*failed during validation'):
-                    og.verify_expected_pod_is_running()
-
-    @patch('oaatoperator.oaatgroup.OaatType',
-           autospec=True,
-           obj=TestData.kot_mock)
     def test_delete_rogue_none(self, _):
         with KubeObjectPod(TestData.pod_spec) as pod1:
             with KubeObject(KubeOaatGroup, TestData.kog_attrs):
@@ -462,9 +428,9 @@ class ValidateTests(unittest.TestCase):
                 kw.setdefault('status', {})['pod'] = pod1.name
                 kw.setdefault('status', {})['currently_running'] = 'itemname'
                 og = OaatGroup(kopf_object=cast(CallbackArgs, kw))
+                og.kopf_object.warning = print  # type: ignore
                 self.assertEqual(og.get_status('pod'), pod1.name)
-                # no rogue pod, falls through to
-                # verify_expected_pod_is_running()
+                # no rogue pod
                 with self.assertRaisesRegex(
                         ProcessingComplete,
                         'Pod .* exists and is in state Running'):
@@ -482,8 +448,7 @@ class ValidateTests(unittest.TestCase):
                     kw.setdefault('status',
                                   {})['currently_running'] = 'itemname'
                     og = OaatGroup(kopf_object=cast(CallbackArgs, kw))
-                    # no rogue pod, falls through to
-                    # verify_expected_pod_is_running()
+                    # no rogue pod
                     with self.assertRaisesRegex(
                             ProcessingComplete,
                             'Pod .* exists and is in state Running'):
@@ -501,8 +466,7 @@ class ValidateTests(unittest.TestCase):
                     kw.setdefault('status',
                                   {})['currently_running'] = 'itemname'
                     og = OaatGroup(kopf_object=cast(CallbackArgs, kw))
-                    # no rogue pod, falls through to
-                    # verify_expected_pod_is_running()
+                    # no rogue pod
                     with self.assertRaisesRegex(
                             ProcessingComplete,
                             'Pod .* exists and is in state Running'):
@@ -538,47 +502,6 @@ class ValidateTests(unittest.TestCase):
     @patch('oaatoperator.oaatgroup.OaatType',
            autospec=True,
            obj=TestData.kot_mock)
-    def test_verify_running_pod_nocr(self, _):
-        with KubeObject(KubeOaatGroup, TestData.kog_attrs):
-            kw = TestData.setup_kwargs(TestData.kog_attrs)
-            og = OaatGroup(kopf_object=cast(CallbackArgs, kw))
-            kw.setdefault('status', {})['pod'] = 'podname'
-            kw.setdefault('status', {})['currently_running'] = None
-            with self.assertRaisesRegex(ProcessingComplete, 'internal error'):
-                og.verify_running()
-
-    @patch('oaatoperator.oaatgroup.OaatType',
-           autospec=True,
-           obj=TestData.kot_mock)
-    def test_verify_running_nopod_cr(self, _):
-        with KubeObject(KubeOaatGroup, TestData.kog_attrs):
-            kw = TestData.setup_kwargs(TestData.kog_attrs)
-            og = OaatGroup(kopf_object=cast(CallbackArgs, kw))
-            kw.setdefault('status', {})['pod'] = None
-            kw.setdefault('status', {})['currently_running'] = 'itemname'
-            with self.assertRaisesRegex(ProcessingComplete, 'internal error'):
-                og.verify_running()
-
-    @patch('oaatoperator.oaatgroup.OaatType',
-           autospec=True,
-           obj=TestData.kot_mock)
-    def test_verify_running_expected_running_but_is_not(self, _):
-        with KubeObject(KubeOaatGroup, TestData.kog_attrs):
-            kw = TestData.setup_kwargs(TestData.kog_attrs)
-            og = OaatGroup(kopf_object=cast(CallbackArgs, kw))
-            og.kopf_object.info = print  # type: ignore
-            og.kopf_object.warning = print  # type: ignore
-            og.kopf_object.error = print  # type: ignore
-            kw.setdefault('status', {})['pod'] = 'podname'
-            kw.setdefault('status', {})['currently_running'] = 'itemname'
-            with self.assertRaisesRegex(
-                    ProcessingComplete,
-                    'item itemname failed during validation'):
-                og.verify_running()
-
-    @patch('oaatoperator.oaatgroup.OaatType',
-           autospec=True,
-           obj=TestData.kot_mock)
     def test_verify_running_expected_running_and_is(self, _):
         with KubeObjectPod(TestData.pod_spec) as pod1:
             with KubeObject(KubeOaatGroup, TestData.kog_attrs):
@@ -608,7 +531,7 @@ class OaatGroupTests(unittest.TestCase):
         return super().tearDown()
 
     def test_create_none(self):
-        with self.assertRaisesRegex(InternalError,
+        with self.assertRaisesRegex(kopf.PermanentError,
                                     'OaatGroup must be called with either.*'):
             OaatGroup()
 
@@ -617,46 +540,53 @@ class OaatGroupTests(unittest.TestCase):
            obj=TestData.kot_mock)
     def test_no_kopf(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
-            og = OaatGroup(kube_object_name='test-kog', logger=MagicMock())
+            og = OaatGroup(kube_object_name='test-kog',
+                           memo=MagicMock(),
+                           logger=MagicMock())
             with self.assertRaisesRegex(
-                    InternalError,
+                    kopf.PermanentError,
                     'attempt to retrieve find_job_to_run outside of kopf'):
                 og.find_job_to_run()
             with self.assertRaisesRegex(
-                    InternalError,
+                    kopf.PermanentError,
                     'attempt to retrieve validate_items outside of kopf'):
                 og.validate_items()
             with self.assertRaisesRegex(
-                    InternalError,
+                    kopf.PermanentError,
+                    'attempt to retrieve identify_running_pod '
+                    'outside of kopf'):
+                og.identify_running_pod()
+            with self.assertRaisesRegex(
+                    kopf.PermanentError,
+                    'attempt to retrieve verify_running_pod outside of kopf'):
+                og.verify_running_pod()
+            with self.assertRaisesRegex(
+                    kopf.PermanentError,
                     'attempt to retrieve verify_running outside of kopf'):
                 og.verify_running()
             with self.assertRaisesRegex(
-                    InternalError,
-                    'attempt to retrieve verify_state outside of kopf'):
-                og.verify_state('item')
-            with self.assertRaisesRegex(
-                    InternalError,
-                    'attempt to retrieve delete_rogue_pods outside of kopf'):
-                og.delete_rogue_pods('item')
-            with self.assertRaisesRegex(
-                    InternalError,
-                    'attempt to retrieve verify_expected_pod_is_running '
+                    kopf.PermanentError,
+                    'attempt to retrieve delete_non_survivor_pods '
                     'outside of kopf'):
-                og.verify_expected_pod_is_running('item')
+                og.delete_non_survivor_pods('item')
             with self.assertRaisesRegex(
-                    InternalError,
-                    'attempt to retrieve is_pod_expected outside of kopf'):
-                og.is_pod_expected('item')
+                    kopf.PermanentError,
+                    'attempt to retrieve resume_running_pod outside of kopf'):
+                og.resume_running_pod([])
             with self.assertRaisesRegex(
-                    InternalError,
+                    kopf.PermanentError,
+                    'attempt to retrieve select_survivor outside of kopf'):
+                og.select_survivor([])
+            with self.assertRaisesRegex(
+                    kopf.PermanentError,
                     'attempt to retrieve set_status outside of kopf'):
                 og.set_status('state', 'value')
             with self.assertRaisesRegex(
-                    InternalError,
+                    kopf.PermanentError,
                     'attempt to retrieve set_object_status outside of kopf'):
                 og.set_object_status('state', 'value')
             with self.assertRaisesRegex(
-                    InternalError,
+                    kopf.PermanentError,
                     'attempt to retrieve get_kubeobj outside of kopf'):
                 og.get_kubeobj('state', 'value')
 
@@ -665,7 +595,9 @@ class OaatGroupTests(unittest.TestCase):
            obj=TestData.kot_mock)
     def test_create_with_kubeobj(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
-            og = OaatGroup(kube_object_name='test-kog', logger=MagicMock())
+            og = OaatGroup(kube_object_name='test-kog',
+                           memo=MagicMock(),
+                           logger=MagicMock())
             self.assertIsInstance(og.kube_object, KubeOaatGroup)
             self.assertEqual(og.kopf_object, None)
             self.assertEqual(og.kube_object.name,
@@ -678,9 +610,19 @@ class OaatGroupTests(unittest.TestCase):
     def test_create_with_kubeobj_no_logger(self, _):
         with KubeObject(KubeOaatGroup, TestData.kog_attrs):
             with self.assertRaisesRegex(
-                    InternalError,
+                    kopf.PermanentError,
                     'must supply logger= parameter .*kube_object_name'):
-                OaatGroup(kube_object_name='test-kog')
+                OaatGroup(kube_object_name='test-kog', memo=MagicMock())
+
+    @patch('oaatoperator.oaatgroup.OaatType',
+           autospec=True,
+           obj=TestData.kot_mock)
+    def test_create_with_kubeobj_no_memo(self, _):
+        with KubeObject(KubeOaatGroup, TestData.kog_attrs):
+            with self.assertRaisesRegex(
+                    kopf.PermanentError,
+                    'must supply memo= parameter .*kube_object_name'):
+                OaatGroup(kube_object_name='test-kog', logger=MagicMock())
 
     @patch('oaatoperator.oaatgroup.OaatType',
            autospec=True,
@@ -827,7 +769,6 @@ class OaatGroupTests(unittest.TestCase):
 # - validate_items()
 #   X no items
 #   X set annotations
-# - verify_state()
 #   X invalid state (failed pod creation)
 #   X valid states
 # - verify_running_pod()

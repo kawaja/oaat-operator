@@ -4,6 +4,7 @@ from typing_extensions import Unpack
 import kopf
 
 import oaatoperator
+from oaatoperator.oaatitem import OaatItem
 from oaatoperator.py_types import CallbackArgs
 from oaatoperator.utility import now_iso, my_name
 from oaatoperator.common import ProcessingComplete
@@ -60,11 +61,12 @@ def oaat_timer(**kwargs: Unpack[CallbackArgs]):
     Main loop to handle oaatgroup object.
     """
     kwargs['logger'].debug(f'[{my_name()}] reason: timer')
+    memo = kwargs['memo']
     try:
         oaatgroup = OaatGroup(kopf_object=kwargs)
     except ProcessingComplete as exc:
         return {'message': f'Error: {exc.ret.get("error")}'}
-    curloop = oaatgroup.get_status('loops', 0)
+    curloop = memo.get('loops', 0)
 
     try:
         oaatgroup.validate_items()
@@ -72,29 +74,30 @@ def oaat_timer(**kwargs: Unpack[CallbackArgs]):
         # Verify that an existing job is running (returns if not)
         oaatgroup.verify_running()
 
-        # No item running, so check to see if we're ready to start another
-        next_item = oaatgroup.find_job_to_run()
-
-        # Found an oaatgroup job to run, now run it
-        oaatgroup.info(f'running item {next_item.name}')
-        oaatgroup.set_status('state', 'running')
-        oaatgroup.set_item_status(next_item.name, 'podphase', 'started')
-        oaatgroup.set_status('currently_running', next_item.name)
-
         if kwargs['annotations'].get('pause_new_jobs'):
             raise ProcessingComplete(
                 message='paused via pause_new_jobs annotation')
 
-        # TODO: use a subhandler for idempotence?
-        podobj = next_item.run()
-        oaatgroup.set_status('pod', podobj.metadata['name'])
+        # No item running, so check to see if we're ready to start another
+        next_item: OaatItem = oaatgroup.find_job_to_run()
 
-        oaatgroup.set_status('last_run', now_iso())
-        oaatgroup.set_status('children', [podobj.metadata['uid']])
+        # Found an oaatgroup job to run, now run it
+        oaatgroup.info(f'running item {next_item.name}')
+        oaatgroup.set_item_status(next_item.name, 'podphase', 'started')
+        memo.state = 'running'
+        memo.currently_running = next_item.name
+
+        podobj = next_item.run()
+        memo.pod = podobj.metadata['name']
+
+        memo.last_run = now_iso()
+        memo.children = [podobj.metadata['uid']]
+
         raise ProcessingComplete(message=f'started item {next_item.name}')
 
     except ProcessingComplete as exc:
-        oaatgroup.set_status('loops', curloop + 1)
+        memo.loops = curloop + 1
+        oaatgroup.set_status('handler_status', memo)
         return oaatgroup.handle_processing_complete(exc)
 
 
@@ -121,6 +124,7 @@ def pod_phasechange(**kwargs: Unpack[CallbackArgs]):
     Triggered by change in the pod's "phase" status field, or every
     1/2 hour just in case
     """
+    memo = kwargs['memo']
     kwargs['logger'].debug(
         f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
@@ -133,6 +137,7 @@ def pod_phasechange(**kwargs: Unpack[CallbackArgs]):
     try:
         pod.update_phase()
     except ProcessingComplete as exc:
+        pod.get_parent().set_status('handler_status', memo)
         return pod.handle_processing_complete(exc)
 
     return {'message': f'[{my_name()}] should never happen'}
@@ -156,6 +161,7 @@ def pod_succeeded(**kwargs: Unpack[CallbackArgs]):
     Record last_success for failed pod. Triggered by change in the
     pod's "phase" status field, or every 1/2 hour just in case
     """
+    memo = kwargs['memo']
     kwargs['logger'].debug(
         f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
@@ -166,6 +172,7 @@ def pod_succeeded(**kwargs: Unpack[CallbackArgs]):
     try:
         pod.update_success_status()
     except ProcessingComplete as exc:
+        pod.get_parent().set_status('handler_status', memo)
         return pod.handle_processing_complete(exc)
 
     return {'message': f'[{my_name()}] should never happen'}
@@ -189,6 +196,7 @@ def pod_failed(**kwargs: Unpack[CallbackArgs]):
     Record last_failure for failed pod. Triggered by change in the
     pod's "phase" status field, or every 1/2 hour just in case
     """
+    memo = kwargs['memo']
     kwargs['logger'].debug(
         f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
@@ -200,6 +208,7 @@ def pod_failed(**kwargs: Unpack[CallbackArgs]):
     try:
         pod.update_failure_status()
     except ProcessingComplete as exc:
+        pod.get_parent().set_status('handler_status', memo)
         return pod.handle_processing_complete(exc)
 
     return {'message': f'[{my_name()}] should never happen'}
@@ -231,7 +240,32 @@ def cleanup_pod(**kwargs: Unpack[CallbackArgs]):
         return pod.handle_processing_complete(exc)
 
 
-@kopf.on.resume('kawaja.net', 'v1', 'oaatgroups')
+@kopf.on.resume('kawaja.net', 'v1', 'oaatgroups')  # type: ignore
+def oaat_resume(**kwargs: Unpack[CallbackArgs]):
+    """
+    oaat_resume (oaatgroup)
+
+    Handle resume event for OaatGroup object:
+        * determine current state of running items
+        * update memo
+    """
+    memo = kwargs['memo']
+    try:
+        oaatgroup = OaatGroup(kopf_object=kwargs)
+    except ProcessingComplete as exc:
+        return {'message': f'Error: {exc.ret.get("error")}'}
+
+    running_pod_info = oaatgroup.resume_running_pod()
+    if running_pod_info is not None:
+        memo.state = 'running'
+        memo.currently_running = running_pod_info.get('oaat-name', 'unknown')
+        memo.pod = running_pod_info.get('name', 'unknown')
+
+    oaatgroup.info(f'[{my_name()}] {oaatgroup.name}')
+    oaatgroup.set_status('handler_status', memo)
+    return {'message': f'Successfully resumed {oaatgroup.name}'}
+
+
 @kopf.on.update('kawaja.net', 'v1', 'oaatgroups')
 @kopf.on.create('kawaja.net', 'v1', 'oaatgroups')  # type: ignore
 @kopf.timer('kawaja.net', 'v1', 'oaatgroups',
@@ -243,11 +277,12 @@ def oaat_action(**kwargs: Unpack[CallbackArgs]):
     """
     oaat_action (oaatgroup)
 
-    Handle create/update/resume events for OaatGroup object:
+    Handle create/update events for OaatGroup object:
         * validate oaatType
         * ensure "items" exist
         * annotate self with "operator-status=active" to enable timer
     """
+    memo = kwargs['memo']
     kwargs['logger'].debug(
         f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
@@ -263,6 +298,7 @@ def oaat_action(**kwargs: Unpack[CallbackArgs]):
             count_annotation='oaatgroup-items')
         raise ProcessingComplete(message='validated')
     except ProcessingComplete as exc:
+        oaatgroup.set_status('handler_status', memo)
         return oaatgroup.handle_processing_complete(exc)
 
 
