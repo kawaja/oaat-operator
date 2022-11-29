@@ -71,6 +71,7 @@ def create_action(**kwargs):
 
     # [11] set_annotation
     pov.set_annotation('testannotation')
+    pov.set_annotation('numericannotation', 7)
     pov.set_annotation('new_annotation', 'annotation_value')
 
     # [12] handle_processing_complete

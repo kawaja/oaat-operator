@@ -82,6 +82,10 @@ class BasicTests(unittest.TestCase):
             pod.annotations.get(
                 'kawaja.net/testannotation', 'missing'),
             'missing')
+        self.assertEqual(
+            pod.annotations.get(
+                'kawaja.net/numericannotation', 'missing'),
+            '7')
         self.assertRegex(
             runner.stdout,
             r'added annotation new_annotation=annotation_value')

@@ -101,16 +101,16 @@ def oaat_timer(**kwargs: Unpack[CallbackArgs]):
         return oaatgroup.handle_processing_complete(exc)
 
 
-@kopf.timer('', 'v1', 'pods',
+@kopf.timer('pod',
             interval=0.5 * 3600,
             labels={
                 'parent-name': kopf.PRESENT,
                 'app': 'oaat-operator'
             })  # type: ignore
-@kopf.on.resume('', 'v1', 'pods',
+@kopf.on.resume('pod',
                 labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
                 when=is_running)  # type: ignore
-@kopf.on.field('', 'v1', 'pods',
+@kopf.on.field('pod',
                field='status.phase',
                labels={
                    'parent-name': kopf.PRESENT,

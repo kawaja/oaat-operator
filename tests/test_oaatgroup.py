@@ -183,6 +183,7 @@ class FindJobTests(unittest.TestCase):
                 CallbackArgs, TestData.setup_kwargs(kog_mock.obj)))
 
             og.kopf_object.debug = unittest.mock.MagicMock()  # type: ignore
+            og.kopf_object.info = unittest.mock.MagicMock()  # type: ignore
             og.items.obj.setdefault(
                 'status',
                 {}).setdefault('items', {})['item1'] = {
@@ -195,9 +196,9 @@ class FindJobTests(unittest.TestCase):
             with self.assertRaisesRegex(ProcessingComplete,
                                         'not time to run next item'):
                 og.find_job_to_run()
-            print(og.kopf_object.debug.call_args.args[0])  # type: ignore
+            print(og.kopf_object.info.call_args.args[0])  # type: ignore
             self.assertRegex(
-                og.kopf_object.debug.call_args.args[0],  # type: ignore
+                og.kopf_object.info.call_args.args[0],  # type: ignore
                 'item1 cool_off.*not expired since last failure')
 
     # inside frequency but outside cooloff => valid job

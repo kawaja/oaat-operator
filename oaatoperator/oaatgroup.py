@@ -132,10 +132,6 @@ class OaatGroupOverseer(Overseer):
         # Filter out items which have failed within the cool off period
         if self.cool_off is not None:
             for item in oaat_items:
-                self.debug(
-                    f'testing {display_name[item.name]} - '
-                    f'failure: {item.failure()}, '
-                    f'cooling off?: {now < item.failure() + self.cool_off}')
                 if now < item.failure() + self.cool_off:
                     candidates.remove(item)
                     item_status[item.name] = (
@@ -158,7 +154,7 @@ class OaatGroupOverseer(Overseer):
                 for i in oaat_items
             ])
         )
-        self.debug(find_job_status)
+        self.info(find_job_status)
         self.set_status('find_job', find_job_status)
 
         if not candidates:
