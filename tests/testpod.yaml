@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: podtest-
+  labels:
+    app: phasechange-test
+    parent-name: phasechange
+  namespace: default
+spec:
+  containers:
+  - command: ["/bin/sleep", "200"]
+    image: busybox
+    imagePullPolicy: IfNotPresent
+    name: sleep
+    volumeMounts:
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-mjfxv
+      readOnly: true
+  restartPolicy: Never
+  volumes:
+  - name: kube-api-access-mjfxv
+    projected:
+      defaultMode: 420
+      sources:
+      - serviceAccountToken:
+          expirationSeconds: 3607
+          path: token
+      - configMap:
+          items:
+          - key: ca.crt
+            path: ca.crt
+          name: kube-root-ca.crt
+      - downwardAPI:
+          items:
+          - fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+            path: namespace

@@ -264,6 +264,7 @@ class OaatGroupOverseer(Overseer):
         for pod in all_pods.iterator():
             self.debug(f'  checking {pod.name}')
             if pod.name == survivor.name:
+                self.debug(f'  skipping {pod.name} as this is the survivor')
                 continue    # skip over the surviving pod
             podphase = (pod.obj['status'].get('phase', 'unknown'))
             if podphase in ['Running', 'Pending']:
@@ -299,14 +300,14 @@ class OaatGroupOverseer(Overseer):
         for pod in all_pods.iterator():
             self.debug(f'  checking {pod.name}')
             podphase = (pod.obj['status'].get('phase', 'unknown'))
+            self.debug(f'    {pod.name} phase = {podphase}')
             if podphase in ['Running', 'Pending']:
                 running_pods.append(pod)
 
+        self.debug(f'    found {len(running_pods)} running pods')
+
         if len(running_pods) == 0:
             return None
-
-        if len(running_pods) == 1:
-            return running_pods[0]
 
         return self.select_survivor(running_pods)
 
@@ -317,6 +318,7 @@ class OaatGroupOverseer(Overseer):
         Verifies that the running pod is still healthy
         """
         phase = pod.obj.get('status', {}).get('phase', 'unknown')
+        self.debug(f'  full pod details: {pod.obj}')
         raise ProcessingComplete(
             message=f'Pod {pod.name} exists and is in state {phase}')
 
