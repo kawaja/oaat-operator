@@ -1,4 +1,4 @@
-kopf==1.35.6
+kopf==1.36.0
 pykube-ng==22.9.0
 PyYAML==6.0
 mypy_extensions
