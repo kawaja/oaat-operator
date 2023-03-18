@@ -66,6 +66,8 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
     needs: validate
     if: ${{ github.event_name == 'push' }}
     steps:
