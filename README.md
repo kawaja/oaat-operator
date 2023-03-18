@@ -1,4 +1,4 @@
-![master build](https://img.shields.io/github/workflow/status/kawaja/oaat-operator/Docker%20Image%20CI?label=master%20build)
+![master build](https://img.shields.io/github/actions/workflow/status/kawaja/oaat-operator/push.yml?branch=master&label=master%20build)
 ![CodeQL](https://github.com/kawaja/oaat-operator/workflows/CodeQL/badge.svg)
 [![codecov](https://codecov.io/gh/kawaja/oaat-operator/branch/master/graph/badge.svg?token=DGAVK4FCPQ)](https://codecov.io/gh/kawaja/oaat-operator)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/kawaja/oaat-operator.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/kawaja/oaat-operator/context:python)
