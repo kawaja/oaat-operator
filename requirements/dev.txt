@@ -3,7 +3,7 @@ coverage==7.2.3
 flake8==6.0.0
 pycodestyle==2.10.0
 pyflakes==3.0.1
-pytest==7.3.0
+pytest==7.3.1
 pytest-cov==4.0.0
 pytest-mock==3.10.0
 yapf==0.32.0
