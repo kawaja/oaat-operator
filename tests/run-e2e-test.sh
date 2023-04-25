@@ -42,7 +42,7 @@ for dir in *; do
          ${dir}/update-steps.sh
          echo "**** running ${dir} test ****"
          sleep 60
-         (cd ..; kubectl kuttl test --skip-delete --timeout 240 --test ${dir})
+         (cd ..; kubectl kuttl test --skip-delete --timeout 240 -v 4 --test ${dir})
          echo "**** cleaning up ${dir} test ****"
          k3d cluster delete ${dir}x
          ${dir}/update-steps.sh --cleanup

@@ -393,11 +393,11 @@ class ValidateTests(unittest.TestCase):
                     count_annotation='test-items')
             self.assertEqual(
                 og.kopf_object.patch['metadata']  # type: ignore
-                ['annotations'].get('kawaja.net/test-status'),
+                ['annotations'].get('oaatoperator.kawaja.net/test-status'),
                 'missingItems')
             self.assertEqual(
                 og.kopf_object.patch['metadata']  # type: ignore
-                ['annotations'].get('kawaja.net/test-items'),
+                ['annotations'].get('oaatoperator.kawaja.net/test-items'),
                 None)
 
     @patch('oaatoperator.oaatgroup.OaatType',
@@ -412,11 +412,11 @@ class ValidateTests(unittest.TestCase):
                 count_annotation='test-items')
             self.assertEqual(
                 og.kopf_object.patch['metadata']  # type: ignore
-                ['annotations'].get('kawaja.net/test-status'),
+                ['annotations'].get('oaatoperator.kawaja.net/test-status'),
                 'active')
             self.assertEqual(
                 og.kopf_object.patch['metadata']  # type: ignore
-                ['annotations'].get('kawaja.net/test-items'),
+                ['annotations'].get('oaatoperator.kawaja.net/test-items'),
                 '1')
 
     @patch('oaatoperator.oaatgroup.OaatType',

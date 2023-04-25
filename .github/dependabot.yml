@@ -4,6 +4,14 @@ updates:
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
     assignees: [ "kawaja" ]
     labels: [ "dependencies" ]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    assignees: [ "kawaja" ]
+    labels: [ "actions" ]
+

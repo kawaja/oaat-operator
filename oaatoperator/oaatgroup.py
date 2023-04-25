@@ -18,7 +18,8 @@ import oaatoperator.py_types as py_types
 from oaatoperator.oaatitem import OaatItems, OaatItem
 from oaatoperator.oaattype import OaatType
 from oaatoperator.overseer import Overseer
-from oaatoperator.common import ProcessingComplete, KubeOaatGroup
+from oaatoperator.common import (ProcessingComplete, KubeOaatGroup,
+                                 InternalError)
 
 
 # TODO: I'm not convinced about this composite object. It's essentially
@@ -351,6 +352,8 @@ class OaatGroupOverseer(Overseer):
                          item_name: str,
                          key: str,
                          value: Optional[str] = None) -> None:
+        if self.patch is None:
+            raise kopf.PermanentError('kopf error: patch is None')
         patch: dict = (self.patch
                        .setdefault('status', {})
                        .setdefault('items', {})
@@ -433,6 +436,10 @@ class OaatGroup:
             return self.kopf_object.namespace   # type: ignore
         if self.kube_object:
             return self.kube_object.metadata.get('namespace')
+        raise InternalError(
+            'neither kopf_object nor kube_object is set '
+            f'{oaatoperator.utility.my_details(1)}'
+        )
 
     def get_kube_object(self, name: str, namespace: str) -> KubeOaatGroup:
         try:
@@ -450,7 +457,9 @@ class OaatGroup:
         if name in self.passthrough_names:
             if self.kopf_object is None:
                 raise kopf.PermanentError(
-                    f'attempt to retrieve {name} outside of kopf')
+                    f'attempt to retrieve {name} '
+                    f'outside of kopf: {oaatoperator.utility.my_details(1)}'
+                )
             return getattr(self.kopf_object, name)
         else:
             raise AttributeError(

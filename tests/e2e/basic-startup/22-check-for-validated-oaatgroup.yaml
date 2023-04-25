@@ -1,9 +1,17 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 240
+collectors:
+- type: pod
+  pod: basic-startup
+---
 apiVersion: kawaja.net/v1
 kind: OaatGroup
 metadata:
-  kawaja.net/kopf-managed: "yes"
-  kawaja.net/oaatgroup-items: "2"
-  kawaja.net/operator-status: active
+  annotations:
+    oaatoperator.kawaja.net/kopf-managed: "yes"
+    oaatoperator.kawaja.net/oaatgroup-items: "2"
+    oaatoperator.kawaja.net/operator-status: active
   name: basic-startup
 status:
   oaat_action:

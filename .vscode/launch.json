@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "Run KOPF",
             "type": "python",
@@ -24,16 +25,15 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
+            "env": { "PYTHONPATH": "${workspaceFolder}"},
             "console": "integratedTerminal"
         },
         {
             "name": "Python: Debug Tests",
             "type": "python",
-            "request": "test",
+            "request": "launch",
             "console": "integratedTerminal",
-            "env": {
-                "PYTEST_ADDOPTS": "--no-cov"
-            }
+            "env": { "PYTEST_ADDOPTS": "--no-cov", "PYTHONPATH": "${workspaceFolder}"},
         }
     ]
-}:w
+}

@@ -17,7 +17,7 @@ class BasicTests(unittest.TestCase):
                 'generateName': 'oaat-testing-',
                 'namespace': 'default',
                 'annotations': {
-                    'kawaja.net/testannotation': 'annotationvalue'
+                    'oaatoperator.kawaja.net/testannotation': 'annotationvalue'
                 },
                 'labels': {
                     'testlabel': 'labelvalue'
@@ -25,12 +25,12 @@ class BasicTests(unittest.TestCase):
             },
             'spec': {
                 'containers': [{
-                        'name': 'oaat-testing',
-                        'image': 'busybox',
-                        'command': ['sleep', '50']
-                    }
-                ],
-                'restartPolicy': 'Never'
+                    'name': 'oaat-testing',
+                    'image': 'busybox',
+                    'command': ['sleep', '50']
+                }],
+                'restartPolicy':
+                'Never'
             },
         }
 
@@ -79,19 +79,18 @@ class BasicTests(unittest.TestCase):
         self.assertRegex(
             runner.stdout, r'removed annotation testannotation')
         self.assertEqual(
-            pod.annotations.get(
-                'kawaja.net/testannotation', 'missing'),
-            'missing')
+            pod.annotations.get('oaatoperator.kawaja.net/testannotation',
+                                'missing'), 'missing')
         self.assertEqual(
             pod.annotations.get(
-                'kawaja.net/numericannotation', 'missing'),
+                'oaatoperator.kawaja.net/numericannotation', 'missing'),
             '7')
         self.assertRegex(
             runner.stdout,
             r'added annotation new_annotation=annotation_value')
         self.assertEqual(
-            pod.annotations.get('kawaja.net/new_annotation', 'missing'),
-            'annotation_value')
+            pod.annotations.get('oaatoperator.kawaja.net/new_annotation',
+                                'missing'), 'annotation_value')
         self.assertRegex(runner.stdout, r'ERROR.*reterror')
         self.assertRegex(runner.stdout, r'WARNING.*retwarning')
         self.assertRegex(runner.stdout, r'INFO.*retinfo')

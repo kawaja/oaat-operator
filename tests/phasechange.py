@@ -20,7 +20,7 @@ def is_succeeded(status, **_):
 @kopf.on.startup()  # type: ignore
 def configure(settings: kopf.OperatorSettings, **_) -> None:
     """Set kopf configuration."""
-    settings.posting.level = logging.INFO
+    settings.posting.level = logging.DEBUG
     settings.persistence.finalizer = (
         'phasechange-test.kawaja.net/kopf-finalizer')
     settings.persistence.diffbase_storage = kopf.AnnotationsDiffBaseStorage(

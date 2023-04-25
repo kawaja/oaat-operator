@@ -7,6 +7,7 @@ from typing import Any, Optional
 import datetime
 import re
 import sys
+import inspect
 
 UTC = datetime.timezone.utc
 
@@ -83,7 +84,7 @@ def parse_duration(duration: str) -> Optional[datetime.timedelta]:
     """Calculate timedelta from a duration string."""
     if duration is None:
         return None
-    units = {}
+    units: dict[str, int] = {}
     start = 0
     while True:
         match = DURMATCH.search(duration[start:])
@@ -137,3 +138,23 @@ def now_iso() -> str:
 def my_name() -> str:
     """Return the name of the calling function."""
     return sys._getframe(1).f_code.co_name
+
+
+def my_details(parents=0) -> Optional[str]:
+    """Return details of the calling function."""
+    frameinfo = inspect.stack()[parents+1]
+    cframeinfo = inspect.stack()[parents+2]
+    rval = f'{cframeinfo.filename}:{cframeinfo.lineno} {frameinfo.function}('
+    if frameinfo is None:
+        return None
+    av = inspect.getargvalues(frameinfo.frame)
+    args = []
+    for arg in av.args:
+        args.append(f'{arg}={repr(av.locals[arg])}')
+    if av.varargs is not None:
+        args.append(f'{av.varargs}={repr(av.locals[av.varargs])}')
+    if av.keywords is not None:
+        args.append(f'{av.keywords}={repr(av.locals[av.keywords])}')
+
+    rval += ', '.join(args)
+    return f'{rval})'
