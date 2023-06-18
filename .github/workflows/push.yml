@@ -78,7 +78,7 @@ jobs:
       with:
         buildkitd-flags: --debug
     - name: Login to Repo
-      uses: docker/login-action@v2.1.0
+      uses: docker/login-action@v2.2.0
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
