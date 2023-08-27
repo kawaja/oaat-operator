@@ -124,7 +124,6 @@ def pod_phasechange(**kwargs: Unpack[CallbackArgs]):
     Triggered by change in the pod's "phase" status field, or every
     1/2 hour just in case
     """
-    memo = kwargs['memo']
     kwargs['logger'].debug(
         f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
@@ -137,7 +136,6 @@ def pod_phasechange(**kwargs: Unpack[CallbackArgs]):
     try:
         pod.update_phase()
     except ProcessingComplete as exc:
-        pod.get_parent().set_status('handler_status', memo)
         return pod.handle_processing_complete(exc)
 
     return {'message': f'[{my_name()}] should never happen'}
@@ -161,7 +159,6 @@ def pod_succeeded(**kwargs: Unpack[CallbackArgs]):
     Record last_success for failed pod. Triggered by change in the
     pod's "phase" status field, or every 1/2 hour just in case
     """
-    memo = kwargs['memo']
     kwargs['logger'].debug(
         f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
@@ -172,7 +169,6 @@ def pod_succeeded(**kwargs: Unpack[CallbackArgs]):
     try:
         pod.update_success_status()
     except ProcessingComplete as exc:
-        pod.get_parent().set_status('handler_status', memo)
         return pod.handle_processing_complete(exc)
 
     return {'message': f'[{my_name()}] should never happen'}
@@ -196,7 +192,6 @@ def pod_failed(**kwargs: Unpack[CallbackArgs]):
     Record last_failure for failed pod. Triggered by change in the
     pod's "phase" status field, or every 1/2 hour just in case
     """
-    memo = kwargs['memo']
     kwargs['logger'].debug(
         f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
     try:
@@ -208,7 +203,6 @@ def pod_failed(**kwargs: Unpack[CallbackArgs]):
     try:
         pod.update_failure_status()
     except ProcessingComplete as exc:
-        pod.get_parent().set_status('handler_status', memo)
         return pod.handle_processing_complete(exc)
 
     return {'message': f'[{my_name()}] should never happen'}

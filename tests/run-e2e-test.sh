@@ -2,6 +2,13 @@
 dir=$(dirname $0)
 cd ${dir}
 dir=$(pwd)
+
+skip_cluster_rebuild=
+if [ "$1" = "--skip-cluster-rebuild" ]; then
+   skip_cluster_rebuild=TRUE
+   shift
+fi
+
 echo "--> building operator container"
 export OPERATOR_TAG="kawaja.net/oaatoperator:e2e-$$"
 (
@@ -33,10 +40,12 @@ for dir in *; do
             echo "file e2e/${dir}/update-steps.sh must be executable" >&2
             exit 1
          fi
-         k3d cluster delete ${dir}x || echo "delete failed (probably didn't exist), continuing"
-         k3d cluster create ${dir}x
-         docker pull busybox
-         k3d image import --verbose --cluster ${dir}x busybox ${OPERATOR_TAG}
+         if [ -z $skip_cluster_rebuild ]; then
+            k3d cluster delete ${dir}x || echo "delete failed (probably didn't exist), continuing"
+            k3d cluster create ${dir}x
+            docker pull busybox
+            k3d image import --verbose --cluster ${dir}x busybox ${OPERATOR_TAG}
+         fi
          kubectl config use-context k3d-${dir}x
          kubectl cluster-info
          ${dir}/update-steps.sh
