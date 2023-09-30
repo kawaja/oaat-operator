@@ -1,4 +1,7 @@
 FROM python:3.10-slim-buster
+LABEL org.opencontainers.image.source=https://github.com/kawaja/oaat-operator
+LABEL org.opencontainers.image.description="Kubernetes 'one at a time' operator based on kopf"
+LABEL org.opencontainers.image.licenses=MIT
 COPY requirements.txt ./
 COPY requirements/* ./requirements/
 RUN pip install -r requirements.txt

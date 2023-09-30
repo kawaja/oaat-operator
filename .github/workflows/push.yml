@@ -109,5 +109,5 @@ jobs:
       with:
         context: .
         file: build/Dockerfile
-        push: true
+        buildArgs: --no-cache
         tags: ghcr.io/${{github.repository}}:${{steps.vars.outputs.sha_short}},ghcr.io/${{github.repository}}:${{steps.devtag.outputs.devtag}}
