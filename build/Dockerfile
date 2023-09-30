@@ -1,4 +1,4 @@
-FROM python:3.10-slim-buster
+FROM python:3.11-slim-buster
 LABEL org.opencontainers.image.source=https://github.com/kawaja/oaat-operator
 LABEL org.opencontainers.image.description="Kubernetes 'one at a time' operator based on kopf"
 LABEL org.opencontainers.image.licenses=MIT
