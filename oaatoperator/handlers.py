@@ -60,7 +60,7 @@ def oaat_timer(**kwargs: Unpack[CallbackArgs]):
 
     Main loop to handle oaatgroup object.
     """
-    kwargs['logger'].debug(f'[{my_name()}] reason: timer')
+    kwargs['logger'].debug(f'[{my_name()}] reason: timer (60sec)')
     memo = kwargs['memo']
     try:
         oaatgroup = OaatGroup(kopf_object=kwargs)
@@ -125,7 +125,11 @@ def pod_phasechange(**kwargs: Unpack[CallbackArgs]):
     1/2 hour just in case
     """
     kwargs['logger'].debug(
-        f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
+        f'[{my_name()}] reason: {kwargs.get("reason", "timer (30min)")}')
+    kwargs['logger'].debug(
+        f'[{my_name()}] diff: {kwargs.get("diff")}')
+    kwargs['logger'].debug(
+        f'[{my_name()}] status: {kwargs.get("status")}')
     try:
         pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
@@ -160,7 +164,11 @@ def pod_succeeded(**kwargs: Unpack[CallbackArgs]):
     pod's "phase" status field, or every 1/2 hour just in case
     """
     kwargs['logger'].debug(
-        f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
+        f'[{my_name()}] reason: {kwargs.get("reason", "timer (30min)")}')
+    kwargs['logger'].debug(
+        f'[{my_name()}] diff: {kwargs.get("diff")}')
+    kwargs['logger'].debug(
+        f'[{my_name()}] status: {kwargs.get("status")}')
     try:
         pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
@@ -193,7 +201,7 @@ def pod_failed(**kwargs: Unpack[CallbackArgs]):
     pod's "phase" status field, or every 1/2 hour just in case
     """
     kwargs['logger'].debug(
-        f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
+        f'[{my_name()}] reason: {kwargs.get("reason", "timer (30min)")}')
     try:
         pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
@@ -220,7 +228,7 @@ def cleanup_pod(**kwargs: Unpack[CallbackArgs]):
     hours, delete it.
     """
     kwargs['logger'].debug(
-        f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
+        f'[{my_name()}] reason: {kwargs.get("reason", "timer (12hrs)")}')
     try:
         pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
@@ -278,7 +286,7 @@ def oaat_action(**kwargs: Unpack[CallbackArgs]):
     """
     memo = kwargs['memo']
     kwargs['logger'].debug(
-        f'[{my_name()}] reason: {kwargs.get("reason", "timer?")}')
+        f'[{my_name()}] reason: {kwargs.get("reason", "timer (5min)")}')
     try:
         oaatgroup = OaatGroup(kopf_object=kwargs)
     except ProcessingComplete as exc:

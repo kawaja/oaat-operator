@@ -11,7 +11,11 @@
         "--cov-report=term",
         "--cov-report=xml:cov.xml"
     ],
-    "python.formatting.provider": "yapf",
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.python"
+    },
+    "python.linting.mypyEnabled": false,
+//    "python.formatting.provider": "autopep8",
     "python.analysis.extraPaths": [
         "${workspaceFolder}/**"
     ]
