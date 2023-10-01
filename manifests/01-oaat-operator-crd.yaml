@@ -94,26 +94,26 @@ spec:
         - name: LastRun
           type: date
           priority: 0
-          jsonPath: .status.oaat_timer.last_run
+          jsonPath: .status.handler_status.last_run
           description: Time of most recent attempt.
         - name: Loops
           type: integer
-          jsonPath: .status.oaat_timer.loops
+          jsonPath: .status.handler_status.loops
           description: Number of loops the daemon has processed.
         - name: State
           type: string
           priority: 0
-          jsonPath: .status.state
+          jsonPath: .status.handler_status.state
           description: State of oaat operator.
         - name: CurrentlyRunning
           type: string
           priority: 0
-          jsonPath: .status.currently_running
+          jsonPath: .status.handler_status.currently_running
           description: Name of item which is currently running.
         - name: Pod
           type: string
           priority: 0
-          jsonPath: .status.pod
+          jsonPath: .status.handler_status.pod
           description: Name of pod for the item which is currently running.
         - name: Message
           type: string
