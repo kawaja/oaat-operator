@@ -106,3 +106,15 @@ class PodOverseer(Overseer):
             kube_object_name=self.meta['labels'].get('parent-name'),
             memo=self.memo,
             logger=self.logger)
+
+    def handle_processing_complete(self,
+                                   exc: ProcessingComplete) -> Optional[dict]:
+        if 'info' in exc.ret:
+            self.info(exc.ret['info'])
+        if 'error' in exc.ret:
+            self.error(exc.ret['error'])
+        if 'warning' in exc.ret:
+            self.warning(exc.ret['warning'])
+        if 'message' in exc.ret:
+            self.info(exc.ret['message'])
+        return None

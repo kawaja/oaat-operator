@@ -30,7 +30,7 @@ def is_succeeded(status, **_):
     return status.get('phase') == 'Succeeded'
 
 
-@kopf.on.startup()  # type: ignore
+@kopf.on.startup()
 def configure(settings: kopf.OperatorSettings, **_) -> None:
     """Set kopf configuration."""
     settings.posting.level = logging.INFO
@@ -51,7 +51,7 @@ def configure(settings: kopf.OperatorSettings, **_) -> None:
           file=sys.stderr)
 
 
-@kopf.timer('kawaja.net', 'v1', 'oaatgroups',  # type: ignore
+@kopf.timer('kawaja.net', 'v1', 'oaatgroups',
             initial_delay=90, interval=60,
             annotations={'oaatoperator.kawaja.net/operator-status': 'active'})
 def oaat_timer(**kwargs: Unpack[CallbackArgs]):
@@ -101,22 +101,16 @@ def oaat_timer(**kwargs: Unpack[CallbackArgs]):
         return oaatgroup.handle_processing_complete(exc)
 
 
-@kopf.timer('pod',
+@kopf.timer('pods',
             interval=0.5 * 3600,
-            labels={
-                'parent-name': kopf.PRESENT,
-                'app': 'oaat-operator'
-            })  # type: ignore
-@kopf.on.resume('pod',
+            labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'})
+@kopf.on.resume('pods',
                 labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-                when=is_running)  # type: ignore
-@kopf.on.field('pod',
+                when=is_running)
+@kopf.on.field('pods',
                field='status.phase',
-               labels={
-                   'parent-name': kopf.PRESENT,
-                   'app': 'oaat-operator'
-               })  # type: ignore
-def pod_phasechange(**kwargs: Unpack[CallbackArgs]):
+               labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'})
+def pod_phasechange(**kwargs: Unpack[CallbackArgs]) -> None:
     """
     pod_phasechange (pod)
 
@@ -124,16 +118,16 @@ def pod_phasechange(**kwargs: Unpack[CallbackArgs]):
     Triggered by change in the pod's "phase" status field, or every
     1/2 hour just in case
     """
-    kwargs['logger'].debug(
+    logger = kwargs['logger']
+    logger.debug(
         f'[{my_name()}] reason: {kwargs.get("reason", "timer (30min)")}')
-    kwargs['logger'].debug(
-        f'[{my_name()}] diff: {kwargs.get("diff")}')
-    kwargs['logger'].debug(
-        f'[{my_name()}] status: {kwargs.get("status")}')
+    logger.debug(f'[{my_name()}] diff: {kwargs.get("diff")}')
+    logger.debug(f'[{my_name()}] status: {kwargs.get("status")}')
     try:
         pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
-        return {'message': f'Error: {exc.ret.get("error")}'}
+        logger.error(f'Error: {exc.ret.get("error")}')
+        return
     pod.info(f'[{my_name()}] {pod.name}')
     pod.debug(f'[{my_name()}] {kwargs}')
 
@@ -142,70 +136,74 @@ def pod_phasechange(**kwargs: Unpack[CallbackArgs]):
     except ProcessingComplete as exc:
         return pod.handle_processing_complete(exc)
 
-    return {'message': f'[{my_name()}] should never happen'}
+    logger.error(f'[{my_name()}] should never happen')
+    return
 
 
 @kopf.timer('', 'v1', 'pods',
             interval=0.5*3600,
             labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-            when=is_succeeded)  # type: ignore
+            when=is_succeeded)
 @kopf.on.resume('', 'v1', 'pods',
                 labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-                when=is_succeeded)  # type: ignore
+                when=is_succeeded)
 @kopf.on.field('', 'v1', 'pods',
                field='status.phase',
                labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-               when=is_succeeded)  # type: ignore
-def pod_succeeded(**kwargs: Unpack[CallbackArgs]):
+               when=is_succeeded)
+def pod_succeeded(**kwargs: Unpack[CallbackArgs]) -> None:
     """
     pod_succeeded (pod)
 
     Record last_success for failed pod. Triggered by change in the
     pod's "phase" status field, or every 1/2 hour just in case
     """
-    kwargs['logger'].debug(
+    logger = kwargs['logger']
+    logger.debug(
         f'[{my_name()}] reason: {kwargs.get("reason", "timer (30min)")}')
-    kwargs['logger'].debug(
-        f'[{my_name()}] diff: {kwargs.get("diff")}')
-    kwargs['logger'].debug(
-        f'[{my_name()}] status: {kwargs.get("status")}')
+    logger.debug(f'[{my_name()}] diff: {kwargs.get("diff")}')
+    logger.debug(f'[{my_name()}] status: {kwargs.get("status")}')
     try:
         pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
-        return {'message': f'Error: {exc.ret.get("error")}'}
+        logger.error(f'Error: {exc.ret.get("error")}')
+        return
 
     try:
         pod.update_success_status()
     except ProcessingComplete as exc:
         return pod.handle_processing_complete(exc)
 
-    return {'message': f'[{my_name()}] should never happen'}
+    logger.error(f'[{my_name()}] should never happen')
+    return
 
 
 @kopf.timer('', 'v1', 'pods',
             interval=0.5*3600,
             labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-            when=is_failed)  # type: ignore
+            when=is_failed)
 @kopf.on.resume('', 'v1', 'pods',
                 labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-                when=is_failed)  # type: ignore
+                when=is_failed)
 @kopf.on.field('', 'v1', 'pods',
                field='status.phase',
                labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-               when=is_failed)  # type: ignore
-def pod_failed(**kwargs: Unpack[CallbackArgs]):
+               when=is_failed)
+def pod_failed(**kwargs: Unpack[CallbackArgs]) -> None:
     """
     pod_failed (pod)
 
     Record last_failure for failed pod. Triggered by change in the
     pod's "phase" status field, or every 1/2 hour just in case
     """
-    kwargs['logger'].debug(
+    logger = kwargs['logger']
+    logger.debug(
         f'[{my_name()}] reason: {kwargs.get("reason", "timer (30min)")}')
     try:
         pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
-        return {'message': f'Error: {exc.ret.get("error")}'}
+        logger.error(f'Error: {exc.ret.get("error")}')
+        return
     pod.info(f'[{my_name()}] {pod.name}')
 
     try:
@@ -213,26 +211,29 @@ def pod_failed(**kwargs: Unpack[CallbackArgs]):
     except ProcessingComplete as exc:
         return pod.handle_processing_complete(exc)
 
-    return {'message': f'[{my_name()}] should never happen'}
+    logger.error(f'[{my_name()}] should never happen')
+    return
 
 
 @kopf.timer('', 'v1', 'pods',
             interval=12*3600,
             labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-            when=kopf.any_([is_succeeded, is_failed]))  # type: ignore
-def cleanup_pod(**kwargs: Unpack[CallbackArgs]):
+            when=kopf.any_([is_succeeded, is_failed]))
+def cleanup_pod(**kwargs: Unpack[CallbackArgs]) -> None:
     """
     cleanup_pod (pod)
 
     After pod has been in 'Failed' or 'Succeeded' phase for more than twelve
     hours, delete it.
     """
-    kwargs['logger'].debug(
+    logger = kwargs['logger']
+    logger.debug(
         f'[{my_name()}] reason: {kwargs.get("reason", "timer (12hrs)")}')
     try:
         pod = PodOverseer(**kwargs)
     except ProcessingComplete as exc:
-        return {'message': f'Error: {exc.ret.get("error")}'}
+        logger.error(f'Error: {exc.ret.get("error")}')
+        return
     pod.info(f'[{my_name()}] {pod.name}')
 
     try:
@@ -242,7 +243,7 @@ def cleanup_pod(**kwargs: Unpack[CallbackArgs]):
         return pod.handle_processing_complete(exc)
 
 
-@kopf.on.resume('kawaja.net', 'v1', 'oaatgroups')  # type: ignore
+@kopf.on.resume('kawaja.net', 'v1', 'oaatgroups')
 def oaat_resume(**kwargs: Unpack[CallbackArgs]):
     """
     oaat_resume (oaatgroup)
@@ -269,12 +270,12 @@ def oaat_resume(**kwargs: Unpack[CallbackArgs]):
 
 
 @kopf.on.update('kawaja.net', 'v1', 'oaatgroups')
-@kopf.on.create('kawaja.net', 'v1', 'oaatgroups')  # type: ignore
+@kopf.on.create('kawaja.net', 'v1', 'oaatgroups')
 @kopf.timer('kawaja.net', 'v1', 'oaatgroups',
             initial_delay=90,
             interval=300,
             annotations={'oaatoperator.kawaja.net/operator-status':
-                         kopf.ABSENT})  # type: ignore
+                         kopf.ABSENT})
 def oaat_action(**kwargs: Unpack[CallbackArgs]):
     """
     oaat_action (oaatgroup)
@@ -304,7 +305,7 @@ def oaat_action(**kwargs: Unpack[CallbackArgs]):
         return oaatgroup.handle_processing_complete(exc)
 
 
-@kopf.on.login()  # type: ignore
+@kopf.on.login()
 def login(**kwargs: CallbackArgs):
     """Kopf login."""
-    return kopf.login_via_pykube(**kwargs)  # type: ignore
+    return kopf.login_via_pykube(**kwargs)
