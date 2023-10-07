@@ -206,6 +206,8 @@ class OaatGroupOverseer(Overseer):
             # on items which consistently fail. So, 1 in 3 we should
             # ignore the failed items and choose from the non-failed items
             if randrange(3) == 0:
+                self.debug(
+                    'wildcard! selecting from previously-successful items')
                 remaining_items = oldest_success_items - failure_items
             else:
                 remaining_items = oldest_failure_items
