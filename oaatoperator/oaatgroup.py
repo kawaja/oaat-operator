@@ -10,7 +10,7 @@ from typing_extensions import Unpack
 import logging
 import pykube
 import kopf
-from typing import Any, List, Optional, TypedDict, Type, cast
+from typing import Any, List, Set, Optional, TypedDict, Type, Callable, cast
 
 # local imports
 import oaatoperator.utility
@@ -33,6 +33,10 @@ from oaatoperator.common import (ProcessingComplete, KubeOaatGroup,
 
 # TODO: could move all POD-related functions into OaatItem? Would help with
 # future non-POD run mechanisms (e.g. Job)
+
+def oldest(items: Set, func: Callable) -> Set:
+    oldest_time = min([func(t) for t in items])
+    return {item for item in items if item.success() == oldest_time}
 
 
 class OaatGroupOverseer(Overseer):
@@ -167,15 +171,9 @@ class OaatGroupOverseer(Overseer):
 
         # Phase 2: Choose the item to run from the valid item candidates
         # Get all items which are "oldest"
-        oldest_success_time = min(
-            [t.success() for t in candidates])
-        oldest_success_items = {
-            item
-            for item in candidates
-            if item.success() == oldest_success_time
-        }
+        oldest_success_items = oldest(candidates, lambda x: x.success())
 
-        self.debug(f'oldest_items {oldest_success_time}: ' +
+        self.debug('oldest_items: ' +
                    ', '.join(sorted([i.name for i in oldest_success_items])))
 
         # Choose based on last failure (but only if there has been
@@ -189,14 +187,7 @@ class OaatGroupOverseer(Overseer):
             # nothing has failed
             remaining_items = oldest_success_items
         else:
-            oldest_failure_time = min(
-                [item.failure() for item in failure_items])
-            self.debug(f'oldest_failure_time: {oldest_failure_time}')
-            oldest_failure_items = {
-                item
-                for item in oldest_success_items
-                if item.failure() == oldest_failure_time
-            }
+            oldest_failure_items = oldest(failure_items, lambda x: x.faiure())
 
             self.debug('oldest_failure_items: ' +
                        ', '.join(sorted(
@@ -208,7 +199,8 @@ class OaatGroupOverseer(Overseer):
             if randrange(3) == 0:
                 self.debug(
                     'wildcard! selecting from previously-successful items')
-                remaining_items = oldest_success_items - failure_items
+                remaining_items = oldest(
+                    candidates - failure_items, lambda x: x.success())
             else:
                 remaining_items = oldest_failure_items
 
