@@ -173,16 +173,20 @@ class OaatGroupOverseer(Overseer):
         # Get all items which are "oldest"
         oldest_success_items = oldest(candidates, lambda x: x.success())
 
-        self.debug('oldest_items: ' +
+        self.debug('oldest_success_items: ' +
                    ', '.join(sorted([i.name for i in oldest_success_items])))
 
         # Choose based on last failure (but only if there has been
         # a failure for the item)
         failure_items = {
             item
-            for item in oldest_success_items
+            for item in candidates
             if item.numfails() > 0}
 
+        self.debug('failure_items: ' +
+                   ', '.join(sorted([i.name for i in failure_items])))
+
+        remaining_items = {}
         if len(failure_items) == 0:
             # nothing has failed
             remaining_items = oldest_success_items
@@ -201,7 +205,7 @@ class OaatGroupOverseer(Overseer):
                     'wildcard! selecting from previously-successful items')
                 remaining_items = oldest(
                     candidates - failure_items, lambda x: x.success())
-            else:
+            if not remaining_items:
                 remaining_items = oldest_failure_items
 
         # Choose at random
