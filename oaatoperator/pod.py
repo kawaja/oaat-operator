@@ -103,7 +103,7 @@ class PodOverseer(Overseer):
     def get_parent(self) -> OaatGroup:
         """Retrieve the Pod's parent from the parent-name label."""
         return OaatGroup(
-            kube_object_name=self.meta['labels'].get('parent-name'),
+            kube_object_name=self.meta.get('labels', {}).get('parent-name'),
             memo=self.memo,
             logger=self.logger)
 

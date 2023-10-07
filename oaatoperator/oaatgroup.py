@@ -66,8 +66,6 @@ class OaatGroupOverseer(Overseer):
         self.cool_off = oaatoperator.utility.parse_duration(
             str(self.spec.get('failureCoolOff')))
 
-    # TODO: if the oldest item keeps failing, consider running
-    # other items which are ready to run
     # TODO: consider whether this should be a method of OaatItems()
     def find_job_to_run(self) -> OaatItem:
         """
@@ -117,10 +115,10 @@ class OaatGroupOverseer(Overseer):
         self.debug(f'now: {now}')
         self.debug(f'cool_off: {self.cool_off}')
 
-        candidates = []
+        candidates = set()
         for item in oaat_items:
             if now > item.success() + self.freq:
-                candidates.append(item)
+                candidates.add(item)
                 item_status[item.name] = (
                     f'not successful within last {self.freq}')
             else:
@@ -128,7 +126,7 @@ class OaatGroupOverseer(Overseer):
                     f'successful within last {self.freq}')
 
         self.debug('remaining items, based on last success & frequency: ' +
-                   ', '.join([i.name for i in candidates]))
+                   ', '.join(sorted([i.name for i in candidates])))
 
         # Filter out items which have failed within the cool off period
         if self.cool_off is not None:
@@ -140,12 +138,12 @@ class OaatGroupOverseer(Overseer):
                         f'last failure')
 
             self.debug('remaining items, based on failure cool off: ' +
-                       ', '.join([i.name for i in candidates]))
+                       ', '.join(sorted([i.name for i in candidates])))
 
         find_job_status = (
             f'find_job last run: {now.isoformat()}\n'
             'item status (* = candidate):\n' +
-            '\n'.join([
+            '\n'.join(sorted([
                 ('* ' if i in candidates else '- ') +
                 f'{display_name[i.name]} ' +
                 f'{item_status[i.name]} - ' +
@@ -153,7 +151,7 @@ class OaatGroupOverseer(Overseer):
                 f'failure={i.failure().isoformat()}, ' +
                 f'numfails={i.numfails()}'
                 for i in oaat_items
-            ])
+            ]))
         )
         self.info(find_job_status)
         self.set_status('find_job', find_job_status)
@@ -165,27 +163,27 @@ class OaatGroupOverseer(Overseer):
 
         # return single candidate if there is only one left
         if len(candidates) == 1:
-            return candidates[0]
+            return candidates.pop()
 
         # Phase 2: Choose the item to run from the valid item candidates
         # Get all items which are "oldest"
         oldest_success_time = min(
             [t.success() for t in candidates])
-        oldest_success_items = [
+        oldest_success_items = {
             item
             for item in candidates
             if item.success() == oldest_success_time
-        ]
+        }
 
         self.debug(f'oldest_items {oldest_success_time}: ' +
-                   ', '.join([i.name for i in oldest_success_items]))
+                   ', '.join(sorted([i.name for i in oldest_success_items])))
 
         # Choose based on last failure (but only if there has been
         # a failure for the item)
-        failure_items = [
+        failure_items = {
             item
             for item in oldest_success_items
-            if item.numfails() > 0]
+            if item.numfails() > 0}
 
         if len(failure_items) == 0:
             # nothing has failed
@@ -194,29 +192,29 @@ class OaatGroupOverseer(Overseer):
             oldest_failure_time = min(
                 [item.failure() for item in failure_items])
             self.debug(f'oldest_failure_time: {oldest_failure_time}')
-            oldest_failure_items = [
+            oldest_failure_items = {
                 item
                 for item in oldest_success_items
                 if item.failure() == oldest_failure_time
-            ]
+            }
 
             self.debug('oldest_failure_items: ' +
-                       ', '.join([i.name for i in oldest_failure_items]))
+                       ', '.join(sorted(
+                           [i.name for i in oldest_failure_items])))
 
             # if we always choose the failed items, we can get stuck
             # on items which consistently fail. So, 1 in 3 we should
             # ignore the failed items and choose from the non-failed items
             if randrange(3) == 0:
-                remaining_items = oldest_success_items
+                remaining_items = oldest_success_items - failure_items
             else:
                 remaining_items = oldest_failure_items
 
         # Choose at random
         self.debug('randomly choosing from: ' +
-                   ', '.join([i.name for i in remaining_items]))
+                   ', '.join(sorted([i.name for i in remaining_items])))
 
-        return remaining_items[
-            randrange(len(remaining_items))]  # nosec
+        return list(remaining_items)[randrange(len(remaining_items))]  # nosec
 
     def validate_items(
             self, status_annotation=None, count_annotation=None) -> None:
