@@ -36,7 +36,7 @@ from oaatoperator.common import (ProcessingComplete, KubeOaatGroup,
 
 def oldest(items: Set, func: Callable) -> Set:
     oldest_time = min([func(t) for t in items])
-    return {item for item in items if item.success() == oldest_time}
+    return {item for item in items if func(item) == oldest_time}
 
 
 class OaatGroupOverseer(Overseer):
