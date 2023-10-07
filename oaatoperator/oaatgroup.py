@@ -187,7 +187,7 @@ class OaatGroupOverseer(Overseer):
             # nothing has failed
             remaining_items = oldest_success_items
         else:
-            oldest_failure_items = oldest(failure_items, lambda x: x.faiure())
+            oldest_failure_items = oldest(failure_items, lambda x: x.failure())
 
             self.debug('oldest_failure_items: ' +
                        ', '.join(sorted(
