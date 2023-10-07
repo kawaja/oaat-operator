@@ -180,11 +180,8 @@ class OaatGroupOverseer(Overseer):
         self.debug(f'oldest_items {oldest_success_time}: ' +
                    ', '.join([i.name for i in oldest_success_items]))
 
-        if len(oldest_success_items) == 1:
-            return oldest_success_items[0]
-
-        # More than one item "equally old" success. Choose based on
-        # last failure (but only if there has been a failure for the item)
+        # Choose based on last failure (but only if there has been
+        # a failure for the item)
         failure_items = [
             item
             for item in oldest_success_items
@@ -206,15 +203,18 @@ class OaatGroupOverseer(Overseer):
             self.debug('oldest_failure_items: ' +
                        ', '.join([i.name for i in oldest_failure_items]))
 
-            if len(oldest_failure_items) == 1:
-                return oldest_failure_items[0]
+            # if we always choose the failed items, we can get stuck
+            # on items which consistently fail. So, 1 in 3 we should
+            # ignore the failed items and choose from the non-failed items
+            if randrange(3) == 0:
+                remaining_items = oldest_success_items
+            else:
+                remaining_items = oldest_failure_items
 
-            remaining_items = oldest_failure_items
+        # Choose at random
+        self.debug('randomly choosing from: ' +
+                   ', '.join([i.name for i in remaining_items]))
 
-            self.debug('randomly choosing from: ' +
-                       ', '.join([i.name for i in remaining_items]))
-
-        # more than one "equally old" failure.  Choose at random
         return remaining_items[
             randrange(len(remaining_items))]  # nosec
 
