@@ -279,13 +279,16 @@ class FindJobTests(unittest.TestCase):
     @patch('oaatoperator.oaatgroup.OaatType',
            autospec=True,
            obj=TestData.kot_mock)
-    def test_5_noprevious_run(self, _):
+    @patch('oaatoperator.oaatgroup.randrange')
+    def test_5_noprevious_run(self, mock_rand_range, _):
+        mock_rand_range.side_effect = [3]
         with KubeObject(KubeOaatGroup, TestData.kog5_attrs):
             og = OaatGroup(kopf_object=cast(
                 CallbackArgs, TestData.setup_kwargs(TestData.kog5_attrs)))
             job = og.find_job_to_run()
             self.assertIn(job.name,
                           ('item1', 'item2', 'item3', 'item4', 'item5'))
+            # self.assertEqual(job.name, 'item4')
 
     @patch('oaatoperator.oaatgroup.OaatType',
            autospec=True,

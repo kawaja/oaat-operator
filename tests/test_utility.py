@@ -362,6 +362,45 @@ class ParseDurationTests(unittest.TestCase):
                          td(seconds=40, minutes=7, hours=5))
 
 
+class MinSetTests(unittest.TestCase):
+    class SetItem:
+        def __init__(self, identity, set_val):
+            self.identity = identity
+            self.set_val = set_val
+
+        def val(self):
+            return self.set_val
+
+    def test_empty(self):
+        set_data = set()
+        ret_set = oaatoperator.utility.min_set(set_data, lambda x: x.val())
+        self.assertSetEqual(ret_set, set_data)
+
+    def test_single(self):
+        items = [
+            MinSetTests.SetItem('a', 3),
+            MinSetTests.SetItem('b', 2),
+            MinSetTests.SetItem('c', 3),
+            MinSetTests.SetItem('d', 4)
+        ]
+        set_data = list(items)
+        expected = {items[1]}
+        ret_set = oaatoperator.utility.min_set(set_data, lambda x: x.val())
+        self.assertSetEqual(ret_set, expected)
+
+    def test_multiple(self):
+        items = [
+            MinSetTests.SetItem('a', 3),
+            MinSetTests.SetItem('b', 5),
+            MinSetTests.SetItem('c', 3),
+            MinSetTests.SetItem('d', 4)
+        ]
+        set_data = list(items)
+        expected = {items[0], items[2]}
+        ret_set = oaatoperator.utility.min_set(set_data, lambda x: x.val())
+        self.assertSetEqual(ret_set, expected)
+
+
 class MiscTests(unittest.TestCase):
     def test_now(self):
         self.assertIsInstance(oaatoperator.utility.now(), dt)

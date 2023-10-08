@@ -10,7 +10,7 @@ from typing_extensions import Unpack
 import logging
 import pykube
 import kopf
-from typing import Any, List, Set, Optional, TypedDict, Type, Callable, cast
+from typing import Any, List, Set, Optional, TypedDict, Type, cast
 
 # local imports
 import oaatoperator.utility
@@ -33,10 +33,6 @@ from oaatoperator.common import (ProcessingComplete, KubeOaatGroup,
 
 # TODO: could move all POD-related functions into OaatItem? Would help with
 # future non-POD run mechanisms (e.g. Job)
-
-def oldest(items: Set, func: Callable) -> Set:
-    oldest_time = min([func(t) for t in items])
-    return {item for item in items if func(item) == oldest_time}
 
 
 class OaatGroupOverseer(Overseer):
@@ -171,7 +167,8 @@ class OaatGroupOverseer(Overseer):
 
         # Phase 2: Choose the item to run from the valid item candidates
         # Get all items which are "oldest"
-        oldest_success_items = oldest(candidates, lambda x: x.success())
+        oldest_success_items = oaatoperator.utility.min_set(
+            candidates, lambda x: x.success())
 
         self.debug('oldest_success_items: ' +
                    ', '.join(sorted([i.name for i in oldest_success_items])))
@@ -186,12 +183,13 @@ class OaatGroupOverseer(Overseer):
         self.debug('failure_items: ' +
                    ', '.join(sorted([i.name for i in failure_items])))
 
-        remaining_items = {}
+        remaining_items: Set[OaatItem] = set()
         if len(failure_items) == 0:
             # nothing has failed
             remaining_items = oldest_success_items
         else:
-            oldest_failure_items = oldest(failure_items, lambda x: x.failure())
+            oldest_failure_items = oaatoperator.utility.min_set(
+                failure_items, lambda x: x.failure())
 
             self.debug('oldest_failure_items: ' +
                        ', '.join(sorted(
@@ -203,7 +201,7 @@ class OaatGroupOverseer(Overseer):
             if randrange(3) == 0:
                 self.debug(
                     'wildcard! selecting from previously-successful items')
-                remaining_items = oldest(
+                remaining_items = oaatoperator.utility.min_set(
                     candidates - failure_items, lambda x: x.success())
             if not remaining_items:
                 remaining_items = oldest_failure_items

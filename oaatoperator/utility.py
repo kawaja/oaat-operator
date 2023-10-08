@@ -3,7 +3,7 @@ utility.py
 
 Various stand-alone utility functions.
 """
-from typing import Any, Optional
+from typing import Any, Set, Optional, Callable
 import datetime
 import re
 import sys
@@ -138,6 +138,11 @@ def now_iso() -> str:
 def my_name() -> str:
     """Return the name of the calling function."""
     return sys._getframe(1).f_code.co_name
+
+
+def min_set(items: Set, func: Callable) -> Set:
+    min_item = min([func(t) for t in items], default=set())
+    return {item for item in items if func(item) == min_item}
 
 
 def my_details(parents=0) -> Optional[str]:
