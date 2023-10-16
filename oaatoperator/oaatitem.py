@@ -10,7 +10,7 @@ import kopf
 import pykube
 from typing import Any, Optional, TYPE_CHECKING
 
-from oaatoperator.utility import date_from_isostr
+from oaatoperator.utility import date_from_isostr, now
 from oaatoperator.common import ProcessingComplete
 
 
@@ -24,6 +24,9 @@ class OaatItem:
         self.group = group
         self._status = (group.status.get('items', {}).get(self.name, {}))
 
+    def set_status(self, key: str, value: Optional[str] = None) -> None:
+        self.group.set_item_status(self.name, key, value)
+
     def status(self, key: str, default: Optional[str] = None) -> str:
         """Get the status of an item. """
         return (self._status.get(key, default))
@@ -33,6 +36,12 @@ class OaatItem:
                     default: Optional[str] = None) -> datetime.datetime:
         """Get the status of a specific item, returned as a datetime."""
         return date_from_isostr(self._status.get(key, default))
+
+    def started(self) -> datetime.datetime:
+        return self.status_date('last_started')
+
+    def verified(self) -> datetime.datetime:
+        return self.status_date('last_verified')
 
     def success(self) -> datetime.datetime:
         return self.status_date('last_success')
@@ -99,6 +108,8 @@ class OaatItem:
             raise ProcessingComplete(
                 error=f'could not create pod {doc}: {exc}',
                 message=f'error creating pod for {self.name}')
+
+        self.set_status('last_started', now().isoformat())
         return pod
 
 

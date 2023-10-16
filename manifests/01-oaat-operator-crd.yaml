@@ -61,7 +61,7 @@ spec:
               properties:
                 frequency:
                   type: string
-                failureCooloff:
+                failureCoolOff:
                   type: string
                 windows:
                   type: array

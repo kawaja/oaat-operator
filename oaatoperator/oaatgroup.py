@@ -313,7 +313,10 @@ class OaatGroupOverseer(Overseer):
         Verifies that the running pod is still healthy
         """
         phase = pod.obj.get('status', {}).get('phase', 'unknown')
+        item_name = pod.labels.get('oaat-item', 'unknown')
         self.debug(f'  full pod details: {pod.obj}')
+        self._set_item_status(item_name, 'last_verified',
+                              oaatoperator.utility.now().isoformat())
         raise ProcessingComplete(
             message=f'Pod {pod.name} exists and is in state {phase}')
 
