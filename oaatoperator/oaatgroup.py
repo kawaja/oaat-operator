@@ -11,6 +11,7 @@ import logging
 import pykube
 import kopf
 from typing import Any, List, Set, Optional, TypedDict, Type, cast
+from kopf._cogs.structs import bodies
 
 # local imports
 import oaatoperator.utility
@@ -47,7 +48,7 @@ class OaatGroupOverseer(Overseer):
     # OaatGroup.<attribute> works
     freq: datetime.timedelta = datetime.timedelta(hours=1)
     oaattype: Optional[OaatType] = None
-    status: Optional[dict[str, Any]] = None
+    status: bodies.Status = None
 
     def __init__(self, parent: OaatGroup,
                  **kwargs: Unpack[py_types.CallbackArgs]) -> None:
@@ -130,7 +131,7 @@ class OaatGroupOverseer(Overseer):
 
         # Filter out items which have failed within the cool off period
         if self.cool_off is not None:
-            for item in oaat_items:
+            for item in candidates.copy():
                 if now < item.failure() + self.cool_off:
                     candidates.remove(item)
                     item_status[item.name] = (
