@@ -314,10 +314,9 @@ class OaatGroupOverseer(Overseer):
         Verifies that the running pod is still healthy
         """
         phase = pod.obj.get('status', {}).get('phase', 'unknown')
-        item_name = pod.labels.get('oaat-item', 'unknown')
-        self.debug(f'  full pod details: {pod.obj}')
+        item_name = pod.labels.get('oaat-name', 'unknown')
         self._set_item_status(item_name, 'last_verified',
-                              oaatoperator.utility.now().isoformat())
+                              oaatoperator.utility.now_iso())
         raise ProcessingComplete(
             message=f'Pod {pod.name} exists and is in state {phase}')
 
@@ -483,11 +482,12 @@ class OaatGroup:
                                  str(failure_count + 1))
             self.set_item_status(item_name, 'last_failure',
                                  finished_at.isoformat())
+            self.set_item_status(item_name, 'last_verified')
 
-            # TODO: if via kopf, will this get overwritten by handler exit?
             self.memo.currently_running = None
             self.memo.pod = None
             self.memo.state = 'idle'
+            # TODO: if via kopf, will this get overwritten by handler exit?
             self.set_group_status(
                 'oaat_timer',
                 {
@@ -516,11 +516,12 @@ class OaatGroup:
             self.set_item_status(item_name, 'failure_count', '0')
             self.set_item_status(item_name, 'last_success',
                                  finished_at.isoformat())
+            self.set_item_status(item_name, 'last_verified')
 
-            # TODO: if via kopf, will this get overwritten by handler exit?
             self.memo.currently_running = None
             self.memo.pod = None
             self.memo.state = 'idle'
+            # TODO: if via kopf, will this get overwritten by handler exit?
             self.set_group_status('oaat_timer',
                                   {'message': f'item {item_name} completed'})
             return True
