@@ -8,7 +8,7 @@ metadata:
   namespace: default
 spec:
   containers:
-  - command: ["/bin/sleep", "200"]
+  - command: ["/bin/sleep", "30"]
     image: busybox
     imagePullPolicy: IfNotPresent
     name: sleep

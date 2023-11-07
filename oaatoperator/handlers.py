@@ -40,6 +40,8 @@ def configure(settings: kopf.OperatorSettings, **_) -> None:
         key='last-handled-configuration')
     settings.persistence.progress_storage = kopf.AnnotationsProgressStorage(
         prefix='oaatoperator.kawaja.net')
+    settings.watching.server_timeout = 600
+    settings.watching.client_timeout = 660
     print('Oaat Operator Version: ' +
           getattr(oaatoperator, '__version__', '<not set>'),
           file=sys.stderr)
@@ -128,13 +130,13 @@ def pod_phasechange(**kwargs: Unpack[CallbackArgs]) -> None:
     except ProcessingComplete as exc:
         logger.error(f'Error: {exc.ret.get("error")}')
         return
-    pod.info(f'[{my_name()}] {pod.name}')
-    pod.debug(f'[{my_name()}] {kwargs}')
+    pod.info(f'[{my_name()}] status for {pod.name} has changed')
 
     try:
         pod.update_phase()
     except ProcessingComplete as exc:
-        return pod.handle_processing_complete(exc)
+        pod.handle_processing_complete(exc)
+        return
 
     logger.error(f'[{my_name()}] should never happen')
     return
@@ -155,7 +157,7 @@ def pod_succeeded(**kwargs: Unpack[CallbackArgs]) -> None:
     """
     pod_succeeded (pod)
 
-    Record last_success for failed pod. Triggered by change in the
+    Record last_success for successful pod. Triggered by change in the
     pod's "phase" status field, or every 1/2 hour just in case
     """
     logger = kwargs['logger']
@@ -172,7 +174,8 @@ def pod_succeeded(**kwargs: Unpack[CallbackArgs]) -> None:
     try:
         pod.update_success_status()
     except ProcessingComplete as exc:
-        return pod.handle_processing_complete(exc)
+        pod.handle_processing_complete(exc)
+        return
 
     logger.error(f'[{my_name()}] should never happen')
     return
@@ -209,7 +212,8 @@ def pod_failed(**kwargs: Unpack[CallbackArgs]) -> None:
     try:
         pod.update_failure_status()
     except ProcessingComplete as exc:
-        return pod.handle_processing_complete(exc)
+        pod.handle_processing_complete(exc)
+        return
 
     logger.error(f'[{my_name()}] should never happen')
     return
@@ -240,7 +244,8 @@ def cleanup_pod(**kwargs: Unpack[CallbackArgs]) -> None:
         pod.delete()
         raise ProcessingComplete(message=f'[{my_name()}] deleted')
     except ProcessingComplete as exc:
-        return pod.handle_processing_complete(exc)
+        pod.handle_processing_complete(exc)
+        return
 
 
 @kopf.on.resume('kawaja.net', 'v1', 'oaatgroups')
@@ -306,6 +311,6 @@ def oaat_action(**kwargs: Unpack[CallbackArgs]):
 
 
 @kopf.on.login()
-def login(**kwargs: CallbackArgs):
+def login(**kwargs: Unpack[CallbackArgs]):
     """Kopf login."""
     return kopf.login_via_pykube(**kwargs)

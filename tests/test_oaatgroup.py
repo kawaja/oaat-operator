@@ -2,7 +2,7 @@ import sys
 import os
 from copy import deepcopy
 import datetime
-import pykube
+import pykube  # type: ignore
 import kopf
 from typing import cast
 

@@ -1,3 +1,11 @@
+"""
+Test the phasechange detection behaviour of KOPF
+
+To run this test, use (from oaat-operater directory):
+    kopf run --verbose tests/phasechange.py
+In separate window:
+    kubectl create -f tests/testpod.yaml
+"""
 import logging
 import kopf
 
@@ -36,13 +44,12 @@ def configure(settings: kopf.OperatorSettings, **_) -> None:
                    'parent-name': kopf.PRESENT,
                    'app': 'phasechange-test'
                })  # type: ignore
-def pod_phasechange_m_singular(**kwargs):
+def pod_phasechange_m_singular(**kwargs) -> None:
     """
     pod_phasechange (pod)
     """
     kwargs['logger'].debug(
         f'[pod_phasechange] reason: {kwargs.get("reason", "unknown")}')
-    return {'message': f'[pod_phasechange] {kwargs["status"].get("phase")}'}
 
 
 @kopf.on.field('', 'v1', 'pods',
@@ -51,13 +58,12 @@ def pod_phasechange_m_singular(**kwargs):
                    'parent-name': kopf.PRESENT,
                    'app': 'phasechange-test'
                })  # type: ignore
-def pod_phasechange_m_plural(**kwargs):
+def pod_phasechange_m_plural(**kwargs) -> None:
     """
     pod_phasechange (pod)
     """
     kwargs['logger'].debug(
         f'[pod_phasechange] reason: {kwargs.get("reason", "unknown")}')
-    return {'message': f'[pod_phasechange] {kwargs["status"].get("phase")}'}
 
 
 @kopf.on.field('pod',
@@ -66,13 +72,12 @@ def pod_phasechange_m_plural(**kwargs):
                    'parent-name': kopf.PRESENT,
                    'app': 'phasechange-test'
                })  # type: ignore
-def pod_phasechange_s_singular(**kwargs):
+def pod_phasechange_s_singular(**kwargs) -> None:
     """
     pod_phasechange (pod)
     """
     kwargs['logger'].debug(
         f'[pod_phasechange] reason: {kwargs.get("reason", "unknown")}')
-    return {'message': f'[pod_phasechange] {kwargs["status"].get("phase")}'}
 
 
 @kopf.on.field('pods',
@@ -81,13 +86,12 @@ def pod_phasechange_s_singular(**kwargs):
                    'parent-name': kopf.PRESENT,
                    'app': 'phasechange-test'
                })  # type: ignore
-def pod_phasechange_s_plural(**kwargs):
+def pod_phasechange_s_plural(**kwargs) -> None:
     """
     pod_phasechange (pod)
     """
     kwargs['logger'].debug(
         f'[pod_phasechange] reason: {kwargs.get("reason", "unknown")}')
-    return {'message': f'[pod_phasechange] {kwargs["status"].get("phase")}'}
 
 
 @kopf.on.field('', 'v1', 'pods',
@@ -97,28 +101,52 @@ def pod_phasechange_s_plural(**kwargs):
                    'app': 'phasechange-test'
                },
                when=is_succeeded)  # type: ignore
-def pod_succeeded(**kwargs):
+def pod_succeeded(**kwargs) -> None:
     """
     pod_succeeded (pod)
     """
     kwargs['logger'].debug(
         f'[pod_succeeded] reason: {kwargs.get("reason", "unknown")}')
 
-    return {'message': f'[pod_phasechange] {kwargs["status"].get("phase")}'}
+@kopf.timer('', 'v1', 'pods',
+            interval=240,
+            labels={
+                'parent-name': kopf.PRESENT,
+                'app': 'phasechange-test'
+            },
+            when=is_succeeded)
+@kopf.on.resume('', 'v1', 'pods',
+                labels={
+                    'parent-name': kopf.PRESENT,
+                    'app': 'phasechange-test'
+                },
+                when=is_succeeded)
+@kopf.on.field('', 'v1', 'pods',
+               field='status.phase',
+               labels={
+                   'parent-name': kopf.PRESENT,
+                   'app': 'phasechange-test'
+               },
+               when=is_succeeded)
+def pod_succeeded_with_timer_with_resume(**kwargs) -> None:
+    """
+    pod_succeeded (pod)
+    """
+    kwargs['logger'].debug(
+        f'[pod_succeeded_with_timer_with_resume] '
+        f'reason: {kwargs.get("reason", "unknown")}')
 
 
 @kopf.on.field('', 'v1', 'pods',
                field='status.phase',
                labels={'parent-name': kopf.PRESENT, 'app': 'phasechange-test'},
                when=is_failed)  # type: ignore
-def pod_failed(**kwargs):
+def pod_failed(**kwargs) -> None:
     """
     pod_failed (pod)
     """
     kwargs['logger'].debug(
         f'[pod_failed] reason: {kwargs.get("reason", "unknown")}')
-
-    return {'message': f'[pod_failed] {kwargs["status"].get("phase")}'}
 
 
 @kopf.on.login()  # type: ignore

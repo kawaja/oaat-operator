@@ -140,8 +140,8 @@ def my_name() -> str:
     return sys._getframe(1).f_code.co_name
 
 
-def min_set(items: Set, func: Callable) -> Set:
-    min_item = min([func(t) for t in items], default=set())
+def min_set(items: Set[Any], func: Callable) -> Set[Any]:
+    min_item: Any = min([func(t) for t in items], default=set())
     return {item for item in items if func(item) == min_item}
 
 

@@ -7,7 +7,7 @@ Manage OaatItems within an OaatGroup.
 from __future__ import annotations
 import datetime
 import kopf
-import pykube
+import pykube  # type: ignore
 from typing import Any, Optional, TYPE_CHECKING
 
 from oaatoperator.utility import date_from_isostr, now

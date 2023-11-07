@@ -6,6 +6,7 @@ Types used for type validation.
 from typing import Any, TypedDict, Optional, Union
 import kopf
 from kopf._cogs.structs import bodies, references, patches, diffs
+from kopf._cogs.structs.bodies import Spec
 import datetime
 import logging
 
@@ -20,7 +21,7 @@ class CallbackArgs(TypedDict):
     labels: bodies.Labels
     body: bodies.Body
     meta: bodies.Meta
-    spec: bodies.Spec
+    spec: Spec
     status: bodies.Status
     resource: references.Resource
     uid: Optional[str]
@@ -34,3 +35,21 @@ class CallbackArgs(TypedDict):
     logger: logging.Logger
     memo: kopf.Memo
     param: Any
+
+
+# This doesn't work:
+# class TimerFnCallbackArgs(TypedDict):
+#     annotations: bodies.Annotations
+#     labels: bodies.Labels
+#     body: bodies.Body
+#     meta: bodies.Meta
+#     spec: Spec
+#     status: bodies.Status
+#     resource: references.Resource
+#     uid: Optional[str]
+#     name: Optional[str]
+#     namespace: Optional[str]
+#     patch: patches.Patch
+#     logger: logging.Logger
+#     memo: kopf.Memo
+#     param: Any

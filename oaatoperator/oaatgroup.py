@@ -8,7 +8,7 @@ from random import randrange
 import datetime
 from typing_extensions import Unpack
 import logging
-import pykube
+import pykube  # type: ignore
 import kopf
 from typing import Any, List, Set, Optional, TypedDict, Type, cast
 from kopf._cogs.structs import bodies
@@ -48,7 +48,7 @@ class OaatGroupOverseer(Overseer):
     # OaatGroup.<attribute> works
     freq: datetime.timedelta = datetime.timedelta(hours=1)
     oaattype: Optional[OaatType] = None
-    status: bodies.Status = None
+    status: Optional[bodies.Status] = None
 
     def __init__(self, parent: OaatGroup,
                  **kwargs: Unpack[py_types.CallbackArgs]) -> None:
