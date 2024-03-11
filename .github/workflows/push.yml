@@ -105,7 +105,7 @@ jobs:
         echo "__gitsha__ = '${GITHUB_SHA::7}'" >> oaatoperator/__init__.py
         echo "__build_date__ = '$(date +%Y%m%d%H%M%S)'" >> oaatoperator/__init__.py
     - name: Build the Docker image (with :<sha> and :dev tags)
-      uses: docker/build-push-action@v5.1.0
+      uses: docker/build-push-action@v5.2.0
       with:
         context: .
         file: build/Dockerfile
