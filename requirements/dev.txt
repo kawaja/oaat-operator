@@ -1,6 +1,6 @@
 -r common.txt
 coverage==7.6.0
-flake8==6.1.0
+flake8==7.1.1
 pycodestyle==2.11.1
 pyflakes==3.1.0
 pytest==8.3.1
