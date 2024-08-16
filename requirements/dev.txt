@@ -1,12 +1,12 @@
 -r common.txt
 coverage==7.6.0
-flake8==6.1.0
-pycodestyle==2.11.1
-pyflakes==3.1.0
+flake8==7.1.1
+pycodestyle==2.12.1
+pyflakes==3.2.0
 pytest==8.3.1
 pytest-cov==5.0.0
 pytest-mock==3.14.0
-autopep8==2.0.4
+autopep8==2.3.1
 bandit==1.7.9
 mypy_extensions==1.0.0
 typing_extensions==4.12.2
