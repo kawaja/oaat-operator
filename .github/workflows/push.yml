@@ -48,7 +48,7 @@ jobs:
       run: |
         python3 -m pytest --cov=oaatoperator --cov-append --cov-report=term --cov-report=xml:cov.xml .
     - name: Upload Coverage
-      uses: codecov/codecov-action@v4.5.0
+      uses: codecov/codecov-action@v5.0.7
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
