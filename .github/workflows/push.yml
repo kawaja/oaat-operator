@@ -11,8 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.10', '3.11']
-        k8s-version: [v1.25, v1.26, v1.27]
+        python-version: ['3.11', '3.12']
+        k8s-version: [v1.30, v1.31, v1.32]
     steps:
     - name: Check out code
       uses: actions/checkout@v4
