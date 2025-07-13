@@ -51,8 +51,8 @@ class BasicTests(unittest.TestCase):
                     if exc.code != 409:
                         raise
                     print('received HTTP error code 409, retrying')
-	            	 time.sleep(3)
-                     retry = retryCount - 1
+                    time.sleep(3)
+                    retry = retryCount - 1
                 else:
                     retryCount = 0
             try:
