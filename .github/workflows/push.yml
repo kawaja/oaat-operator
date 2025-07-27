@@ -10,6 +10,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      max-parallel: 3
       matrix:
         python-version: ['3.11', '3.12']
         k8s-version: [v1.30, v1.31, v1.32]
