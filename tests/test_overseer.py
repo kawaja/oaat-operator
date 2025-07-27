@@ -36,68 +36,73 @@ class BasicTests(unittest.TestCase):
 
         pod = pykube.Pod(api, doc)
 
+        print('running operator')
         with KopfRunner([
                 'run', '--namespace=default', '--verbose',
                 'tests/operator_overseer.py']) as runner:
+            print('creating pod')
             pod.create()
+            print('created pod')
             time.sleep(1)
             retryCount = 10
             while retryCount > 0:
                 pod.reload()
                 pod.annotations['readytodelete'] = 'true'
                 try:
+                    print('updating pod')
                     pod.update()
                 except pykube.exceptions.HTTPError as exc:
                     if exc.code != 409:
                         raise
                     print('received HTTP error code 409, retrying')
                     time.sleep(3)
-                    retry = retryCount - 1
+                    retryCount = retryCount - 1
                 else:
                     retryCount = 0
             try:
+                print('reloading pod')
                 pod.reload()
             except pykube.exceptions.HTTPError as exc:
                 self.assertRegex(str(exc), f'"{pod.name}" not found', exc)
 
-            print(f'annotations at completion: {pod.annotations}')
-            self.maxDiff = None
-            self.assertEqual(runner.exit_code, 0)
-            self.assertIsNone(runner.exception)
-            self.assertRegex(runner.output, r'all overseer tests successful')
-            self.assertRegex(runner.output, r'\[1\] successful')
-            self.assertRegex(runner.output, r'\[8\] successful')
-            self.assertRegex(runner.output, r'\[9\] successful')
-            self.assertRegex(runner.output, r'\[10\] successful')
-            self.assertRegex(runner.output, r'ERROR.*error message')
-            self.assertRegex(runner.output, r'WARNING.*warning message')
-            self.assertRegex(runner.output, r'INFO.*info message')
-            self.assertRegex(runner.output, r'DEBUG.*debug message')
-            self.assertRegex(
-                runner.output, r'Patching with.*new_status.: None')
-            self.assertRegex(
-                runner.output, r'Patching with.*new_status2.: .new_state.')
-            self.assertRegex(
-                runner.output, r'removed annotation testannotation')
-            self.assertEqual(
-                pod.annotations.get('oaatoperator.kawaja.net/testannotation',
-                                    'missing'), 'missing')
-            self.assertEqual(
-                pod.annotations.get(
-                    'oaatoperator.kawaja.net/numericannotation', 'missing'),
-                '7')
-            self.assertRegex(
-                runner.output,
-                r'added annotation new_annotation=annotation_value')
-            self.assertEqual(
-                pod.annotations.get('oaatoperator.kawaja.net/new_annotation',
-                                    'missing'), 'annotation_value')
-            self.assertRegex(runner.output, r'ERROR.*reterror')
-            self.assertRegex(runner.output, r'WARNING.*retwarning')
-            self.assertRegex(runner.output, r'INFO.*retinfo')
-            self.assertRegex(
-                runner.output, r'status.: {[^{]*.state.: .retstate.')
-            self.assertRegex(runner.output, r'\[12\] successful')
-            self.assertRegex(runner.output, r'\[13\] successful')
+        print(f'annotations at completion: {pod.annotations}')
+        self.maxDiff = None
+        self.assertEqual(runner.exit_code, 0)
+        self.assertIsNone(runner.exception)
+        self.assertRegex(runner.output, r'all overseer tests successful')
+        self.assertRegex(runner.output, r'\[1\] successful')
+        self.assertRegex(runner.output, r'\[8\] successful')
+        self.assertRegex(runner.output, r'\[9\] successful')
+        self.assertRegex(runner.output, r'\[10\] successful')
+        self.assertRegex(runner.output, r'ERROR.*error message')
+        self.assertRegex(runner.output, r'WARNING.*warning message')
+        self.assertRegex(runner.output, r'INFO.*info message')
+        self.assertRegex(runner.output, r'DEBUG.*debug message')
+        self.assertRegex(
+            runner.output, r'Patching with.*new_status.: None')
+        self.assertRegex(
+            runner.output, r'Patching with.*new_status2.: .new_state.')
+        self.assertRegex(
+            runner.output, r'removed annotation testannotation')
+        self.assertEqual(
+            pod.annotations.get('oaatoperator.kawaja.net/testannotation',
+                                'missing'), 'missing')
+        self.assertEqual(
+            pod.annotations.get(
+                'oaatoperator.kawaja.net/numericannotation', 'missing'),
+            '7')
+        self.assertRegex(
+            runner.output,
+            r'added annotation new_annotation=annotation_value')
+        self.assertEqual(
+            pod.annotations.get('oaatoperator.kawaja.net/new_annotation',
+                                'missing'), 'annotation_value')
+        self.assertRegex(runner.output, r'ERROR.*reterror')
+        self.assertRegex(runner.output, r'WARNING.*retwarning')
+        self.assertRegex(runner.output, r'INFO.*retinfo')
+        self.assertRegex(
+            runner.output, r'status.: {[^{]*.state.: .retstate.')
+        self.assertRegex(runner.output, r'\[12\] successful')
+        self.assertRegex(runner.output, r'\[13\] successful')
 # can't seem to get .delete() to fail, even if the pod is already deleted
 #        self.assertRegex(runner.output, r'\[14\] successful')
