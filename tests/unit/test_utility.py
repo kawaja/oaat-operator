@@ -1,5 +1,8 @@
 import unittest
+import pytest
 from datetime import timedelta as td
+
+pytestmark = pytest.mark.unit
 from datetime import datetime as dt
 import datetime
 import oaatoperator.utility

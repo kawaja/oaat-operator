@@ -8,12 +8,12 @@ fi
 function step() {
    fromfile="${2:?}.yaml"
    tofile="${1:?}-${2:?}-COPY.yaml"
-   echo -n "copying ${fromfile} (to ${tofile})"
+   echo -n "copying ../../common/${fromfile} to ${tofile}"
    cp ../../common/${fromfile} ${tofile}
    # t=branch to end if previous substitution was successful
    # q=set exit code to 5
    # OPERATOR_TAG has /'s and :'s, so need to use a different character
-   sed -e "s&%%OPERATOR_TAG%%&${OPERATOR_TAG}&g" -i '' ${tofile}
+   sed -e "s&%%OPERATOR_TAG%%&${OPERATOR_TAG}&g" -i'' ${tofile}
    if diff ../../common/${fromfile} ${tofile}>/dev/null; then
       echo ' - done'
    else

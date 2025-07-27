@@ -9,14 +9,17 @@ from typing import cast
 import unittest
 import unittest.mock
 from unittest.mock import patch, MagicMock
+import pytest
+
+pytestmark = pytest.mark.unit
 
 # enable importing of oaatoperator modules without placing constraints
 # on how they handle non-test in-module importing
 sys.path.append(
-    os.path.dirname(os.path.realpath(__file__)) + "/../oaatoperator")
+    os.path.dirname(os.path.realpath(__file__)) + "/../../oaatoperator")
 
-from tests.mocks_pykube import KubeObject, KubeObjectPod  # noqa: E402
-from tests.testdata import TestData  # noqa: E402
+from tests.unit.mocks_pykube import KubeObject, KubeObjectPod  # noqa: E402
+from tests.unit.testdata import TestData  # noqa: E402
 
 from oaatoperator.oaatgroup import OaatGroup, OaatGroupOverseer  # noqa: E402
 from oaatoperator.py_types import CallbackArgs  # noqa: E402

@@ -1,9 +1,13 @@
 import unittest
 import time
 from kopf.testing import KopfRunner
+import pytest
 
 import pykube
 import unittest.mock
+
+
+pytestmark = pytest.mark.integration
 
 
 class BasicTests(unittest.TestCase):
@@ -39,8 +43,7 @@ class BasicTests(unittest.TestCase):
         print('running operator')
         with KopfRunner([
                 'run', '--namespace=default', '--verbose',
-                'tests/operator_overseer.py']) as runner:
-            print('creating pod')
+                'tests/integration/operator_overseer.py']) as runner:
             pod.create()
             print('created pod')
             time.sleep(1)

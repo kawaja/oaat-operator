@@ -1,7 +1,10 @@
 import unittest
+import pytest
 
-from tests.mocks_pykube import KubeObject, ensure_kubeobj_deleted
-from tests.testdata import TestData
+pytestmark = pytest.mark.unit
+
+from tests.unit.mocks_pykube import KubeObject, ensure_kubeobj_deleted
+from tests.unit.testdata import TestData
 from oaatoperator.oaattype import OaatType
 from oaatoperator.common import KubeOaatType, ProcessingComplete
 import pykube
