@@ -3,9 +3,9 @@ kind: TestSuite
 namespace: default
 crdDir: ./crds/
 manifestDirs:
-  - ./manifests/
+  - ../manifests/
 testDirs:
-  - ./e2e
+  - ./cases
 parallel: 1
 #commands:
 #  - script: |

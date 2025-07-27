@@ -49,9 +49,9 @@ jobs:
         kubectl wait --for=condition=Established --timeout=60s crd/oaattypes.kawaja.net
         kubectl wait --for=condition=Established --timeout=60s crd/oaatgroups.kawaja.net
         kubectl apply -f manifests/sample-oaat-type.yaml
-    - name: Run tests
+    - name: Run unit tests
       run: |
-        python3 -m pytest --cov=oaatoperator --cov-append --cov-report=term --cov-report=xml:cov.xml .
+        python3 -m pytest -m unit --cov=oaatoperator --cov-append --cov-report=term --cov-report=xml:cov.xml .
     - name: Upload Coverage
       uses: codecov/codecov-action@v5.4.3
       with:

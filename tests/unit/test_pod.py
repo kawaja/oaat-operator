@@ -8,14 +8,17 @@ from pykube import Pod
 import unittest
 import unittest.mock
 from unittest.mock import patch, call
+import pytest
+
+pytestmark = pytest.mark.unit
 
 # enable importing of oaatoperator modules without placing constraints
 # on how they handle non-test in-module importing
 sys.path.append(
-    os.path.dirname(os.path.realpath(__file__)) + "/../oaatoperator")
+    os.path.dirname(os.path.realpath(__file__)) + "/../../oaatoperator")
 
-from tests.testdata import TestData  # noqa: E402
-from tests.mocks_pykube import KubeObject  # noqa: E402
+from tests.unit.testdata import TestData  # noqa: E402
+from tests.unit.mocks_pykube import KubeObject  # noqa: E402
 from oaatoperator.pod import PodOverseer  # noqa: E402
 from oaatoperator.common import ProcessingComplete  # noqa: E402
 
