@@ -45,6 +45,8 @@ jobs:
     - name: Configure k3s
       run: |
         kubectl apply -f manifests/01-oaat-operator-crd.yaml
+        kubectl wait --for=condition=Established --timeout=60s crd/oattypes.kawaja.net
+        kubectl wait --for=condition=Established --timeout=60s crd/oatgroups.kawaja.net
         kubectl apply -f manifests/sample-oaat-type.yaml
     - name: Run tests
       run: |
