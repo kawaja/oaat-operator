@@ -1,4 +1,3 @@
-from time import sleep
 from copy import deepcopy
 from typing import Type
 import dataclasses
@@ -90,7 +89,7 @@ class KubeObject:
 
     def __enter__(self):
         print(f'[KubeObject] mocking creation of {self.name} ({self.type})')
-        
+
         # Create a mock Kubernetes object with the same interface
         from unittest.mock import Mock, patch
         mock_obj = Mock(spec=self.type)
@@ -99,7 +98,7 @@ class KubeObject:
         # Mock metadata with proper dict-like behavior
         metadata_dict = self.spec.get('metadata', {})
         if 'namespace' not in metadata_dict:
-            metadata_dict['namespace'] = 'default' 
+            metadata_dict['namespace'] = 'default'
         mock_obj.metadata = metadata_dict
         mock_obj.spec = self.spec.get('spec', {})
         mock_obj.status = self.spec.get('status', {})
@@ -109,7 +108,7 @@ class KubeObject:
         mock_obj.update.return_value = None
         mock_obj.delete.return_value = None
         mock_obj.reload.return_value = None
-        
+
         # Mock namespace property - return from metadata or default to 'default'
         namespace = self.spec.get('metadata', {}).get('namespace', 'default')
         mock_obj.namespace = namespace
@@ -117,21 +116,21 @@ class KubeObject:
         def mock_namespace_method():
             return namespace
         mock_obj.namespace = mock_namespace_method
-        
+
         # Mock the .objects().get_by_name() call chain
         mock_objects_query = Mock()
         mock_objects_query.get_by_name.return_value = mock_obj
-        
+
         # Patch the class to return our mock when .objects() is called
         self.patcher = patch.object(self.type, 'objects', return_value=mock_objects_query)
         self.patcher.start()
-        
+
         # Also patch pykube.HTTPClient and KubeConfig for constructor calls in oaattype module
         self.api_patcher = patch('oaatoperator.oaattype.pykube.HTTPClient')
         self.config_patcher = patch('oaatoperator.oaattype.pykube.KubeConfig.from_env')
         self.api_patcher.start()
         self.config_patcher.start()
-        
+
         return mock_obj
 
     def __exit__(self, exc_type, exc_value, exc_tb):
@@ -148,18 +147,17 @@ _active_pods = []
 class KubeObjectPod:
     """Mock context manager that simulates Pod objects without k3d."""
     _pod_objects_patcher = None
-    
+
     def __init__(self, input_spec: dict):
         self.spec = deepcopy(input_spec)
 
     def __enter__(self) -> Mock:
-        global _active_pods
-        print(f'[KubeObjectPod] mocking pod creation')
+        print('[KubeObjectPod] mocking pod creation')
         # Create a mock Pod object with the same interface
         from unittest.mock import Mock, patch
         mock_pod = Mock(spec=pykube.Pod)
         # Generate unique name, similar to how Kubernetes handles generateName
-        base_name = self.spec.get('metadata', {}).get('name', 
+        base_name = self.spec.get('metadata', {}).get('name',
                    self.spec.get('metadata', {}).get('generateName', 'mock-pod-'))
         if base_name.endswith('-'):
             import uuid
@@ -177,40 +175,40 @@ class KubeObjectPod:
         mock_pod.update.return_value = None
         mock_pod.delete.return_value = None
         mock_pod.reload.return_value = None
-        
+
         # Mock labels and ensure status/phase are properly set for pod verification
         mock_pod.labels = self.spec.get('metadata', {}).get('labels', {})
-        # Set default 'oaat-name' label if not present  
+        # Set default 'oaat-name' label if not present
         if 'oaat-name' not in mock_pod.labels:
             mock_pod.labels['oaat-name'] = 'mock-item'
-        
+
         # Ensure the pod has a Running phase in status for verify_running tests
         if 'status' not in mock_pod.obj:
             mock_pod.obj['status'] = {}
         if 'phase' not in mock_pod.obj['status']:
             mock_pod.obj['status']['phase'] = 'Running'
-        
+
         # Add this pod to the global registry
         _active_pods.append(mock_pod)
         self.mock_pod = mock_pod
-        
+
         # Create a mock query that properly filters pods by labels
         def get_mock_query(*args, **kwargs):
             mock_query = Mock()
-            
+
             # Keep track of filter criteria
             class MockFilteredQuery:
                 def __init__(self):
                     self.namespace_filter = None
                     self.selector_filter = {}
-                
+
                 def filter(self, namespace=None, selector=None):
                     if namespace is not None:
                         self.namespace_filter = namespace
                     if selector is not None:
                         self.selector_filter.update(selector)
                     return self
-                
+
                 def iterator(self):
                     # Filter active pods based on the selector criteria
                     filtered_pods = []
@@ -225,25 +223,24 @@ class KubeObjectPod:
                         if matches:
                             filtered_pods.append(pod)
                     return filtered_pods
-            
+
             mock_filtered_query = MockFilteredQuery()
             mock_query.filter.return_value = mock_filtered_query
             return mock_query
-        
+
         # Patch pykube.Pod.objects to return our mock query - only patch once
         if not hasattr(KubeObjectPod, '_pod_objects_patcher') or not KubeObjectPod._pod_objects_patcher:
             KubeObjectPod._pod_objects_patcher = patch.object(pykube.Pod, 'objects', side_effect=get_mock_query)
             KubeObjectPod._pod_objects_patcher.start()
-        
+
         return mock_pod
 
     def __exit__(self, exc_type, exc_value, exc_tb) -> None:
-        global _active_pods
-        print(f'[KubeObjectPod] mocking pod deletion')
+        print('[KubeObjectPod] mocking pod deletion')
         # Remove this pod from the global registry
         if self.mock_pod in _active_pods:
             _active_pods.remove(self.mock_pod)
-        
+
         # Stop the Pod.objects patch only when no pods are active
         if not _active_pods and hasattr(KubeObjectPod, '_pod_objects_patcher') and KubeObjectPod._pod_objects_patcher:
             KubeObjectPod._pod_objects_patcher.stop()
