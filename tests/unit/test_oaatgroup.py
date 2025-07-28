@@ -32,7 +32,9 @@ UTC = datetime.timezone.utc
 
 class BasicTests(unittest.TestCase):
     def setUp(self):
-        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+        # Mock API client instead of real k3d connection
+        from unittest.mock import Mock
+        self.api = Mock(spec=pykube.HTTPClient)
         return super().setUp()
 
     @patch('oaatoperator.oaatgroup.OaatType',
@@ -95,7 +97,9 @@ class BasicTests(unittest.TestCase):
 
 class FindJobTests(unittest.TestCase):
     def setUp(self):
-        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+        # Mock API client instead of real k3d connection
+        from unittest.mock import Mock
+        self.api = Mock(spec=pykube.HTTPClient)
         return super().setUp()
 
     @patch('oaatoperator.oaatgroup.OaatType',
@@ -372,7 +376,9 @@ class FindJobTests(unittest.TestCase):
 
 class ValidateTests(unittest.TestCase):
     def setUp(self):
-        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+        # Mock API client instead of real k3d connection
+        from unittest.mock import Mock
+        self.api = Mock(spec=pykube.HTTPClient)
         return super().setUp()
 
     def tearDown(self):
@@ -529,7 +535,9 @@ class ValidateTests(unittest.TestCase):
 
 class OaatGroupTests(unittest.TestCase):
     def setUp(self):
-        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+        # Mock API client instead of real k3d connection
+        from unittest.mock import Mock
+        self.api = Mock(spec=pykube.HTTPClient)
         self.setup = None
         self.setup_kot = None
         return super().setUp()

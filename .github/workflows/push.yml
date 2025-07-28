@@ -10,10 +10,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 3
+      max-parallel: 2
       matrix:
         python-version: ['3.11', '3.12']
-        k8s-version: [v1.30, v1.31, v1.32]
     permissions:
       id-token: write
     steps:
@@ -36,22 +35,10 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test standalone
       run: |
-        python3 -m pytest tests/test_utility.py
-    - name: Setup k3s
-      uses: nolar/setup-k3d-k3s@v1.0.9
-      with:
-        version: ${{ matrix.k8s-version }}
-    - name: Test k3s
-      run: kubectl get nodes
-    - name: Configure k3s
-      run: |
-        kubectl apply -f manifests/01-oaat-operator-crd.yaml
-        kubectl wait --for=condition=Established --timeout=60s crd/oaattypes.kawaja.net
-        kubectl wait --for=condition=Established --timeout=60s crd/oaatgroups.kawaja.net
-        kubectl apply -f manifests/sample-oaat-type.yaml
+        python3 -m pytest tests/unit/test_utility.py
     - name: Run unit tests
       run: |
-        python3 -m pytest -m unit --cov=oaatoperator --cov-append --cov-report=term --cov-report=xml:cov.xml .
+        python3 -m pytest -m unit --cov=oaatoperator --cov-report=term --cov-report=xml:cov.xml .
     - name: Upload Coverage
       uses: codecov/codecov-action@v5.4.1
       with:

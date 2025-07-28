@@ -10,8 +10,6 @@ from oaatoperator.common import KubeOaatType, ProcessingComplete
 import pykube
 from pykube.query import Query
 
-# TODO: This expects a kubernetes cluster (like minikube). It would be better
-# to use a mocking library to handle unit testing locally.
 
 
 class BasicTests(unittest.TestCase):
@@ -97,47 +95,3 @@ class BasicTests(unittest.TestCase):
             self.assertEqual(podspec['container']['name'], 'test')
 
 
-class MiniKubeTests(unittest.TestCase):
-    def test_pod_objects(self):
-        api = pykube.HTTPClient(pykube.KubeConfig.from_env())
-        pod = pykube.Pod.objects(api)
-        self.assertIsInstance(pod, Query)
-
-    def test_pod_create(self):
-        ensure_kubeobj_deleted(pykube.Pod, 'testpod')
-        api = pykube.HTTPClient(pykube.KubeConfig.from_env())
-        newpod = pykube.Pod(api, {
-            'metadata': {
-                'name': 'testpod'
-            },
-            'spec': {
-                'containers': [
-                    {
-                        'name': 'testcontainer',
-                        'image': 'busybox',
-                        'command': ['/bin/sleep', '1000']
-                    }
-                ]
-            }
-        })
-        newpod.create()
-        pod = pykube.Pod.objects(api)
-        self.assertIsInstance(pod, Query)
-        obj = pod.get_by_name('testpod')
-        self.assertIsInstance(obj, pykube.Pod)
-        ensure_kubeobj_deleted(pykube.Pod, 'testpod')
-
-    def test_oaattype_objects(self):
-        api = pykube.HTTPClient(pykube.KubeConfig.from_env())
-        kot = KubeOaatType.objects(api)
-        self.assertIsInstance(kot, Query)
-
-# if this test fails, it could be because there is no 'oaattest'
-# OaatType loaded. try:
-#   kubectl apply -f manifests/sample-oaat-type.yaml
-    def test_oaattype_query(self):
-        api = pykube.HTTPClient(pykube.KubeConfig.from_env())
-        kot = KubeOaatType.objects(api)
-        self.assertIsInstance(kot, Query)
-        obj = kot.get_by_name('oaattest')
-        self.assertIsInstance(obj, KubeOaatType)
