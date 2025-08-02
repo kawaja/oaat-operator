@@ -5,56 +5,8 @@ import dataclasses
 from unittest.mock import Mock, patch
 import pytest
 import pykube
-# import pytest_mock
 
-import pykube
 
-# Global pykube mocking for CI environments without kubeconfig
-@pytest.fixture(autouse=True)
-def mock_pykube_global():
-    """Automatically mock pykube calls for all unit tests to prevent kubeconfig errors.
-
-    This fixture addresses the issue where GitHub Actions and other CI environments
-    don't have ~/.kube/config files or environment variables set up for Kubernetes
-    authentication. Without this mocking, unit tests would fail with errors like:
-
-    - pykube.KubeConfig.from_env() -> No KUBECONFIG env var
-    - pykube.KubeConfig.from_file() -> No ~/.kube/config file
-    - pykube.HTTPClient() -> Invalid config object
-
-    The fixture automatically patches all pykube authentication methods to return
-    mock objects, ensuring unit tests run successfully in any environment.
-    """
-    # Mock all KubeConfig methods that would fail in CI environments
-    with patch('pykube.KubeConfig.from_env') as mock_from_env, \
-         patch('pykube.KubeConfig.from_file') as mock_from_file, \
-         patch('pykube.KubeConfig.from_service_account') as mock_from_sa, \
-         patch('pykube.HTTPClient') as mock_http_client:
-
-        # Create a mock config object that simulates proper kubeconfig
-        mock_config = Mock()
-        mock_config.api = {'server': 'https://mock-k8s-server'}
-        mock_config.namespace = 'default'
-
-        # All KubeConfig factory methods return the same mock config
-        mock_from_env.return_value = mock_config
-        mock_from_file.return_value = mock_config
-        mock_from_sa.return_value = mock_config
-
-        # Create a mock HTTP client that simulates kubernetes API client
-        mock_client = Mock(spec=pykube.HTTPClient)
-        mock_client.config = mock_config
-        mock_client.session = Mock()
-        mock_http_client.return_value = mock_client
-
-        yield {
-            'config': mock_config,
-            'client': mock_client,
-            'from_env': mock_from_env,
-            'from_file': mock_from_file,
-            'from_service_account': mock_from_sa,
-            'http_client': mock_http_client
-        }
 
 
 @dataclasses.dataclass(frozen=True, eq=False, order=False)
@@ -160,9 +112,11 @@ class KubeObject:
         # Mock namespace property - return from metadata or default to 'default'
         namespace = self.spec.get('metadata', {}).get('namespace', 'default')
         mock_obj.namespace = namespace
+
         # Also provide namespace() method for compatibility
         def mock_namespace_method():
             return namespace
+
         mock_obj.namespace = mock_namespace_method
 
         # Mock the .objects().get_by_name() call chain
@@ -186,6 +140,7 @@ class KubeObject:
 # Global registry for active pods to support multiple pod mocking
 _active_pods = []
 
+
 class KubeObjectPod:
     """Mock context manager that simulates Pod objects without k3d."""
     _pod_objects_patcher = None
@@ -199,8 +154,10 @@ class KubeObjectPod:
         from unittest.mock import Mock, patch
         mock_pod = Mock(spec=pykube.Pod)
         # Generate unique name, similar to how Kubernetes handles generateName
-        base_name = self.spec.get('metadata', {}).get('name',
-                   self.spec.get('metadata', {}).get('generateName', 'mock-pod-'))
+        base_name = self.spec.get('metadata', {}).get(
+                        'name',
+                        self.spec.get('metadata', {}).
+                        get('generateName', 'mock-pod-'))
         if base_name.endswith('-'):
             import uuid
             unique_name = base_name + str(uuid.uuid4())[:8]

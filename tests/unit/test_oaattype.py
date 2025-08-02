@@ -1,15 +1,12 @@
 import unittest
 import pytest
 
-pytestmark = pytest.mark.unit
-
-from tests.unit.mocks_pykube import KubeObject, ensure_kubeobj_deleted
+from tests.unit.mocks_pykube import KubeObject
 from tests.unit.testdata import TestData
 from oaatoperator.oaattype import OaatType
 from oaatoperator.common import KubeOaatType, ProcessingComplete
-import pykube
-from pykube.query import Query
 
+pytestmark = pytest.mark.unit
 
 
 class BasicTests(unittest.TestCase):
@@ -93,5 +90,3 @@ class BasicTests(unittest.TestCase):
             ot = OaatType('test-kot')
             podspec = ot.podspec()
             self.assertEqual(podspec['container']['name'], 'test')
-
-

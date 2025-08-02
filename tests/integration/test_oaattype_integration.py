@@ -13,7 +13,7 @@ pytestmark = pytest.mark.integration
 
 class MiniKubeTests(unittest.TestCase):
     """Integration tests that require a real Kubernetes cluster."""
-    
+
     def test_pod_objects(self):
         """Test real pykube Pod.objects() query functionality."""
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
@@ -53,7 +53,7 @@ class MiniKubeTests(unittest.TestCase):
 
     def test_oaattype_query(self):
         """Test real OaatType retrieval from k3d cluster.
-        
+
         Note: If this test fails, it could be because there is no 'oaattest'
         OaatType loaded. Try: kubectl apply -f manifests/sample-oaat-type.yaml
         """

@@ -29,7 +29,7 @@ class TestData:
         og_mock.oaattype = MagicMock(spec=OaatType)
         og_mock.status = {}
         og_mock.name = ''
-        og_mock.api = MagicMock(spec=pykube.HTTPClient)
+        og_mock.api = MagicMock()  # Remove spec since pykube.HTTPClient is already mocked globally
 
     @classmethod
     def setup_kwargs(cls, input_obj):
