@@ -1,59 +1,8 @@
 from copy import deepcopy
 from typing import Type
-import dataclasses
 
 from unittest.mock import Mock, patch
-import pytest
 import pykube
-
-
-
-
-@dataclasses.dataclass(frozen=True, eq=False, order=False)
-class LoginMocks:
-    pykube_in_cluster: Mock
-    pykube_from_file: Mock
-
-
-@dataclasses.dataclass(frozen=True, eq=False, order=False)
-class KubeOaatTypeMocks:
-    pykube_in_cluster: Mock
-    pykube_from_file: Mock
-
-
-@pytest.fixture()
-def login_mocks(mocker):
-    kwargs = {}
-    try:
-        import pykube
-    except ImportError:
-        pass
-    else:
-        cfg = pykube.KubeConfig({
-            'current-context': 'self',
-            'clusters': [{
-                'name': 'self',
-                'cluster': {
-                    'server': 'localhost'
-                }
-            }],
-            'contexts': [{
-                'name': 'self',
-                'context': {
-                    'cluster': 'self',
-                    'namespace': 'default'
-                }
-            }],
-        })
-        kwargs.update(
-            pykube_in_cluster=mocker.patch.object(pykube.KubeConfig,
-                                                  'from_service_account',
-                                                  return_value=cfg),
-            pykube_from_file=mocker.patch.object(pykube.KubeConfig,
-                                                 'from_file',
-                                                 return_value=cfg),
-        )
-    return LoginMocks(**kwargs)
 
 
 def ensure_kubeobj_deleted(type, name):
@@ -61,20 +10,6 @@ def ensure_kubeobj_deleted(type, name):
     print(f'[ensure_kubeobj_deleted] mocking deletion check for {name}')
     print(f'[ensure_kubeobj_deleted] {name} does not exist (mocked)')
     print(f'[ensure_kubeobj_deleted] {name} deleted (mocked)')
-
-
-def ensure_kubeobj_exists(ktype: Type[pykube.objects.APIObject], spec: dict,
-                          name: str):
-    """Mock version - simulates object creation without k3d."""
-    print(f'[ensure_kubeobj_exists] mocking creation of {ktype} {name} with {spec}')
-    print(f'[ensure_kubeobj_exists] created {ktype} (mocked)')
-    print(f'[ensure_kubeobj_exists] {name} exists (mocked)')
-    # Return a mock object that behaves like the real Kubernetes object
-    from unittest.mock import Mock
-    mock_obj = Mock()
-    mock_obj.name = name
-    mock_obj.exists.return_value = True
-    return mock_obj
 
 
 class KubeObject:
@@ -126,8 +61,6 @@ class KubeObject:
         # Patch the class to return our mock when .objects() is called
         self.patcher = patch.object(self.type, 'objects', return_value=mock_objects_query)
         self.patcher.start()
-
-        # Note: Global pykube mocking handled by mock_pykube_global fixture
 
         return mock_obj
 
