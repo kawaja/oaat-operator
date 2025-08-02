@@ -25,7 +25,11 @@ help:
 
 # Local testing (requires local environment setup)
 test-unit:
-	python3 -m pytest tests/unit/ -v
+	@if [ -f .venv/bin/activate ]; then \
+		. .venv/bin/activate && python3 tests/unit/run_tests_with_mocking.py tests/unit/ -v; \
+	else \
+		python3 tests/unit/run_tests_with_mocking.py tests/unit/ -v; \
+	fi
 
 test-integration:
 	python3 -m pytest tests/integration/ -v

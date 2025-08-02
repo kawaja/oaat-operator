@@ -2,7 +2,6 @@ import sys
 import os
 from copy import deepcopy
 import datetime
-import pykube  # type: ignore
 import kopf
 from typing import cast
 
@@ -34,7 +33,7 @@ class BasicTests(unittest.TestCase):
     def setUp(self):
         # Mock API client instead of real k3d connection
         from unittest.mock import Mock
-        self.api = Mock()  # Remove spec since pykube.HTTPClient is already mocked globally
+        self.api = Mock()  # pykube.HTTPClient is mocked globally
         return super().setUp()
 
     @patch('oaatoperator.oaatgroup.OaatType',
@@ -99,7 +98,7 @@ class FindJobTests(unittest.TestCase):
     def setUp(self):
         # Mock API client instead of real k3d connection
         from unittest.mock import Mock
-        self.api = Mock()  # Remove spec since pykube.HTTPClient is already mocked globally
+        self.api = Mock()  # pykube.HTTPClient is mocked globally
         return super().setUp()
 
     @patch('oaatoperator.oaatgroup.OaatType',
@@ -378,7 +377,7 @@ class ValidateTests(unittest.TestCase):
     def setUp(self):
         # Mock API client instead of real k3d connection
         from unittest.mock import Mock
-        self.api = Mock()  # Remove spec since pykube.HTTPClient is already mocked globally
+        self.api = Mock()  # pykube.HTTPClient is mocked globally
         return super().setUp()
 
     def tearDown(self):
@@ -537,7 +536,7 @@ class OaatGroupTests(unittest.TestCase):
     def setUp(self):
         # Mock API client instead of real k3d connection
         from unittest.mock import Mock
-        self.api = Mock()  # Remove spec since pykube.HTTPClient is already mocked globally
+        self.api = Mock()  # pykube.HTTPClient is mocked globally
         self.setup = None
         self.setup_kot = None
         return super().setUp()
