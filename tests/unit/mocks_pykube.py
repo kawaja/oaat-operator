@@ -2,11 +2,59 @@ from copy import deepcopy
 from typing import Type
 import dataclasses
 
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 import pytest
+import pykube
 # import pytest_mock
 
 import pykube
+
+# Global pykube mocking for CI environments without kubeconfig
+@pytest.fixture(autouse=True)
+def mock_pykube_global():
+    """Automatically mock pykube calls for all unit tests to prevent kubeconfig errors.
+
+    This fixture addresses the issue where GitHub Actions and other CI environments
+    don't have ~/.kube/config files or environment variables set up for Kubernetes
+    authentication. Without this mocking, unit tests would fail with errors like:
+
+    - pykube.KubeConfig.from_env() -> No KUBECONFIG env var
+    - pykube.KubeConfig.from_file() -> No ~/.kube/config file
+    - pykube.HTTPClient() -> Invalid config object
+
+    The fixture automatically patches all pykube authentication methods to return
+    mock objects, ensuring unit tests run successfully in any environment.
+    """
+    # Mock all KubeConfig methods that would fail in CI environments
+    with patch('pykube.KubeConfig.from_env') as mock_from_env, \
+         patch('pykube.KubeConfig.from_file') as mock_from_file, \
+         patch('pykube.KubeConfig.from_service_account') as mock_from_sa, \
+         patch('pykube.HTTPClient') as mock_http_client:
+
+        # Create a mock config object that simulates proper kubeconfig
+        mock_config = Mock()
+        mock_config.api = {'server': 'https://mock-k8s-server'}
+        mock_config.namespace = 'default'
+
+        # All KubeConfig factory methods return the same mock config
+        mock_from_env.return_value = mock_config
+        mock_from_file.return_value = mock_config
+        mock_from_sa.return_value = mock_config
+
+        # Create a mock HTTP client that simulates kubernetes API client
+        mock_client = Mock(spec=pykube.HTTPClient)
+        mock_client.config = mock_config
+        mock_client.session = Mock()
+        mock_http_client.return_value = mock_client
+
+        yield {
+            'config': mock_config,
+            'client': mock_client,
+            'from_env': mock_from_env,
+            'from_file': mock_from_file,
+            'from_service_account': mock_from_sa,
+            'http_client': mock_http_client
+        }
 
 
 @dataclasses.dataclass(frozen=True, eq=False, order=False)
@@ -125,20 +173,14 @@ class KubeObject:
         self.patcher = patch.object(self.type, 'objects', return_value=mock_objects_query)
         self.patcher.start()
 
-        # Also patch pykube.HTTPClient and KubeConfig for constructor calls in oaattype module
-        self.api_patcher = patch('oaatoperator.oaattype.pykube.HTTPClient')
-        self.config_patcher = patch('oaatoperator.oaattype.pykube.KubeConfig.from_env')
-        self.api_patcher.start()
-        self.config_patcher.start()
+        # Note: Global pykube mocking handled by mock_pykube_global fixture
 
         return mock_obj
 
     def __exit__(self, exc_type, exc_value, exc_tb):
         print(f'[KubeObject] mocking deletion of {self.name} ({self.type})')
-        # Stop all patches
+        # Stop patches
         self.patcher.stop()
-        self.api_patcher.stop()
-        self.config_patcher.stop()
 
 
 # Global registry for active pods to support multiple pod mocking
