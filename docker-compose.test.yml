@@ -16,7 +16,7 @@ services:
       # Mount source for development
       - ./tests:/home/runner/oaat-operator/tests:ro
       - ./oaatoperator:/home/runner/oaat-operator/oaatoperator:ro
-    command: python3 tests/run_tests_with_mocking.py tests/unit/ -v --tb=short
+    command: python3 tests/unit/run_tests_with_mocking.py tests/unit/ -v --tb=short
 
   # Unit tests with coverage (mimics GitHub Actions)
   unit-tests-coverage:

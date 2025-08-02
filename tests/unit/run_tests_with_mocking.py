@@ -6,8 +6,8 @@ Test runner script that ensures pykube mocking is applied before running pytest.
 import sys
 import os
 
-# Add tests directory to path
-sys.path.insert(0, '/home/runner/oaat-operator/tests')
+# Add unit tests directory to path
+sys.path.insert(0, '/home/runner/oaat-operator/tests/unit')
 
 # Import early mocking BEFORE pytest or any test modules
 print("Importing early pykube mocking...")
