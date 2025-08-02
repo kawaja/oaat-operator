@@ -28,7 +28,7 @@ The current test validates these Overseer methods:
 
 ### 1. Unit Tests (`tests/unit/test_overseer_unit.py`)
 
-**Purpose**: Test individual Overseer methods with full mocking  
+**Purpose**: Test individual Overseer methods with full mocking
 **Approach**: Mock all external dependencies (pykube, kopf, logging)
 
 #### Test Categories:
@@ -50,7 +50,7 @@ The current test validates these Overseer methods:
 
 ### 2. Integration Tests (`tests/integration/test_overseer_integration.py`)
 
-**Purpose**: Test Overseer functionality in real Kubernetes environment  
+**Purpose**: Test Overseer functionality in real Kubernetes environment
 **Approach**: Keep existing k3d + KopfRunner pattern
 
 #### Test Scenarios:
@@ -169,11 +169,11 @@ This refactoring will provide both fast feedback through unit tests and comprehe
 
 ### **Testing Commands**
 ```bash
-# Fast unit tests (no k3d required) - CI default  
+# Fast unit tests (no k3d required) - CI default
 pytest -m unit
 
 # Integration tests (k3d required) - Manual/nightly
-pytest -m integration  
+pytest -m integration
 
 # All tests (k3d required)
 pytest
@@ -252,13 +252,13 @@ for pod in _active_pods:
 
 #### **Before Enhanced Mocking**
 ```
-FAILED tests/unit/test_oaattype.py - oaatoperator.common.ProcessingComplete: 
+FAILED tests/unit/test_oaattype.py - oaatoperator.common.ProcessingComplete:
     error retrieving "test-kot" OaatType object
-FAILED tests/unit/test_oaatgroup.py - AssertionError: None != 'default'  
+FAILED tests/unit/test_oaatgroup.py - AssertionError: None != 'default'
 FAILED tests/unit/test_oaatgroup.py - AssertionError: ProcessingComplete not raised
 ```
 
-#### **After Enhanced Mocking**  
+#### **After Enhanced Mocking**
 ```
 ======================== 169 passed, 2 skipped in 1.30s ========================
 ```
@@ -273,3 +273,32 @@ FAILED tests/unit/test_oaatgroup.py - AssertionError: ProcessingComplete not rai
 6. **Name Generation**: UUID-based unique names for `generateName` specs
 
 This sophisticated mocking infrastructure enables true unit testing while maintaining complete behavioral compatibility with the real Kubernetes environment.
+
+### **Global pykube Mocking for CI Environments**
+
+A critical component for GitHub Actions and other CI environments is the automatic global mocking of pykube authentication:
+
+```python
+@pytest.fixture(autouse=True)
+def mock_pykube_global():
+    """Automatically mock pykube calls for all unit tests to prevent kubeconfig errors."""
+    with patch('pykube.KubeConfig.from_env') as mock_from_env, \
+         patch('pykube.KubeConfig.from_file') as mock_from_file, \
+         patch('pykube.KubeConfig.from_service_account') as mock_from_sa, \
+         patch('pykube.HTTPClient') as mock_http_client:
+        # Return properly structured mock objects
+        yield mock_objects
+```
+
+**Problem Solved:**
+- **GitHub Actions Issue**: CI environments lack `~/.kube/config` files and `KUBECONFIG` environment variables
+- **Authentication Failures**: `pykube.KubeConfig.from_env()` and `pykube.KubeConfig.from_file()` would fail
+- **HTTPClient Errors**: Invalid config objects would cause `pykube.HTTPClient()` initialization to fail
+
+**Solution Benefits:**
+- **Automatic Application**: `autouse=True` ensures all unit tests get pykube mocking without explicit activation
+- **Comprehensive Coverage**: Mocks all authentication methods (`from_env`, `from_file`, `from_service_account`)
+- **Realistic Objects**: Mock config and HTTP client objects have proper structure and attributes
+- **CI Compatibility**: Unit tests run successfully in any environment (local, CI, containers)
+
+This global mocking layer ensures that the sophisticated mock infrastructure works reliably across all deployment environments without requiring kubeconfig setup.
