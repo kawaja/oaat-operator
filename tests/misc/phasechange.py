@@ -108,6 +108,7 @@ def pod_succeeded(**kwargs) -> None:
     kwargs['logger'].debug(
         f'[pod_succeeded] reason: {kwargs.get("reason", "unknown")}')
 
+
 @kopf.timer('', 'v1', 'pods',
             interval=240,
             labels={

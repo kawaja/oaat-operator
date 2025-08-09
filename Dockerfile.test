@@ -1,0 +1,47 @@
+# Dockerfile.test - Simulates GitHub Actions environment for local testing
+FROM python:3.12-bookworm
+
+# Install Python and basic dependencies (similar to GitHub Actions ubuntu-latest)
+RUN apt-get update && apt-get install -y \
+#    python3.11 \
+#    python3.11-venv \
+#    python3-pip \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python 3.11 as default python3
+#RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+
+# Create a non-root user (GitHub Actions uses 'runner')
+RUN useradd -m -s /bin/bash runner
+
+# Switch to the runner user
+USER runner
+WORKDIR /home/runner
+
+# Set up environment variables similar to GitHub Actions
+ENV RUNNER_OS=Linux
+ENV RUNNER_ARCH=X64
+ENV GITHUB_ACTIONS=true
+ENV CI=true
+
+# Ensure no Kubernetes config files exist (like in GitHub Actions)
+RUN rm -rf ~/.kube/ 2>/dev/null || true
+
+# Copy project files
+COPY --chown=runner:runner . /home/runner/oaat-operator/
+WORKDIR /home/runner/oaat-operator
+
+# Create virtual environment and install dependencies
+#RUN python3 -m venv .venv
+#RUN .venv/bin/pip install --upgrade pip
+#RUN .venv/bin/pip install -r requirements.txt
+#RUN .venv/bin/pip install -r requirements/dev.txt
+RUN echo 'export PATH=${PATH}:${HOME}/.local/bin' >> ${HOME}/.bashrc
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
+RUN pip install -r requirements/dev.txt
+
+# Set the default command to run unit tests
+#CMD [".venv/bin/python3", "-m", "pytest", "tests/unit/", "-v"]
+CMD ["python3", "-m", "pytest", "tests/unit/", "-v"]

@@ -2,6 +2,7 @@
 dir=$(dirname $0)
 cd ${dir}
 dir=$(pwd)
+top=$dir/../..
 
 skip_cluster_rebuild=
 if [ "$1" = "--skip-cluster-rebuild" ]; then
@@ -9,18 +10,26 @@ if [ "$1" = "--skip-cluster-rebuild" ]; then
    shift
 fi
 
+echo "--> checking for kuttl"
+kubectl kuttl help > /dev/null 2>&1 || fail=TRUE
+if [ -n "${fail}" ]; then
+   echo "cannot find kuttl"
+   echo "run: kubectl krew install kuttl"
+   exit 1
+fi
+
 echo "--> building operator container"
 export OPERATOR_TAG="kawaja.net/oaatoperator:e2e-$$"
 (
-   cd ..
+   cd ${top}
    docker build --file build/Dockerfile --tag ${OPERATOR_TAG} .
 )
 echo "--> updating python dependencies"
 python3 -m pip install --upgrade pip
-pip --quiet install -r ../requirements/dev.txt
+pip --quiet install -r ${top}/requirements/dev.txt
 
 echo "--> cleaning up old files"
-cd e2e
+cd cases
 for dir in *; do
    if [ -d ${dir} ]; then
          ${dir}/update-steps.sh --cleanup
@@ -37,7 +46,7 @@ for dir in *; do
       if [ -f "${dir}/update-steps.sh" ]; then
          echo "**** setting up ${dir} test ****"
          if [ ! -x "${dir}/update-steps.sh" ]; then
-            echo "file e2e/${dir}/update-steps.sh must be executable" >&2
+            echo "file ${dir}/update-steps.sh must be executable" >&2
             exit 1
          fi
          if [ -z $skip_cluster_rebuild ]; then

@@ -6,14 +6,17 @@ from copy import deepcopy
 
 from unittest.mock import patch
 import unittest
+import pytest
+
+pytestmark = pytest.mark.unit
 
 # enable importing of oaatoperator modules without placing constraints
 # on how they handle non-test in-module importing
 sys.path.append(
-    os.path.dirname(os.path.realpath(__file__)) + "/../oaatoperator")
+    os.path.dirname(os.path.realpath(__file__)) + "/../../oaatoperator")
 
-from tests.testdata import TestData  # noqa: E402
-from tests.utility import ExtendedTestCase, get_env  # noqa: E402
+from tests.unit.testdata import TestData  # noqa: E402
+from tests.unit.utility import ExtendedTestCase, get_env  # noqa: E402
 from oaatoperator.oaatitem import OaatItem, OaatItems  # noqa: E402
 from oaatoperator.common import ProcessingComplete  # noqa: E402
 

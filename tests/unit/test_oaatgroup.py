@@ -2,21 +2,23 @@ import sys
 import os
 from copy import deepcopy
 import datetime
-import pykube  # type: ignore
 import kopf
 from typing import cast
 
 import unittest
 import unittest.mock
 from unittest.mock import patch, MagicMock
+import pytest
+
+pytestmark = pytest.mark.unit
 
 # enable importing of oaatoperator modules without placing constraints
 # on how they handle non-test in-module importing
 sys.path.append(
-    os.path.dirname(os.path.realpath(__file__)) + "/../oaatoperator")
+    os.path.dirname(os.path.realpath(__file__)) + "/../../oaatoperator")
 
-from tests.mocks_pykube import KubeObject, KubeObjectPod  # noqa: E402
-from tests.testdata import TestData  # noqa: E402
+from tests.unit.mocks_pykube import KubeObject, KubeObjectPod  # noqa: E402
+from tests.unit.testdata import TestData  # noqa: E402
 
 from oaatoperator.oaatgroup import OaatGroup, OaatGroupOverseer  # noqa: E402
 from oaatoperator.py_types import CallbackArgs  # noqa: E402
@@ -29,7 +31,9 @@ UTC = datetime.timezone.utc
 
 class BasicTests(unittest.TestCase):
     def setUp(self):
-        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+        # Mock API client instead of real k3d connection
+        from unittest.mock import Mock
+        self.api = Mock()  # pykube.HTTPClient is mocked globally
         return super().setUp()
 
     @patch('oaatoperator.oaatgroup.OaatType',
@@ -92,7 +96,9 @@ class BasicTests(unittest.TestCase):
 
 class FindJobTests(unittest.TestCase):
     def setUp(self):
-        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+        # Mock API client instead of real k3d connection
+        from unittest.mock import Mock
+        self.api = Mock()  # pykube.HTTPClient is mocked globally
         return super().setUp()
 
     @patch('oaatoperator.oaatgroup.OaatType',
@@ -369,7 +375,9 @@ class FindJobTests(unittest.TestCase):
 
 class ValidateTests(unittest.TestCase):
     def setUp(self):
-        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+        # Mock API client instead of real k3d connection
+        from unittest.mock import Mock
+        self.api = Mock()  # pykube.HTTPClient is mocked globally
         return super().setUp()
 
     def tearDown(self):
@@ -526,7 +534,9 @@ class ValidateTests(unittest.TestCase):
 
 class OaatGroupTests(unittest.TestCase):
     def setUp(self):
-        self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+        # Mock API client instead of real k3d connection
+        from unittest.mock import Mock
+        self.api = Mock()  # pykube.HTTPClient is mocked globally
         self.setup = None
         self.setup_kot = None
         return super().setUp()

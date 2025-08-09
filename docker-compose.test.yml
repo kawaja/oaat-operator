@@ -1,0 +1,78 @@
+# docker-compose.test.yml - Easy orchestration for testing
+version: '3.8'
+
+services:
+  # Unit tests in clean environment (no kubeconfig)
+  unit-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      - CI=true
+      - GITHUB_ACTIONS=true
+      - RUNNER_OS=Linux
+      - PYTHONPATH=/home/runner/oaat-operator/tests:/home/runner/oaat-operator
+    volumes:
+      # Mount source for development
+      - ./tests:/home/runner/oaat-operator/tests:ro
+      - ./oaatoperator:/home/runner/oaat-operator/oaatoperator:ro
+    command: python3 tests/unit/run_tests_with_mocking.py tests/unit/ -v --tb=short
+
+  # Unit tests with coverage (mimics GitHub Actions)
+  unit-tests-coverage:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      - CI=true
+      - GITHUB_ACTIONS=true
+      - RUNNER_OS=Linux
+      - PYTHONPATH=/home/runner/oaat-operator/tests:/home/runner/oaat-operator
+    volumes:
+      - ./tests:/home/runner/oaat-operator/tests:ro
+      - ./oaatoperator:/home/runner/oaat-operator/oaatoperator:ro
+      - ./coverage-reports:/home/runner/oaat-operator/coverage-reports
+    command: >
+      python3 tests/unit/run_tests_with_mocking.py tests/unit/
+        -v
+        --cov=oaatoperator
+        --cov-report=term
+        --cov-report=xml:coverage-reports/cov.xml
+#    command: >
+#      python3 -m pytest tests/unit/ 
+#      --cov=oaatoperator 
+#      --cov-report=term 
+#      --cov-report=xml:coverage-reports/cov.xml
+#      -v
+
+  # Linting check (mimics GitHub Actions)
+  lint-check:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      - CI=true
+      - GITHUB_ACTIONS=true
+    volumes:
+      - ./oaatoperator:/home/runner/oaat-operator/oaatoperator:ro
+      - ./tests:/home/runner/oaat-operator/tests:ro
+    command: >
+      bash -c '
+      ~/.local/bin/flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics &&
+      ~/.local/bin/flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      '
+
+  # Interactive shell for debugging
+  debug:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      - CI=true
+      - GITHUB_ACTIONS=true
+    volumes:
+      - ./tests:/home/runner/oaat-operator/tests
+      - ./oaatoperator:/home/runner/oaat-operator/oaatoperator
+    command: /bin/bash
+    stdin_open: true
+    tty: true

@@ -1,5 +1,6 @@
 import unittest
 
+
 class ExtendedTestCase(unittest.TestCase):
     def assertHasAttr(self, obj, intendedAttr):
         testBool = hasattr(obj, intendedAttr)

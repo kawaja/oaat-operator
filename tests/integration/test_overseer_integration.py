@@ -1,14 +1,20 @@
 import unittest
 import time
 from kopf.testing import KopfRunner
+import pytest
 
 import pykube
 import unittest.mock
 
 
+pytestmark = pytest.mark.integration
+
+
 class BasicTests(unittest.TestCase):
 
     def test_kopfrunner(self):
+        # Add a small delay to ensure cluster is fully stabilized
+        time.sleep(2)
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         doc = {
             'apiVersion': 'v1',
@@ -39,8 +45,7 @@ class BasicTests(unittest.TestCase):
         print('running operator')
         with KopfRunner([
                 'run', '--namespace=default', '--verbose',
-                'tests/operator_overseer.py']) as runner:
-            print('creating pod')
+                'tests/integration/operator_overseer.py']) as runner:
             pod.create()
             print('created pod')
             time.sleep(1)

@@ -7,13 +7,16 @@ from kopf._cogs.structs import credentials
 
 import unittest
 from unittest.mock import patch, MagicMock, Mock
+import pytest
+
+pytestmark = pytest.mark.unit
 
 # enable importing of oaatoperator modules without placing constraints
 # on how they handle non-test in-module importing
 sys.path.append(
-    os.path.dirname(os.path.realpath(__file__)) + "/../oaatoperator")
+    os.path.dirname(os.path.realpath(__file__)) + "/../../oaatoperator")
 
-from tests.testdata import TestData  # noqa: E402
+from tests.unit.testdata import TestData  # noqa: E402
 
 from oaatoperator.common import ProcessingComplete  # noqa: E402
 from oaatoperator.oaatitem import OaatItem  # noqa: E402

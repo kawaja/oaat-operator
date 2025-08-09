@@ -1,5 +1,7 @@
 import unittest
+import pytest
 from datetime import timedelta as td
+
 from datetime import datetime as dt
 import datetime
 import oaatoperator.utility
@@ -7,6 +9,7 @@ from oaatoperator.utility import (TimeWindow, date_from_isostr, my_name,
                                   now_iso, parse_duration, parse_time)
 
 
+pytestmark = pytest.mark.unit
 UTC = datetime.timezone.utc
 
 

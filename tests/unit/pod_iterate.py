@@ -1,7 +1,8 @@
 from pykube import Pod
-import pykube
 
-api = pykube.HTTPClient(pykube.KubeConfig.from_env())
+# Mock API for unit testing - no real k3d connection needed
+from unittest.mock import Mock
+api = Mock()  # pykube.HTTPClient is mocked globally
 
 for pod in Pod.objects(api, namespace='default').iterator():
     if 'parent-name' in pod.labels:
