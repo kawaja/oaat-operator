@@ -4,7 +4,7 @@ import pytest
 import pykube
 from pykube.query import Query
 
-from tests.unit.mocks_pykube import ensure_kubeobj_deleted
+from tests.integration.utils import ensure_kubeobj_deleted
 from oaatoperator.common import KubeOaatType
 
 

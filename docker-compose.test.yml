@@ -27,16 +27,23 @@ services:
       - CI=true
       - GITHUB_ACTIONS=true
       - RUNNER_OS=Linux
+      - PYTHONPATH=/home/runner/oaat-operator/tests:/home/runner/oaat-operator
     volumes:
       - ./tests:/home/runner/oaat-operator/tests:ro
       - ./oaatoperator:/home/runner/oaat-operator/oaatoperator:ro
       - ./coverage-reports:/home/runner/oaat-operator/coverage-reports
     command: >
-      python3 -m pytest tests/unit/ 
-      --cov=oaatoperator 
-      --cov-report=term 
-      --cov-report=xml:coverage-reports/cov.xml
-      -v
+      python3 tests/unit/run_tests_with_mocking.py tests/unit/
+        -v
+        --cov=oaatoperator
+        --cov-report=term
+        --cov-report=xml:coverage-reports/cov.xml
+#    command: >
+#      python3 -m pytest tests/unit/ 
+#      --cov=oaatoperator 
+#      --cov-report=term 
+#      --cov-report=xml:coverage-reports/cov.xml
+#      -v
 
   # Linting check (mimics GitHub Actions)
   lint-check:

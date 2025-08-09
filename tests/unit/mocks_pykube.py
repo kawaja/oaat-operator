@@ -1,7 +1,7 @@
 from copy import deepcopy
 from typing import Type
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 import pykube
 
 

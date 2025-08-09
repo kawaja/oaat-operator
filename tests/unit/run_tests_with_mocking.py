@@ -17,6 +17,7 @@ sys.path.insert(0, unit_tests_dir)
 # Import early mocking BEFORE pytest or any test modules
 print("Importing unified pykube mocking...")
 import early_pykube_mock
+early_pykube_mock.apply_mocking()
 print("Early mocking applied, now running pytest...")
 
 # Now run pytest

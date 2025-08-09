@@ -1,5 +1,5 @@
 # Makefile for oaat-operator testing
-.PHONY: help test-local test-ci-local test-unit test-integration lint clean build-docker
+.PHONY: help test-ci-local test-unit test-integration lint clean build-docker
 
 # Default target
 help:
@@ -32,11 +32,12 @@ test-unit:
 	fi
 
 test-integration:
-	python3 -m pytest tests/integration/ -v
+	@. .venv/bin/activate && tests/integration/setup.sh
+	. .venv/bin/activate && python3 -m pytest tests/integration/ -v
 
 lint:
-	flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-	flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+	. .venv/bin/activate && flake8 . --count --exclude .venv --select=E9,F63,F7,F82 --show-source --statistics
+	. .venv/bin/activate && flake8 . --count --exclude .venv --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
 # CI simulation with Docker (no local env required)
 test-ci-local:

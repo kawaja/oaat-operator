@@ -13,6 +13,8 @@ pytestmark = pytest.mark.integration
 class BasicTests(unittest.TestCase):
 
     def test_kopfrunner(self):
+        # Add a small delay to ensure cluster is fully stabilized
+        time.sleep(2)
         api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         doc = {
             'apiVersion': 'v1',
