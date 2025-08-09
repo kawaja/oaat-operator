@@ -7,8 +7,9 @@ help:
 	@echo ""
 	@echo "Local Development:"
 	@echo "  make test-unit          Run unit tests locally (fast)"
+	@echo "  make test-unit-coverage Run unit tests locally with coverage (fast)"
 	@echo "  make test-integration   Run integration tests locally (requires k3d)"
-	@echo "  make lint              Run linting checks locally"
+	@echo "  make lint               Run linting checks locally"
 	@echo ""
 	@echo "CI Simulation:"
 	@echo "  make test-ci-local     🐳 Run all tests in CI-like Docker environment"
@@ -29,6 +30,14 @@ test-unit:
 		. .venv/bin/activate && python3 tests/unit/run_tests_with_mocking.py tests/unit/ -v; \
 	else \
 		python3 tests/unit/run_tests_with_mocking.py tests/unit/ -v; \
+	fi
+
+# Local testing with coverage (requires local environment setup)
+test-unit-coverage:
+	@if [ -f .venv/bin/activate ]; then \
+		. .venv/bin/activate && python3 tests/unit/run_tests_with_mocking.py tests/unit/ -v --cov=oaatoperator --cov-report=term --cov-report=xml:coverage-reports/cov.xml; \
+	else \
+		python3 tests/unit/run_tests_with_mocking.py tests/unit/ -v --cov=oaatoperator --cov-report=term --cov-report=xml:coverage-reports/cov.xml; \
 	fi
 
 test-integration:

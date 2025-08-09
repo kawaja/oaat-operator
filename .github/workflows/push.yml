@@ -38,7 +38,7 @@ jobs:
         python3 -m pytest tests/unit/test_utility.py
     - name: Run unit tests
       run: |
-        python3 -m pytest -m unit --cov=oaatoperator --cov-report=term --cov-report=xml:cov.xml .
+        make test-unit-coverage
     - name: Upload Coverage
       uses: codecov/codecov-action@v5.4.3
       with:
