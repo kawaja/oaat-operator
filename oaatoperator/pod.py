@@ -59,6 +59,38 @@ class PodOverseer(Overseer):
                 f'unable to determine termination time for {self.name}')
             self.finished_at = now()
 
+    def get_runtime_seconds(self) -> Optional[float]:
+        """Calculate job runtime in seconds.
+
+        Returns:
+            Runtime in seconds, or None if start/end times unavailable
+        """
+        if self.started_at is None or self.finished_at is None:
+            return None
+
+        runtime_delta = self.finished_at - self.started_at
+        return runtime_delta.total_seconds()
+
+    def record_runtime_statistics(self, item_name: str) -> None:
+        """Record runtime statistics for this job completion.
+
+        Args:
+            item_name: Name of the item that completed
+        """
+        runtime_seconds = self.get_runtime_seconds()
+        if runtime_seconds is None or runtime_seconds <= 0:
+            self.warning(f'Unable to calculate runtime for {item_name}: '
+                        f'started_at={self.started_at}, finished_at={self.finished_at}')
+            return
+
+        # Get parent OaatGroup to access runtime statistics
+        oaatgroup = self.get_parent()
+        try:
+            oaatgroup.record_item_runtime(item_name, runtime_seconds)
+            self.debug(f'Recorded runtime for {item_name}: {runtime_seconds:.1f}s')
+        except Exception as e:
+            self.warning(f'Failed to record runtime statistics for {item_name}: {e}')
+
     def update_failure_status(self) -> None:
         """
         update_failure_status
