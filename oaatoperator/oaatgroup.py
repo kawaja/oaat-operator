@@ -21,6 +21,7 @@ from oaatoperator.oaattype import OaatType
 from oaatoperator.overseer import Overseer
 from oaatoperator.common import (ProcessingComplete, KubeOaatGroup,
                                  InternalError)
+from oaatoperator.runtime_stats import RuntimeStatsManager
 
 
 # TODO: I'm not convinced about this composite object. It's essentially
@@ -395,6 +396,8 @@ class OaatGroup:
             self.items = OaatItems(group=self,
                                    obj=cast(dict[str, Any], kopf_object))
             self.memo = kopf_object['memo']
+            # Initialize runtime statistics manager
+            self._init_runtime_stats()
             return
 
         # kube object name supplied
@@ -426,6 +429,67 @@ class OaatGroup:
         self.items = OaatItems(group=self,
                                obj=cast(dict[str, Any], self.kube_object.obj))
         self.status = self.kube_object.obj.get('status', {})
+        # Initialize runtime statistics manager
+        self._init_runtime_stats()
+
+    def _init_runtime_stats(self) -> None:
+        """Initialize runtime statistics manager from stored status."""
+        self.runtime_stats = RuntimeStatsManager()
+        
+        # Load existing statistics from status if available
+        if self.kopf_object:
+            status_dict = self.kopf_object.get_status('runtime_stats', {})
+        else:
+            status_dict = self.status.get('runtime_stats', {})
+            
+        if status_dict:
+            try:
+                self.runtime_stats.from_dict(status_dict)
+            except Exception as e:
+                if hasattr(self, 'logger'):
+                    self.logger.warning(f'Failed to load runtime statistics: {e}')
+                # Continue with empty stats if loading fails
+                self.runtime_stats = RuntimeStatsManager()
+
+    def _save_runtime_stats(self) -> None:
+        """Save runtime statistics to OaatGroup status."""
+        try:
+            stats_dict = self.runtime_stats.to_dict()
+            if self.kopf_object:
+                self.kopf_object.set_status('runtime_stats', stats_dict)
+            else:
+                # For kube-only access, we'd need to patch the object
+                # This is more complex and may not be needed for the current use case
+                pass
+        except Exception as e:
+            if hasattr(self, 'logger'):
+                self.logger.warning(f'Failed to save runtime statistics: {e}')
+
+    def record_item_runtime(self, item_name: str, runtime_seconds: float) -> None:
+        """Record runtime statistics for an item.
+        
+        Args:
+            item_name: Name of the item that completed
+            runtime_seconds: Runtime in seconds
+        """
+        try:
+            self.runtime_stats.add_runtime(item_name, runtime_seconds)
+            self._save_runtime_stats()
+        except Exception as e:
+            if hasattr(self, 'logger'):
+                self.logger.warning(f'Failed to record runtime for {item_name}: {e}')
+
+    def get_predicted_runtime(self, item_name: str, confidence_factor: float = 1.5) -> Optional[float]:
+        """Get predicted runtime for an item.
+        
+        Args:
+            item_name: Name of the item
+            confidence_factor: Confidence factor for prediction
+            
+        Returns:
+            Predicted runtime in seconds or None if no data
+        """
+        return self.runtime_stats.predict_runtime(item_name, confidence_factor)
 
     def namespace(self) -> Optional[str]:
         if self.kopf_object:
