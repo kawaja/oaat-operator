@@ -17,31 +17,31 @@ This is `oaat-operator`, a Kubernetes operator that manages groups of tasks wher
 kubectl apply -f manifests/01-oaat-operator-crd.yaml
 
 # Run unit tests (no k8s required)
-python3 -m pytest tests/test_utility.py
+. .venv/bin/activate && python3 -m pytest tests/unit/test_utility.py
 
 # Run full test suite (requires k8s cluster)
-python3 -m pytest --cov=oaatoperator --cov-append --cov-report=term --cov-report=xml:cov.xml .
+. .venv/bin/activate && python3 -m pytest --cov=oaatoperator --cov-append --cov-report=term --cov-report=xml:cov.xml .
 
 # Run specific test file
-python3 -m pytest tests/test_oaatgroup.py
+. .venv/bin/activate && python3 -m pytest tests/unit/test_oaatgroup.py
 ```
 
 ### Linting
 ```bash
 # Syntax errors and undefined names (fails build)
-flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+. .venv/bin/activate && flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
 # Full linting (warnings only)
-flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+. .venv/bin/activate && flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 ```
 
 ### Dependencies
 ```bash
 # Install runtime dependencies
-pip install -r requirements.txt
+. .venv/bin/activate && pip install -r requirements.txt
 
 # Install development dependencies
-pip install -r requirements/dev.txt
+. .venv/bin/activate && pip install -r requirements/dev.txt
 ```
 
 ## Architecture
@@ -55,6 +55,7 @@ The operator follows an event-driven architecture using kopf handlers:
 - **oaattype.py** - Manages OaatType resources
 - **oaatitem.py** - Represents individual items within a group
 - **pod.py** - Handles Pod creation and lifecycle management
+- **runtime_stats.py** - Job runtime statistics collection and prediction using reservoir sampling
 - **utility.py** - Common utility functions (time handling, logging, etc.)
 
 ### Key Workflow
@@ -80,3 +81,6 @@ The operator follows an event-driven architecture using kopf handlers:
 - All k8s interactions go through pykube client
 - Item names are passed to pods via `OAAT_ITEM` environment variable or string substitution in pod spec
 - The operator maintains item failure counts and last success/failure timestamps
+- Runtime statistics are stored per-item using reservoir sampling for bounded memory usage
+- All files should have a trailing newline
+- Blank lines should not have spaces

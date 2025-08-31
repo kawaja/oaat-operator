@@ -1,7 +1,6 @@
 from copy import deepcopy
 import oaatoperator.utility
 import logging
-import pykube
 import kopf
 
 from unittest.mock import MagicMock, Mock
@@ -69,6 +68,7 @@ class TestData:
 
     failure_time = oaatoperator.utility.now()
     success_time = oaatoperator.utility.now()
+    start_time = oaatoperator.utility.now() - oaatoperator.utility.parse_duration('2m')
 
     # Pod
     kp_spec = {
@@ -104,6 +104,7 @@ class TestData:
             'state': {
                 'terminated': {
                     'exitCode': 5,
+                    'startedAt': start_time.isoformat(),
                     'finishedAt': failure_time.isoformat()
                 }
             }
@@ -117,6 +118,7 @@ class TestData:
             'state': {
                 'terminated': {
                     'exitCode': 0,
+                    'startedAt': start_time.isoformat(),
                     'finishedAt': success_time.isoformat()
                 }
             }

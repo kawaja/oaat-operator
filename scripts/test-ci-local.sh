@@ -15,10 +15,10 @@ NC='\033[0m' # No Color
 run_test() {
     local service_name=$1
     local description=$2
-    
+
     echo -e "\n${BLUE}🧪 Running: ${description}${NC}"
     echo "Service: docker-compose -f docker-compose.test.yml run --rm ${service_name}"
-    
+
     if docker-compose -f docker-compose.test.yml run --rm ${service_name}; then
         echo -e "${GREEN}✅ ${description} - PASSED${NC}"
         return 0
