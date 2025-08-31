@@ -53,7 +53,7 @@ kubectl apply -f manifests/sample-oaat-type.yaml
 
 # Run integration tests
 make test-integration
-# or 
+# or
 pytest tests/integration/ -v
 ```
 
@@ -114,7 +114,7 @@ make clean-docker
 Our CI pipeline runs the following steps:
 
 1. **Lint Check**: `flake8` for syntax errors and code style
-2. **Unit Tests**: 169 tests with global pykube mocking  
+2. **Unit Tests**: 169 tests with global pykube mocking
 3. **Coverage Report**: Uploaded to codecov
 
 **Key Feature**: No k3d cluster required for CI due to comprehensive mocking.
@@ -197,7 +197,7 @@ sudo usermod -aG docker $USER
 All unit tests automatically get pykube mocking via `@pytest.fixture(autouse=True)`:
 
 - `pykube.KubeConfig.from_env()` → Mock config object
-- `pykube.KubeConfig.from_file()` → Mock config object  
+- `pykube.KubeConfig.from_file()` → Mock config object
 - `pykube.HTTPClient()` → Mock HTTP client
 
 ### Context Manager Mocking
@@ -222,6 +222,6 @@ with KubeObjectPod(pod_spec) as pod:
 ## Performance
 
 - **Unit tests**: ~2 seconds (169 tests)
-- **Integration tests**: ~30 seconds (5 tests)  
+- **Integration tests**: ~30 seconds (5 tests)
 - **Docker CI simulation**: ~3-5 minutes (full pipeline)
 - **GitHub Actions**: ~4 minutes (vs ~54 minutes before optimization)

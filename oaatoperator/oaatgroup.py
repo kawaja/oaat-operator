@@ -21,6 +21,7 @@ from oaatoperator.oaattype import OaatType
 from oaatoperator.overseer import Overseer
 from oaatoperator.common import (ProcessingComplete, KubeOaatGroup,
                                  InternalError)
+from oaatoperator.runtime_stats import RuntimeStatsManager
 
 
 # TODO: I'm not convinced about this composite object. It's essentially
@@ -368,6 +369,14 @@ class OaatGroup:
     OaatGroup
 
     Composite object for KOPF and Kubernetes handling
+
+    Keep things DRY when sometimes we need to operate with
+    an OaatGroup Kopf object and sometimes we only have a KubeOaatGroup
+    (specifically when Kopf is processing a Pod but we need to interact
+    with the OaatGroup). However, there are so many conditionals required
+    that it would seem like having separate objects might actually make
+    more sense, even if there are two totally separate implementations
+    of some functions (like mark_failed())
     """
     api: pykube.HTTPClient
     kopf_object: Optional[OaatGroupOverseer]
@@ -395,6 +404,8 @@ class OaatGroup:
             self.items = OaatItems(group=self,
                                    obj=cast(dict[str, Any], kopf_object))
             self.memo = kopf_object['memo']
+            # Initialize runtime statistics manager
+            self._init_runtime_stats()
             return
 
         # kube object name supplied
@@ -426,6 +437,149 @@ class OaatGroup:
         self.items = OaatItems(group=self,
                                obj=cast(dict[str, Any], self.kube_object.obj))
         self.status = self.kube_object.obj.get('status', {})
+        # Initialize runtime statistics manager
+        self._init_runtime_stats()
+
+    def _init_runtime_stats(self) -> None:
+        """Initialize runtime statistics manager from stored per-item status."""
+        self.runtime_stats = RuntimeStatsManager()
+
+        # Load existing statistics from per-item status if available
+        try:
+            # Get the items status section
+            if self.kopf_object:
+                items_status = self.kopf_object.get_status('items', {})
+            else:
+                items_status = self.status.get('items', {})
+
+            # Load statistics for each item that has runtime data
+            for item_name, item_data in items_status.items():
+                if 'runtime_count' in item_data:
+                    self._load_item_runtime_stats(item_name, item_data)
+
+        except Exception as e:
+            if hasattr(self, 'logger'):
+                self.logger.warning(f'Failed to load runtime statistics: {e}')
+            # Continue with empty stats if loading fails
+            self.runtime_stats = RuntimeStatsManager()
+
+    def _load_item_runtime_stats(self, item_name: str, item_data: dict) -> None:
+        """Load runtime statistics for a specific item from its status data."""
+        try:
+            import json
+            from oaatoperator.runtime_stats import JobRuntimeStats
+
+            # Reconstruct statistics from flattened fields
+            stats_dict = {
+                'count': int(item_data.get('runtime_count', 0)),
+                'total_runtime_seconds': float(item_data.get('runtime_total', 0.0)),
+                'sum_of_squares': float(item_data.get('runtime_sum_squares', 0.0)),
+                'min_runtime': float(item_data.get('runtime_min', float('inf'))),
+                'max_runtime': float(item_data.get('runtime_max', 0.0)),
+                'sample': json.loads(item_data.get('runtime_sample', '[]')),
+                'last_updated': item_data.get('runtime_last_updated')
+            }
+
+            # Create JobRuntimeStats from the reconstructed dictionary
+            stats = JobRuntimeStats.from_dict(stats_dict)
+
+            # Add to the runtime stats manager
+            self.runtime_stats._stats[item_name] = stats
+
+        except Exception as e:
+            if hasattr(self, 'logger'):
+                self.logger.warning(f'Failed to load runtime statistics for {item_name}: {e}')
+
+    def _save_item_runtime_stats(self, item_name: str) -> None:
+        """Save runtime statistics for a specific item to its status."""
+        try:
+            stats = self.runtime_stats.get_stats(item_name)
+            if stats is None:
+                return
+
+            stats_dict = stats.to_dict()
+
+            # Flatten the statistics to individual fields for set_item_status
+            self.set_item_status(item_name, 'runtime_count', str(stats_dict.get('count', 0)))
+            self.set_item_status(item_name, 'runtime_total', str(stats_dict.get('total_runtime_seconds', 0.0)))
+            self.set_item_status(item_name, 'runtime_sum_squares', str(stats_dict.get('sum_of_squares', 0.0)))
+            self.set_item_status(item_name, 'runtime_min', str(stats_dict.get('min_runtime', 0.0)))
+            self.set_item_status(item_name, 'runtime_max', str(stats_dict.get('max_runtime', 0.0)))
+
+            # Store sample as JSON string
+            import json
+            sample = stats_dict.get('sample', [])
+            self.set_item_status(item_name, 'runtime_sample', json.dumps(sample))
+
+            # Store last updated timestamp
+            last_updated = stats_dict.get('last_updated')
+            if last_updated:
+                self.set_item_status(item_name, 'runtime_last_updated',
+                                     last_updated)
+
+        except Exception as e:
+            if hasattr(self, 'logger'):
+                self.logger.warning(f'Failed to save runtime statistics for '
+                                    f'{item_name}: {e}')
+
+    def _record_item_runtime(self, item_name: str,
+                             started_at: Optional[datetime.datetime],
+                             finished_at: datetime.datetime) -> None:
+        """Record runtime statistics for an item if timing data is available.
+
+        Args:
+            item_name: Name of the item that completed
+            started_at: When the item started execution (None if unavailable)
+            finished_at: When the item finished execution
+        """
+        if started_at is None:
+            if hasattr(self, 'logger'):
+                self.logger.debug(f'No start time available for {item_name}, skipping runtime recording')
+            return
+
+        try:
+            runtime_delta = finished_at - started_at
+            runtime_seconds = runtime_delta.total_seconds()
+
+            if runtime_seconds <= 0:
+                if hasattr(self, 'logger'):
+                    self.logger.warning(f'Invalid runtime for {item_name}: {runtime_seconds}s')
+                return
+
+            self.runtime_stats.add_runtime(item_name, runtime_seconds)
+            self._save_item_runtime_stats(item_name)
+
+            if hasattr(self, 'logger'):
+                self.logger.debug(f'Recorded runtime for {item_name}: {runtime_seconds:.1f}s')
+        except Exception as e:
+            if hasattr(self, 'logger'):
+                self.logger.warning(f'Failed to record runtime for {item_name}: {e}')
+
+    def record_item_runtime(self, item_name: str, runtime_seconds: float) -> None:
+        """Record runtime statistics for an item.
+
+        Args:
+            item_name: Name of the item that completed
+            runtime_seconds: Runtime in seconds
+        """
+        try:
+            self.runtime_stats.add_runtime(item_name, runtime_seconds)
+            self._save_item_runtime_stats(item_name)
+        except Exception as e:
+            if hasattr(self, 'logger'):
+                self.logger.warning(f'Failed to record runtime for {item_name}: {e}')
+
+    def get_predicted_runtime(self, item_name: str, confidence_factor: float = 1.5) -> Optional[float]:
+        """Get predicted runtime for an item.
+
+        Args:
+            item_name: Name of the item
+            confidence_factor: Confidence factor for prediction
+
+        Returns:
+            Predicted runtime in seconds or None if no data
+        """
+        return self.runtime_stats.predict_runtime(item_name, confidence_factor)
 
     def namespace(self) -> Optional[str]:
         if self.kopf_object:
@@ -501,8 +655,15 @@ class OaatGroup:
     def mark_item_success(
             self,
             item_name: str,
-            finished_at: Optional[datetime.datetime] = None) -> bool:
-        """Mark an item as succeeded."""
+            finished_at: Optional[datetime.datetime] = None,
+            started_at: Optional[datetime.datetime] = None) -> bool:
+        """Mark an item as succeeded and record runtime statistics.
+
+        Args:
+            item_name: Name of the item that completed
+            finished_at: When the item finished execution
+            started_at: When the item started execution (for runtime calculation)
+        """
 
         item = self.items.get(item_name)
         if not finished_at:
@@ -521,6 +682,10 @@ class OaatGroup:
             self.memo.currently_running = None
             self.memo.pod = None
             self.memo.state = 'idle'
+
+            # Record runtime statistics if both start and end times are available
+            self._record_item_runtime(item_name, started_at, finished_at)
+
             # TODO: if via kopf, will this get overwritten by handler exit?
             self.set_group_status('oaat_timer',
                                   {'message': f'item {item_name} completed'})

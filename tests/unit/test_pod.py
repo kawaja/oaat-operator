@@ -95,7 +95,7 @@ class StatusTests(unittest.TestCase):
             p.update_success_status()
         self.assertEqual(
             og_mock().mark_item_success.call_args,
-            call(op['labels']['oaat-name'], finished_at=TestData.success_time))
+            call(op['labels']['oaat-name'], finished_at=TestData.success_time, started_at=TestData.start_time))
 
     @patch('oaatoperator.pod.OaatGroup', autospec=True)
     def test_failure(self, og_mock):
@@ -134,7 +134,7 @@ class StatusTests(unittest.TestCase):
         self.assertEqual(p.finished_at, finished_at)
         self.assertEqual(
             og_instance_mock.mark_item_success.call_args,
-            call(op['labels']['oaat-name'], finished_at=finished_at))
+            call(op['labels']['oaat-name'], finished_at=finished_at, started_at=TestData.start_time))
         newFA = (TestData.success_time - datetime.timedelta(days=2))
         p.finished_at = newFA
         with self.assertRaisesRegex(ProcessingComplete,

@@ -1,0 +1,6 @@
+apiVersion: kawaja.net/v1
+kind: OaatGroup
+metadata:
+  name: pod-selection
+  annotations:
+    pause_new_jobs: 'true'

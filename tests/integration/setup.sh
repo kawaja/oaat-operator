@@ -35,8 +35,8 @@ kubectl wait --for=condition=Ready pod -l k8s-app=kube-dns -n kube-system --time
 #  sleep 2
 #done
 
-kubectl apply -f ${top}/manifests/01-oaat-operator-crd.yaml 
-kubectl apply -f ${top}/manifests/sample-oaat-type.yaml 
+kubectl apply -f ${top}/manifests/01-oaat-operator-crd.yaml
+kubectl apply -f ${top}/manifests/sample-oaat-type.yaml
 python3 -m pip install --upgrade pip
 pip install -r ${top}/requirements/dev.txt
 

@@ -28,6 +28,7 @@ class PodOverseer(Overseer):
         self.exitcode = -1
         self.reason: Optional[str] = None
         self.finished_at: Optional[datetime.datetime] = None
+        self.started_at: Optional[datetime.datetime] = None
         self.memo = kwargs['memo']
 
     # TODO: currently only supports a single container (searches for the
@@ -45,6 +46,9 @@ class PodOverseer(Overseer):
                 self.exitcode = terminated.get('exitCode', -1)
                 self.finished_at = date_from_isostr(
                     terminated.get('finishedAt'))
+                # Extract startedAt for runtime calculation
+                self.started_at = date_from_isostr(
+                    terminated.get('startedAt'))
                 return
             self.warning(
                 f'cannot find terminated status for {self.name} '
@@ -88,7 +92,7 @@ class PodOverseer(Overseer):
         self._retrieve_terminated()
         oaatgroup = self.get_parent()
         if oaatgroup.mark_item_success(
-                item_name, finished_at=self.finished_at):
+                item_name, finished_at=self.finished_at, started_at=self.started_at):
             raise ProcessingComplete(message=f'item {item_name} completed')
         raise ProcessingComplete(
             message=f'ignoring old successful job pod={self.name}')

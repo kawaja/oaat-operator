@@ -39,9 +39,9 @@ services:
         --cov-report=term
         --cov-report=xml:coverage-reports/cov.xml
 #    command: >
-#      python3 -m pytest tests/unit/ 
-#      --cov=oaatoperator 
-#      --cov-report=term 
+#      python3 -m pytest tests/unit/
+#      --cov=oaatoperator
+#      --cov-report=term
 #      --cov-report=xml:coverage-reports/cov.xml
 #      -v
 
