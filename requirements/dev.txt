@@ -5,7 +5,7 @@ pycodestyle==2.14.0
 pyflakes==3.4.0
 pytest==8.4.1
 pytest-cov==6.2.1
-pytest-mock==3.14.1
+pytest-mock==3.15.0
 autopep8==2.3.2
 bandit==1.8.6
 mypy_extensions==1.1.0
