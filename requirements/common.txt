@@ -1,4 +1,4 @@
-kopf==1.38.0
+kopf==1.39.0
 pykube-ng==23.6.0
 PyYAML==6.0.3
 aiohttp>=3.9.0 # not directly required, pinned by Snyk to avoid a vulnerability
