@@ -506,4 +506,3 @@ class TestIntegration:
         prediction = reconstructed_stats.predict_runtime()
         assert prediction is not None
         assert prediction >= 100.0  # Should be at least the mean
-

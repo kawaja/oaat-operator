@@ -274,4 +274,3 @@ class RuntimeStatsManager:
             List of job names
         """
         return list(self._stats.keys())
-
