@@ -1,5 +1,5 @@
 -r common.txt
-coverage==7.13.0
+coverage==7.13.1
 flake8==7.3.0
 pycodestyle==2.14.0
 pyflakes==3.4.0
