@@ -3,12 +3,12 @@ py_types.py
 
 Types used for type validation.
 """
-from typing import Any, TypedDict, Optional, Union
+from typing import Any, TypedDict, Optional, Union, NotRequired
 import kopf
 from kopf._cogs.structs import bodies, references, patches, diffs
 from kopf._cogs.structs.bodies import Spec
+from kopf._cogs.helpers import typedefs
 import datetime
-import logging
 
 
 # Adapted from kopf/_core/intents/callbacks.py because KOPF does not
@@ -32,9 +32,10 @@ class CallbackArgs(TypedDict):
     diff: diffs.Diff
     old: Optional[Union[bodies.BodyEssence, Any]]
     new: Optional[Union[bodies.BodyEssence, Any]]
-    logger: logging.Logger
+    logger: typedefs.Logger
     memo: kopf.Memo
-    param: Any
+    settings: NotRequired[kopf.OperatorSettings]
+    param: NotRequired[Any]
 
 
 # This doesn't work:
@@ -50,6 +51,6 @@ class CallbackArgs(TypedDict):
 #     name: Optional[str]
 #     namespace: Optional[str]
 #     patch: patches.Patch
-#     logger: logging.Logger
+#     logger: typedefs.Logger
 #     memo: kopf.Memo
-#     param: Any
+#     param: NotRequired[Any]

@@ -1,7 +1,8 @@
 """Runtime statistics collection and prediction for OAAT jobs.
 
-This module implements progressive statistics collection using reservoir sampling
-to track job runtimes and provide runtime predictions for scheduling decisions.
+This module implements progressive statistics collection using reservoir
+sampling to track job runtimes and provide runtime predictions for
+scheduling decisions.
 """
 
 import bisect
@@ -15,25 +16,27 @@ class JobRuntimeStats:
     """
     Tracks runtime statistics for a job type using progressive algorithms.
 
-    Uses reservoir sampling to maintain a representative sample of recent runtimes
-    while keeping memory usage bounded. Calculates percentiles and predictions
-    without storing full runtime history.
+    Uses reservoir sampling to maintain a representative sample of recent
+    runtimes while keeping memory usage bounded. Calculates percentiles and
+    predictions without storing full runtime history.
     """
 
     def __init__(self, sample_size: int = 100):
         """Initialize runtime statistics tracker.
 
         Args:
-            sample_size: Maximum number of runtime samples to keep (default: 100)
+            sample_size: Maximum number of runtime samples to keep
+                         (default: 100)
         """
         self.sample_size = sample_size
-        self.sample = []  # Sorted list of recent runtimes in seconds
+        # Sorted list of recent runtimes in seconds
+        self.sample: list[float] = []
         self.count = 0
         self.total_runtime_seconds = 0.0
         self.sum_of_squares = 0.0
         self.min_runtime = float('inf')
         self.max_runtime = 0.0
-        self.last_updated = None
+        self.last_updated: Optional[datetime] = None
 
     def add_runtime(self, runtime_seconds: float) -> None:
         """Add a new runtime measurement and update statistics.
@@ -56,7 +59,8 @@ class JobRuntimeStats:
             # Still filling initial sample - insert in sorted order
             bisect.insort(self.sample, runtime_seconds)
         else:
-            # Reservoir sampling: replace random element with probability sample_size/count
+            # Reservoir sampling: replace random element with probability
+            # sample_size/count
             if random.random() < self.sample_size / self.count:
                 # Remove random element and insert new one in sorted order
                 old_idx = random.randint(0, self.sample_size - 1)
@@ -76,7 +80,8 @@ class JobRuntimeStats:
             return None
 
         idx = int(percentile * len(self.sample))
-        idx = min(idx, len(self.sample) - 1)  # Handle edge case for 100th percentile
+        # Handle edge case for 100th percentile
+        idx = min(idx, len(self.sample) - 1)
         return self.sample[idx]
 
     def get_mean(self) -> Optional[float]:
@@ -99,10 +104,14 @@ class JobRuntimeStats:
             return None
 
         mean = self.get_mean()
+        if mean is None:
+            return None
         variance = (self.sum_of_squares / self.count) - (mean * mean)
-        return math.sqrt(max(0, variance))  # Avoid negative variance due to float precision
+        # Avoid negative variance due to float precision
+        return math.sqrt(max(0, variance))
 
-    def predict_runtime(self, confidence_factor: float = 1.5) -> Optional[float]:
+    def predict_runtime(self,
+                        confidence_factor: float = 1.5) -> Optional[float]:
         """Predict job runtime with safety margin.
 
         Uses the more conservative of:
@@ -110,7 +119,8 @@ class JobRuntimeStats:
         - Mean + confidence_factor * standard_deviation
 
         Args:
-            confidence_factor: How many standard deviations above mean to use (default: 1.5)
+            confidence_factor: How many standard deviations above mean to use
+                               (default: 1.5)
 
         Returns:
             Predicted runtime in seconds, or None if no data
@@ -123,6 +133,8 @@ class JobRuntimeStats:
 
         # Get conservative estimate based on mean + std_dev
         mean = self.get_mean()
+        if mean is None:
+            return None
         std_dev = self.get_std_deviation()
 
         if std_dev is not None:
@@ -148,14 +160,18 @@ class JobRuntimeStats:
             'count': self.count,
             'total_runtime_seconds': self.total_runtime_seconds,
             'sum_of_squares': self.sum_of_squares,
-            'min_runtime': self.min_runtime if self.min_runtime != float('inf') else 0,
+            'min_runtime': (
+                self.min_runtime if self.min_runtime != float('inf') else 0),
             'max_runtime': self.max_runtime,
             'sample': self.sample.copy(),
-            'last_updated': self.last_updated.isoformat() if self.last_updated else None
+            'last_updated': (
+                self.last_updated.isoformat() if self.last_updated else None)
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any], sample_size: int = 100) -> 'JobRuntimeStats':
+    def from_dict(cls,
+                  data: Dict[str, Any],
+                  sample_size: int = 100) -> 'JobRuntimeStats':
         """Create JobRuntimeStats from dictionary.
 
         Args:
@@ -171,7 +187,8 @@ class JobRuntimeStats:
         stats.sum_of_squares = data.get('sum_of_squares', 0.0)
         stats.min_runtime = data.get('min_runtime', float('inf'))
         stats.max_runtime = data.get('max_runtime', 0.0)
-        stats.sample = sorted(data.get('sample', []))  # Ensure sample is sorted
+        # Ensure sample is sorted
+        stats.sample = sorted(data.get('sample', []))
 
         # Trim sample to size if needed
         if len(stats.sample) > sample_size:
@@ -180,7 +197,8 @@ class JobRuntimeStats:
         last_updated_str = data.get('last_updated')
         if last_updated_str:
             try:
-                stats.last_updated = datetime.fromisoformat(last_updated_str.replace('Z', '+00:00'))
+                stats.last_updated = datetime.fromisoformat(
+                    last_updated_str.replace('Z', '+00:00'))
             except (ValueError, TypeError):
                 stats.last_updated = None
 
@@ -234,7 +252,9 @@ class RuntimeStatsManager:
         """
         return self._stats.get(job_name)
 
-    def predict_runtime(self, job_name: str, confidence_factor: float = 1.5) -> Optional[float]:
+    def predict_runtime(self,
+                        job_name: str,
+                        confidence_factor: float = 1.5) -> Optional[float]:
         """Predict runtime for a job type.
 
         Args:
@@ -255,7 +275,10 @@ class RuntimeStatsManager:
         Returns:
             Dictionary mapping job names to their statistics
         """
-        return {job_name: stats.to_dict() for job_name, stats in self._stats.items()}
+        return {
+            job_name: stats.to_dict()
+            for job_name, stats in self._stats.items()
+        }
 
     def from_dict(self, data: Dict[str, Dict[str, Any]]) -> None:
         """Load statistics from dictionary.
@@ -265,7 +288,8 @@ class RuntimeStatsManager:
         """
         self._stats = {}
         for job_name, stats_data in data.items():
-            self._stats[job_name] = JobRuntimeStats.from_dict(stats_data, self.sample_size)
+            self._stats[job_name] = JobRuntimeStats.from_dict(
+                stats_data, self.sample_size)
 
     def get_all_job_names(self) -> list[str]:
         """Get list of all job names with statistics.

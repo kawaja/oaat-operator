@@ -9,7 +9,7 @@ import pykube  # type: ignore
 from typing import Any, Optional, Type, cast
 from oaatoperator.common import ProcessingComplete
 from oaatoperator.py_types import CallbackArgs, Spec
-import logging
+from kopf._cogs.helpers import typedefs
 
 
 class Overseer:
@@ -43,7 +43,7 @@ class Overseer:
                                       f'kwargs ({required_kwargs}')
 
         assert logger is not None
-        self.logger: logging.Logger = logger
+        self.logger: typedefs.Logger = logger
 
     def error(self, *args) -> None:
         """Log an error."""

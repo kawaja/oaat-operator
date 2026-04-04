@@ -62,9 +62,12 @@ class TestHelpers(unittest.TestCase):
             None, None, None, 'username', 'password', 'token'
         ]
         kci.cluster.get.side_effect = [
-            None, 'server', 'insecure'
+            None, 'server', 'insecure', None
         ]
-        kw = {'logger': MagicMock()}
+        kw = {
+            'logger': MagicMock(),
+            'settings': kopf.OperatorSettings()
+            }
         l: credentials.ConnectionInfo = (
             oaatoperator.handlers.login(**kw))
         self.assertIsInstance(l, credentials.ConnectionInfo)

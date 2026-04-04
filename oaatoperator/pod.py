@@ -91,8 +91,9 @@ class PodOverseer(Overseer):
         item_name = self.get_label('oaat-name', 'unknown')
         self._retrieve_terminated()
         oaatgroup = self.get_parent()
-        if oaatgroup.mark_item_success(
-                item_name, finished_at=self.finished_at, started_at=self.started_at):
+        if oaatgroup.mark_item_success(item_name,
+                                       finished_at=self.finished_at,
+                                       started_at=self.started_at):
             raise ProcessingComplete(message=f'item {item_name} completed')
         raise ProcessingComplete(
             message=f'ignoring old successful job pod={self.name}')
