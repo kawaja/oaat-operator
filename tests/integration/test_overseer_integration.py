@@ -84,9 +84,9 @@ class BasicTests(unittest.TestCase):
         self.assertRegex(runner.output, r'INFO.*info message')
         self.assertRegex(runner.output, r'DEBUG.*debug message')
         self.assertRegex(
-            runner.output, r'Patching with.*new_status.: None')
+            runner.output, r'Merge-patching.*new_status.: None')
         self.assertRegex(
-            runner.output, r'Patching with.*new_status2.: .new_state.')
+            runner.output, r'Merge-patching.*new_status2.: .new_state.')
         self.assertRegex(
             runner.output, r'removed annotation testannotation')
         self.assertEqual(

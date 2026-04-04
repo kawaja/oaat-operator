@@ -12,7 +12,7 @@
         "--cov-report=xml:cov.xml"
     ],
     "[python]": {
-        "editor.defaultFormatter": "ms-python.python"
+        "editor.defaultFormatter": "ms-python.autopep8"
     },
     "python.linting.mypyEnabled": false,
 //    "python.formatting.provider": "autopep8",

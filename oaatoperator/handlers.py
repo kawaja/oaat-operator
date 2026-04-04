@@ -1,5 +1,6 @@
 import sys
 import logging
+from typing import Any
 from typing_extensions import Unpack
 import kopf
 
@@ -31,7 +32,7 @@ def is_succeeded(status, **_):
 
 
 @kopf.on.startup()
-def configure(settings: kopf.OperatorSettings, **_) -> None:
+def configure(settings: kopf.OperatorSettings, **_: Any) -> None:
     """Set kopf configuration."""
     settings.posting.level = logging.INFO
     settings.persistence.finalizer = 'oaatoperator.kawaja.net/kopf-finalizer'
@@ -53,7 +54,13 @@ def configure(settings: kopf.OperatorSettings, **_) -> None:
           file=sys.stderr)
 
 
-@kopf.timer('kawaja.net', 'v1', 'oaatgroups',
+# Not using expansion of kwargs in these handlers because of the
+# way we're passing kwargs to the OaatGroup and PodOverseer classes.
+# If we expand here, then we can't pass the full kwargs dict to those
+# classes without re-assembling it, which is more work and more
+# error-prone than just passing the full kwargs dict as a single
+# argument and letting those classes unpack it as needed.
+@kopf.timer('kawaja.net', 'v1', 'oaatgroups',  # type: ignore[arg-type]
             initial_delay=90, interval=60,
             annotations={'oaatoperator.kawaja.net/operator-status': 'active'})
 def oaat_timer(**kwargs: Unpack[CallbackArgs]):
@@ -103,15 +110,15 @@ def oaat_timer(**kwargs: Unpack[CallbackArgs]):
         return oaatgroup.handle_processing_complete(exc)
 
 
-@kopf.timer('pods',
-            interval=0.5 * 3600,
-            labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'})
-@kopf.on.resume('pods',
-                labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-                when=is_running)
 @kopf.on.field('pods',
                field='status.phase',
                labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'})
+@kopf.on.resume('pods',
+                labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
+                when=is_running)
+@kopf.timer('pods',  # type: ignore[arg-type]
+            interval=0.5 * 3600,
+            labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'})
 def pod_phasechange(**kwargs: Unpack[CallbackArgs]) -> None:
     """
     pod_phasechange (pod)
@@ -142,17 +149,17 @@ def pod_phasechange(**kwargs: Unpack[CallbackArgs]) -> None:
     return
 
 
-@kopf.timer('', 'v1', 'pods',
-            interval=0.5*3600,
-            labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-            when=is_succeeded)
-@kopf.on.resume('', 'v1', 'pods',
-                labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-                when=is_succeeded)
 @kopf.on.field('', 'v1', 'pods',
                field='status.phase',
                labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
                when=is_succeeded)
+@kopf.on.resume('', 'v1', 'pods',
+                labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
+                when=is_succeeded)
+@kopf.timer('', 'v1', 'pods',  # type: ignore[arg-type]
+            interval=0.5*3600,
+            labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
+            when=is_succeeded)
 def pod_succeeded(**kwargs: Unpack[CallbackArgs]) -> None:
     """
     pod_succeeded (pod)
@@ -181,17 +188,17 @@ def pod_succeeded(**kwargs: Unpack[CallbackArgs]) -> None:
     return
 
 
-@kopf.timer('', 'v1', 'pods',
-            interval=0.5*3600,
-            labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-            when=is_failed)
-@kopf.on.resume('', 'v1', 'pods',
-                labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
-                when=is_failed)
 @kopf.on.field('', 'v1', 'pods',
                field='status.phase',
                labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
                when=is_failed)
+@kopf.on.resume('', 'v1', 'pods',
+                labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
+                when=is_failed)
+@kopf.timer('', 'v1', 'pods',  # type: ignore[arg-type]
+            interval=0.5*3600,
+            labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
+            when=is_failed)
 def pod_failed(**kwargs: Unpack[CallbackArgs]) -> None:
     """
     pod_failed (pod)
@@ -219,7 +226,7 @@ def pod_failed(**kwargs: Unpack[CallbackArgs]) -> None:
     return
 
 
-@kopf.timer('', 'v1', 'pods',
+@kopf.timer('', 'v1', 'pods',  # type: ignore[arg-type]
             interval=12*3600,
             labels={'parent-name': kopf.PRESENT, 'app': 'oaat-operator'},
             when=kopf.any_([is_succeeded, is_failed]))
@@ -248,7 +255,7 @@ def cleanup_pod(**kwargs: Unpack[CallbackArgs]) -> None:
         return
 
 
-@kopf.on.resume('kawaja.net', 'v1', 'oaatgroups')
+@kopf.on.resume('kawaja.net', 'v1', 'oaatgroups')  # type: ignore[arg-type]
 def oaat_resume(**kwargs: Unpack[CallbackArgs]):
     """
     oaat_resume (oaatgroup)
@@ -276,7 +283,7 @@ def oaat_resume(**kwargs: Unpack[CallbackArgs]):
 
 @kopf.on.update('kawaja.net', 'v1', 'oaatgroups')
 @kopf.on.create('kawaja.net', 'v1', 'oaatgroups')
-@kopf.timer('kawaja.net', 'v1', 'oaatgroups',
+@kopf.timer('kawaja.net', 'v1', 'oaatgroups',  # type: ignore[arg-type]
             initial_delay=90,
             interval=300,
             annotations={'oaatoperator.kawaja.net/operator-status':
@@ -310,7 +317,7 @@ def oaat_action(**kwargs: Unpack[CallbackArgs]):
         return oaatgroup.handle_processing_complete(exc)
 
 
-@kopf.on.login()
+@kopf.on.login()  # type: ignore[arg-type]
 def login(**kwargs: Unpack[CallbackArgs]):
     """Kopf login."""
     return kopf.login_via_pykube(**kwargs)
