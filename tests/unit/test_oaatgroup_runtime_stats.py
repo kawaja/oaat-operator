@@ -9,7 +9,8 @@ from unittest.mock import Mock, patch
 # Test setup imports
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../oaatoperator")
+sys.path.append(os.path.dirname(
+    os.path.realpath(__file__)) + "/../../oaatoperator")
 
 from tests.unit.testdata import TestData
 from tests.unit.mocks_pykube import KubeObject
@@ -64,15 +65,17 @@ class TestOaatGroupRuntimeStatsIntegration(unittest.TestCase):
         # Check item1 statistics
         item1_stats = og.runtime_stats.get_stats('item1')
         self.assertIsNotNone(item1_stats)
-        self.assertEqual(item1_stats.count, 5)
-        self.assertEqual(item1_stats.get_mean(), 100.0)
-        self.assertEqual(item1_stats.sample, [90, 95, 100, 105, 110])
+        if item1_stats is not None:
+            self.assertEqual(item1_stats.count, 5)
+            self.assertEqual(item1_stats.get_mean(), 100.0)
+            self.assertEqual(item1_stats.sample, [90, 95, 100, 105, 110])
 
         # Check item2 statistics
         item2_stats = og.runtime_stats.get_stats('item2')
         self.assertIsNotNone(item2_stats)
-        self.assertEqual(item2_stats.count, 3)
-        self.assertEqual(item2_stats.get_mean(), 100.0)
+        if item2_stats is not None:
+            self.assertEqual(item2_stats.count, 3)
+            self.assertEqual(item2_stats.get_mean(), 100.0)
 
     @patch('oaatoperator.oaatgroup.OaatType', autospec=True)
     def test_init_with_malformed_runtime_stats(self, oaat_type_mock):
@@ -115,7 +118,8 @@ class TestOaatGroupRuntimeStatsIntegration(unittest.TestCase):
         # Verify statistics were recorded
         stats = og.runtime_stats.get_stats('test-item')
         self.assertIsNotNone(stats)
-        self.assertEqual(stats.count, 1)
+        if stats is not None:
+            self.assertEqual(stats.count, 1)
 
         # Verify set_item_status was called with correct statistics
         call_args = [call.args for call in og.set_item_status.call_args_list]
@@ -246,7 +250,8 @@ class TestRuntimeStatsEdgeCases(unittest.TestCase):
         for runtime in runtimes:
             stats.add_runtime(runtime)
 
-        prediction = stats.predict_runtime(confidence_factor=3.0)  # High confidence factor
+        prediction = stats.predict_runtime(
+            confidence_factor=3.0)  # High confidence factor
         p90 = stats.get_percentile(0.9)
         mean = stats.get_mean()
         std_dev = stats.get_std_deviation()

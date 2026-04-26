@@ -50,7 +50,7 @@ class OaatGroupOverseer(Overseer):
     # OaatGroup.<attribute> works
     freq: datetime.timedelta = datetime.timedelta(hours=1)
     oaattype: Optional[OaatType] = None
-    status: bodies.Status
+    status: Optional[bodies.Status] = None
 
     def __init__(self, parent: OaatGroup,
                  **kwargs: Unpack[py_types.CallbackArgs]) -> None:

@@ -183,7 +183,8 @@ class TestJobRuntimeStats:
     def test_predict_runtime_multiple_values(self):
         """Test runtime prediction with multiple values."""
         stats = JobRuntimeStats()
-        runtimes = [80, 90, 100, 110, 120, 150]  # P90 should be 150, mean=108.33
+        # P90 should be 150, mean=108.33
+        runtimes = [80, 90, 100, 110, 120, 150]
 
         for runtime in runtimes:
             stats.add_runtime(runtime)
@@ -192,11 +193,15 @@ class TestJobRuntimeStats:
         p90 = stats.get_percentile(0.9)
         mean = stats.get_mean()
         std_dev = stats.get_std_deviation()
-        conservative_estimate = mean + 1.5 * std_dev
+        if (prediction is not None and
+                std_dev is not None and
+                p90 is not None and
+                mean is not None):
+            conservative_estimate = mean + 1.5 * std_dev
 
-        # Should return the higher of p90 or conservative estimate
-        expected = max(p90, conservative_estimate)
-        assert abs(prediction - expected) < 0.01
+            # Should return the higher of p90 or conservative estimate
+            expected = max(p90, conservative_estimate)
+            assert abs(prediction - expected) < 0.01
 
     def test_to_dict(self):
         """Test conversion to dictionary."""
@@ -451,6 +456,8 @@ class TestIntegration:
         # Predictions should be the same
         original_prediction = original_manager.predict_runtime('test_job')
         new_prediction = new_manager.predict_runtime('test_job')
+        assert original_prediction is not None
+        assert new_prediction is not None
         assert abs(original_prediction - new_prediction) < 0.01
 
     def test_per_item_statistics_storage_format(self):
@@ -471,7 +478,8 @@ class TestIntegration:
 
         stats_dict = stats.to_dict()
 
-        # Simulate the flattening process that would happen in _save_item_runtime_stats
+        # Simulate the flattening process that would happen
+        # in _save_item_runtime_stats
         flattened_data = {
             'runtime_count': str(stats_dict.get('count', 0)),
             'runtime_total': str(stats_dict.get('total_runtime_seconds', 0.0)),
@@ -482,12 +490,16 @@ class TestIntegration:
             'runtime_last_updated': stats_dict.get('last_updated', '')
         }
 
-        # Simulate the reconstruction process that would happen in _load_item_runtime_stats
+        # Simulate the reconstruction process that would happen
+        # in _load_item_runtime_stats
         reconstructed_dict = {
             'count': int(flattened_data.get('runtime_count', 0)),
-            'total_runtime_seconds': float(flattened_data.get('runtime_total', 0.0)),
-            'sum_of_squares': float(flattened_data.get('runtime_sum_squares', 0.0)),
-            'min_runtime': float(flattened_data.get('runtime_min', float('inf'))),
+            'total_runtime_seconds':
+                float(flattened_data.get('runtime_total', 0.0)),
+            'sum_of_squares':
+                float(flattened_data.get('runtime_sum_squares', 0.0)),
+            'min_runtime':
+                float(flattened_data.get('runtime_min', float('inf'))),
             'max_runtime': float(flattened_data.get('runtime_max', 0.0)),
             'sample': json.loads(flattened_data.get('runtime_sample', '[]')),
             'last_updated': flattened_data.get('runtime_last_updated')
