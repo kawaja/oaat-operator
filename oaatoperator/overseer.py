@@ -9,6 +9,7 @@ import pykube  # type: ignore
 from typing import Any, Optional, Type, cast
 from oaatoperator.common import ProcessingComplete
 from oaatoperator.py_types import CallbackArgs, Spec
+from kopf._cogs.structs import bodies
 from kopf._cogs.helpers import typedefs
 
 
@@ -24,7 +25,7 @@ class Overseer:
         self.api = pykube.HTTPClient(pykube.KubeConfig.from_env())
         self.name = str(kwargs.get('name', ''))
         self.patch = kwargs.get('patch')
-        self.status = kwargs.get('status')
+        self.status: Optional[bodies.Status] = kwargs.get('status')
         logger = kwargs.get('logger')
         self.body = kwargs.get('body')
         self.meta = kwargs.get('meta')
