@@ -83,6 +83,12 @@ def oaat_timer(**kwargs: Unpack[CallbackArgs]):
         # Verify that an existing job is running (returns if not)
         oaatgroup.verify_running()
 
+        # no pod is currently running (verify_running() raises otherwise) -
+        # reflect that in handler_status before checking for a new item to run
+        memo.state = 'idle'
+        memo.currently_running = None
+        memo.pod = None
+
         if kwargs['annotations'].get('pause_new_jobs'):
             raise ProcessingComplete(
                 message='paused via pause_new_jobs annotation')
