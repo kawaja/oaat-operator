@@ -160,7 +160,6 @@ class OaatGroupOverseer(Overseer):
         self.set_status('find_job', find_job_status)
 
         if not candidates:
-            self.set_status('state', 'idle')
             raise ProcessingComplete(
                 message='not time to run next item')
 

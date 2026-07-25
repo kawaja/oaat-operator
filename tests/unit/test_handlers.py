@@ -350,6 +350,22 @@ class TestHandlerOaatTimer(unittest.TestCase):
         self.assertRegex(result.get('message'),
                          'item item failed during validation')
 
+    def test_oaat_timer_idle_after_no_candidates(self):
+        kw = TestData.setup_kwargs(TestData.kog_attrs)
+        kw['memo'].state = 'running'
+        kw['memo'].currently_running = 'olditem'
+        kw['memo'].pod = 'oldpod'
+        self.ogi.find_job_to_run.side_effect = [
+            ProcessingComplete(message='not time to run next item')
+        ]
+        oaatoperator.handlers.oaat_timer(**kw)  # type: ignore
+        self.assertEqual(self.ogi.verify_running.call_count, 1)
+        state, memo = self.ogi.set_status.call_args[0]
+        self.assertEqual(state, 'handler_status')
+        self.assertEqual(memo.state, 'idle')
+        self.assertIsNone(memo.currently_running)
+        self.assertIsNone(memo.pod)
+
     def test_oaat_timer_expected_pod_found(self):
         kw = TestData.setup_kwargs(TestData.kog_attrs)
         self.ogi.verify_running.side_effect = [
