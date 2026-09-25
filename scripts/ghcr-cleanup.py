@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Delete GitHub Container Registry (GHCR) image versions that have 0 downloads.
+"""Delete GitHub Container Registry (GHCR) image versions with few downloads.
 
 By default only *untagged* versions are considered (leftover multi-arch
 manifests/layers that are no longer referenced by any tag). Pass
---include-tagged to also consider tagged versions with 0 downloads.
+--include-tagged to also consider tagged versions (still subject to
+--max-downloads) - but only tags that look like git commit SHAs (7-40 hex
+chars, e.g. the short SHA tags this repo's CI pushes). Named tags such as
+"dev", "latest", or "v1.2.3" are never touched, even with --include-tagged.
 
 GitHub's Packages REST API does not expose a download count for container
 image versions (confirmed: no `download_count` field on the versions
@@ -32,6 +35,7 @@ Usage:
     scripts/ghcr-cleanup.py --owner kawaja --dry-run
     scripts/ghcr-cleanup.py --owner kawaja --package oaat-operator
     scripts/ghcr-cleanup.py --owner kawaja --include-tagged --protect-tags latest,dev --dry-run
+    scripts/ghcr-cleanup.py --owner kawaja --max-downloads 5 --dry-run
 """
 import argparse
 import json
@@ -50,6 +54,7 @@ WEB_BASE = "https://github.com"
 USER_AGENT = "ghcr-cleanup-script"
 
 DOWNLOAD_RE = re.compile(r'Total downloads</span>\s*<span[^>]*>([\d,]+)</span>', re.S)
+GIT_SHA_TAG_RE = re.compile(r'^[0-9a-f]{7,40}$')
 
 
 def get_token(token_env: str) -> str:
@@ -144,7 +149,7 @@ def fetch_download_count(prefix: str, owner: str, package: str, version_id: int,
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Delete GHCR container image versions with 0 downloads.",
+        description="Delete GHCR container image versions with few downloads.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__)
     parser.add_argument(
@@ -159,11 +164,17 @@ def parse_args():
         help="Show what would be deleted without deleting anything")
     parser.add_argument(
         "--include-tagged", action="store_true",
-        help="Also consider tagged versions with 0 downloads (default: untagged only)")
+        help="Also consider tagged versions (subject to --max-downloads), but only "
+             "tags that look like git commit SHAs (7-40 hex chars) - named tags "
+             "like 'dev' or 'v1.2.3' are never touched (default: untagged only)")
     parser.add_argument(
         "--protect-tags", default="latest",
         help="Comma-separated tags never deleted, even with --include-tagged "
              "(default: latest)")
+    parser.add_argument(
+        "--max-downloads", type=int, default=1,
+        help="Delete versions with fewer than this many downloads "
+             "(default: 1, i.e. only versions with 0 downloads)")
     parser.add_argument(
         "--min-age-hours", type=float, default=24,
         help="Only consider versions at least this old, so something just pushed "
@@ -205,6 +216,8 @@ def main():
                     continue
                 if protected_tags & set(tags):
                     continue
+                if not all(GIT_SHA_TAG_RE.match(t) for t in tags):
+                    continue
             created = datetime.fromisoformat(version["created_at"].replace("Z", "+00:00"))
             if created.timestamp() > cutoff:
                 continue
@@ -222,7 +235,7 @@ def main():
         time.sleep(0.2)
         if count is None:
             unknown.append((package, version, tags))
-        elif count == 0:
+        elif count < args.max_downloads:
             to_delete.append((package, version, tags, count))
 
     if unknown:
@@ -236,7 +249,8 @@ def main():
         return
 
     print(f"\n{'DRY RUN - ' if args.dry_run else ''}"
-          f"{len(to_delete)} version(s) with 0 downloads:")
+          f"{len(to_delete)} version(s) with fewer than {args.max_downloads} "
+          f"download(s):")
     header = f"{'PACKAGE':<20} {'ID':<12} {'TAGS':<20} {'DIGEST':<14} " \
              f"{'CREATED':<21} DOWNLOADS"
     print(header)
