@@ -1,7 +1,7 @@
 -r common.txt
 coverage==7.16.1
 flake8==7.3.0
-pycodestyle==2.14.0
+pycodestyle==2.15.0
 pyflakes==3.4.0
 pytest==9.1.1
 pytest-cov==7.1.0
